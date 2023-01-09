@@ -6,6 +6,7 @@ Entry point for tge Data logger and Data Emulator
 
 @author: tobias.badertscher
 """
+
 def start():
     print("Start data Logger/Emulator")
 
