@@ -9,6 +9,7 @@ a list of raw data for given parameters.
 @author: tobias.badertscher
 """
 import os, sys
+import cvs
 # add ../../Sources to the PYTHONPATH
 sys.path.append(os.path.join("..", "yoctolib_python", "Sources"))
 
@@ -61,7 +62,9 @@ if __name__ == '__main__':
     sen.append(channel1)
     sen.append(channel2)
     p =  producer(sen)
-    #print(sen[0].get_currentValue())
-    print(p.get_values())
-    
+    f = open("data.cvs")
+    w = cvs.writter(f)
+    for i range(1440):
+        w.write(p.get_values())
+    f.close()    
     
