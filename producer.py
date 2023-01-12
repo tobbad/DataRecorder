@@ -9,10 +9,12 @@ a list of raw data for given parameters.
 @author: tobias.badertscher
 """
 import os, sys
-import cvs
+import csv
+from datetime import datetime
+import time
 # add ../../Sources to the PYTHONPATH
 sys.path.append(os.path.join("..", "yoctolib_python", "Sources"))
-
+dir(datetime)
 from yocto_api import *
 from yocto_genericsensor import *
 
@@ -54,17 +56,31 @@ if __name__ == '__main__':
     
     sen = []
     sensor = YGenericSensor.FirstGenericSensor()
-    
+    errmsg = YRefParam()
+
     serial = sensor.get_module().get_serialNumber()
     #print(serial)
+    
     channel1 = YGenericSensor.FindGenericSensor(serial + '.genericSensor1')
     channel2 = YGenericSensor.FindGenericSensor(serial + '.genericSensor2')
     sen.append(channel1)
     sen.append(channel2)
     p =  producer(sen)
-    f = open("data.cvs")
-    w = cvs.writter(f)
-    for i range(1440):
-        w.write(p.get_values())
+    start = datetime.datetime.now()
+    f = open("data.csv", 'w')
+    w = csv.writer(f)
+    for i in range(1440):
+        now =  datetime.datetime.now().strftime("%m%d%Y_%H:%M:%S")
+        to_write = [now]
+        data = p.get_values()
+        to_write.extend(data)
+        w.writerow([now, data[0], data[1], data[2], data[3]])
+        #time.sleep(0.5)
+        YAPI.Sleep(1000)
+        if i%100==0:
+            print(i)
+
     f.close()    
+    print(errmsg)
+
     
