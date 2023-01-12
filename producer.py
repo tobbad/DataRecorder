@@ -74,7 +74,7 @@ if __name__ == '__main__':
         to_write = [now]
         data = p.get_values()
         to_write.extend(data)
-        w.writerow([now, data[0], data[1], data[2], data[3]])
+        w.writerow([now, i,  data[0][0], data[0][1], data[1][0], data[1][1]])
         #time.sleep(0.5)
         YAPI.Sleep(1000)
         if i%100==0:
