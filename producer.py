@@ -70,7 +70,7 @@ if __name__ == '__main__':
     w = csv.writer(f)
     for i in range(1440):
         now =  0#datetime.datetime.now().strftime("%m%d%Y_%H:%M:%S")
-        to_write = [now]
+        to_write = [now,]
         data = p.get_values()
         to_write.append(now)
         w.writerow([data[0], data[1], data[2], data[3]])
