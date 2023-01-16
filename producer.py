@@ -24,7 +24,6 @@ class producer:
      According tom the parameter set up device
     """
     def __init__(self, parameter):
-        self. errmsg = YRefParam()
         self.__devices = []
         #print(parameter)
         if isinstance(parameter, list):
@@ -54,33 +53,34 @@ class producer:
 
 if __name__ == '__main__':
     
-    sen = []
-    sensor = YGenericSensor.FirstGenericSensor()
+    channel = []
     errmsg = YRefParam()
-
+    if YAPI.RegisterHub("usb", errmsg) != YAPI.SUCCESS:
+        sys.exit("init error" + errmsg.value)
+    sensor = YGenericSensor.FirstGenericSensor()
+    print(sensor)
     serial = sensor.get_module().get_serialNumber()
     #print(serial)
     
-    channel1 = YGenericSensor.FindGenericSensor(serial + '.genericSensor1')
-    channel2 = YGenericSensor.FindGenericSensor(serial + '.genericSensor2')
-    sen.append(channel1)
-    sen.append(channel2)
-    p =  producer(sen)
+    channel.append(YGenericSensor.FindGenericSensor(serial + '.genericSensor1'))
+    channel.append(YGenericSensor.FindGenericSensor(serial + '.genericSensor2'))
+    p =  producer(channel)
     start = datetime.datetime.now()
     f = open("data.csv", 'w')
     w = csv.writer(f)
     for i in range(1440):
-        now =  datetime.datetime.now().strftime("%m%d%Y_%H:%M:%S")
+        now =  0#datetime.datetime.now().strftime("%m%d%Y_%H:%M:%S")
         to_write = [now]
         data = p.get_values()
-        to_write.extend(data)
-        w.writerow([now, data[0], data[1], data[2], data[3]])
+        to_write.append(now)
+        w.writerow([data[0], data[1], data[2], data[3]])
         #time.sleep(0.5)
-        YAPI.Sleep(1000)
+        YAPI.Sleep(1)
         if i%100==0:
             print(i)
 
     f.close()    
     print(errmsg)
+    YAPI.FreeAPI()
 
     
