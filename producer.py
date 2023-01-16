@@ -69,11 +69,12 @@ if __name__ == '__main__':
     f = open("data.csv", 'w')
     w = csv.writer(f)
     for i in range(1440):
-        now =  0#datetime.datetime.now().strftime("%m%d%Y_%H:%M:%S")
+        now = datetime.datetime.now().strftime("%d%m%Y_%H:%M:%S")
         to_write = [now,]
         data = p.get_values()
-        to_write.append(now)
-        w.writerow([data[0], data[1], data[2], data[3]])
+        to_write.extend([ data[0][0], data[0][1], data[1][0], data[1][1] ])
+        print(to_write)
+        w.writerow(to_write)
         #time.sleep(0.5)
         YAPI.Sleep(1)
         if i%100==0:
