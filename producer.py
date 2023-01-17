@@ -23,9 +23,11 @@ class producer:
     """
      According tom the parameter set up device
     """
-    def __init__(self, parameter):
+    def __init__(self, parameter, addTime=False):
         self.__devices = []
         #print(parameter)
+        self.__addTime = addTime
+        self.__start = datetime.datetime.now()
         if isinstance(parameter, list):
             #print("Check list")
             for d in parameter:
@@ -37,10 +39,16 @@ class producer:
     
     def get_values(self):
         res = []
-        
+        now = datetime.datetime.now()
+        delta = now - self.__start
+        nowS = now.strftime("%Y-%m-%dT%H:%M:%S+01:00")
+        deltaS = delta.total_seconds()
+        data = []
+        if self.__addTime:
+            res.extend([nowS, deltaS])
         for ch in self.__devices:
-            #print("Check %s" % ch)
-            res.append([ch.get_currentValue(), ch.get_unit()])
+            data.append([ch.get_currentValue(), ch.get_unit()])
+        res.extend( [data[0][0], data[0][1], data[1][0], data[1][1]])
         return res
         
     def close(self):
@@ -64,20 +72,14 @@ if __name__ == '__main__':
     
     channel.append(YGenericSensor.FindGenericSensor(serial + '.genericSensor1'))
     channel.append(YGenericSensor.FindGenericSensor(serial + '.genericSensor2'))
-    p =  producer(channel)
+    p =  producer(channel, True)
     start = datetime.datetime.now()
     f = open("data.csv", 'w')
     w = csv.writer(f, lineterminator='\n')
     for i in range(1440):
-        now = datetime.datetime.now()
-        nowStr  = now.strftime("%Y-%m-%dT%H:%M:%S+01:00")
-        delta = now-start
-        delta = (delta).total_seconds()
-        to_write = [nowStr, delta]
         data = p.get_values()
-        to_write.extend([ data[0][0], data[0][1], data[1][0], data[1][1] ])
-        print(to_write)
-        w.writerow(to_write)
+        print(data)
+        w.writerow(data)
         #time.sleep(0.5)
         YAPI.Sleep(1)
         if i%100==0:
