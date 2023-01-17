@@ -67,10 +67,13 @@ if __name__ == '__main__':
     p =  producer(channel)
     start = datetime.datetime.now()
     f = open("data.csv", 'w')
-    w = csv.writer(f)
+    w = csv.writer(f, lineterminator='\n')
     for i in range(1440):
-        now = datetime.datetime.now().strftime("%d%m%Y_%H:%M:%S")
-        to_write = [now,]
+        now = datetime.datetime.now()
+        nowStr  = now.strftime("%Y-%m-%dT%H:%M:%S+01:00")
+        delta = now-start
+        delta = (delta).total_seconds()
+        to_write = [nowStr, delta]
         data = p.get_values()
         to_write.extend([ data[0][0], data[0][1], data[1][0], data[1][1] ])
         print(to_write)
