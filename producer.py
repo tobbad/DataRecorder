@@ -12,6 +12,8 @@ import os, sys
 import csv
 from datetime import datetime
 import time
+from threading import *
+
 # add ../../Sources to the PYTHONPATH
 sys.path.append(os.path.join("..", "yoctolib_python", "Sources"))
 dir(datetime)
@@ -58,6 +60,31 @@ class producer:
         return "Producer"
 
 
+conf = {
+    "prod":None,
+    "file": None,
+    "csv": None,
+    "cnt":0,
+}
+
+def yocto_cb(sensor, value):
+    if conf["prod"] is None:
+        return
+    if conf["cnt"]>conf["max"]:
+        data = conf["prod"].get_values()
+        conf["csv"].writerow(data)
+        print("Write line %d %s"% (conf["cnt"],data))
+        conf["cnt"]+=1
+    else:
+        conf["file"].close()
+    
+def YoctoMonitor():
+  while True:
+      YAPI.Sleep(1000)
+      if conf["cnt"]>conf["max"]:
+          break
+      conf["file"].close()
+
 
 if __name__ == '__main__':
     
@@ -72,21 +99,25 @@ if __name__ == '__main__':
     
     channel.append(YGenericSensor.FindGenericSensor(serial + '.genericSensor1'))
     channel.append(YGenericSensor.FindGenericSensor(serial + '.genericSensor2'))
-    p =  producer(channel, True)
+    channel[0].set_reportFrequency("1/s")
+    channel[1].set_reportFrequency("1/s")
+    channel[0].registerTimedReportCallback(yocto_cb)
+    channel[1].registerTimedReportCallback(yocto_cb)
     start = datetime.datetime.now()
     f = open("data.csv", 'w')
     w = csv.writer(f, lineterminator='\n')
-    for i in range(1440):
-        data = p.get_values()
-        print(data)
-        w.writerow(data)
-        #time.sleep(0.5)
-        YAPI.Sleep(1)
-        if i%100==0:
-            print(i)
+    p =  producer(channel, True)
+    conf["prod"] = p
+    conf["file"] = f
+    conf["csv"] = w
+    conf["cnt"] = 0
+    conf["max"] = 1440
+    t = Thread(target=YoctoMonitor)
+    t.start()
 
-    f.close()    
-    print(errmsg)
-    YAPI.FreeAPI()
+    while conf["cnt"] < conf["max"]:
+        pass
+    f.close()   
+    del p
 
     
