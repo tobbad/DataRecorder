@@ -25,8 +25,8 @@ class configuration:
         print(type(root))
         print(dir(root))
 
-        root.Comment("Bla bla")
-        xml = root.Element('configuration ')
+        #ElementTree.Comment("Bla bla")
+        xml = ElementTree.Element('configuration ')
 
         child = ElementTree.SubElement(xml,'targetfolder ')
         child.setAttribute("path", ".")
@@ -41,9 +41,10 @@ class configuration:
         child = ElementTree.SubElement(xml,'yoctopuc')
         child.setAttribut("host", "usb")
         child.setAttribute("path", ".")
-
         xml.append(child)
-        xml_str = xml.toprettyxml(indent="\t")
+
+        res = ElementTree(xml)
+        xml_str = res.toprettyxml(indent="\t")
         with open(name, "w") as f:
             f.write(xml_str)
         print("Wrote %s", name)
