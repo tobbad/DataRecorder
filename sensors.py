@@ -13,6 +13,8 @@ import threading
 sys.path.append(os.path.join("..", "yoctolib_python", "Sources"))
 from yocto_api import *
 from yocto_genericsensor import *
+for item in dir():
+    print("\t %s"% item)
 
 class sensori:
     def __init__(self, sensor):
@@ -82,16 +84,22 @@ class sensors():
         if YAPI.RegisterHub("usb", errmsg) != YAPI.SUCCESS:
             sys.exit("init error" + errmsg.value)
         sensor = YGenericSensor.FirstGenericSensor()
-        serial = sensor.get_module().get_serialNumber()
-        in_=YGenericSensor.FindGenericSensor(serial + '.genericSensor1')
-        if not in_.isOnline():
-            sys.exit()
-        self.iSen.append(sensori(in_))
-        in_ = YGenericSensor.FindGenericSensor(serial + '.genericSensor2')
-        if not in_.isOnline():
-            sys.exit()
-        self.iSen.append(sensori(in_))
+        while sensor != None:
+            print(sensor)
+            self.iSen.append(sensori(sensor))
+            if sensor is None:
+                break
+            sensor =  YGenericSensor.nextGenericSensor(sensor) 
         self.oSen=[]
+        sensor = FindCurrentLoopOutput()
+        print(sensor)
+        while sensor is not None:
+            print(sensor)
+            self.oSen.append(sensori(sensor))
+            if sensor is None:
+                break
+            sensor =  YGenericSensor.nextGenericSensor(sensor) 
+            
 
     def __str__(self):
         res = "In\n"
