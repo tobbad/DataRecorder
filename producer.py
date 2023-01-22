@@ -108,7 +108,7 @@ if __name__ == '__main__':
     sensor = YGenericSensor.FirstGenericSensor()
     print(sensor)
     serial = sensor.get_module().get_serialNumber()
-·    #print(serial)
+    #print(serial)
     
     channel.append(YGenericSensor.FindGenericSensor(serial + '.genericSensor1'))
     channel.append(YGenericSensor.FindGenericSensor(serial + '.genericSensor2'))
