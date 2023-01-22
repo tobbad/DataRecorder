@@ -36,11 +36,10 @@ class configuration:
         subChild = ET.SubElement(xml, "ymodule", {"id":"RX420MA1-123456", "type":"Yocto-4-20mA-Rx"})
         ET.SubElement(subChild, "yfunction",  {"id":"genericSensor1", "signalName":"refTemperatur", "type":"input", "rawMin":"4.0", "rawMax":"20.0","min":"0", "max":"100", "unit":"C"})
         ET.SubElement(subChild, "yfunction",  {"id":"genericSensor2", "signalName":"Temperatur", "type":"input", "rawMin":"4.0", "rawMax":"20.0","min":"0", "max":"100", "unit":"C"})
-        print(ET.tostring(xml))
+        xml_str =ET.tostring(xml)
         
-        xml_str = b""
         with open(name, "wb") as f:
-            f.write(ET.tostring(xml))
+            f.write(ET.tostring(xml_str))
         print("Wrote %s" % name)
 
 
