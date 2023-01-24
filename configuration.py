@@ -8,46 +8,40 @@ Handles the configuration of the programm
 """
 import sys, os
 
-sys.path.append(os.path.join("..", "yoctolib_python", "Sources"))
-from xml.etree.ElementTree import ElementTree
+addPath=os.path.join("..", "yoctolib_python", "Sources")
+sys.path.append(addPath)
+#print(sys.path)
+import   xml.etree.ElementTree as ET 
+from yocto_api import *
 from yocto_genericsensor import *
-
+from sensors import sensors
 
 class configuration:
-    def __init__(self, conf_file=None):
-        if conf_file == None:
-            print("Create %s", conf_file)
-            self.createNewConf("Example.xml")
+    def __init__(self):
+        self.createNewConf("Example.xml")
 
     def createNewConf(self, name):
 
-        root = ElementTree()
-        print(type(root))
-        print(dir(root))
-
         #ElementTree.Comment("Bla bla")
-        xml = ElementTree.Element('configuration ')
+        sen = sensors()
+        self.sensors = sen.sensors()
+        print(self.sensors[0].type)
+        xml = ET.Element('configuration')
 
-        child = ElementTree.SubElement(xml,'targetfolder ')
-        child.setAttribute("path", ".")
-        xml.appendChild(child)
-
-        child = ElementTree.SubElement(xml,'targetfolder ')
-        child.setAttribute("time", "1")
-        child.setAttribute("unit", "s")
-        child.setAttribute("path", ".")
-        xml.append(child)
-
-        child = ElementTree.SubElement(xml,'yoctopuc')
-        child.setAttribut("host", "usb")
-        child.setAttribute("path", ".")
-        xml.append(child)
-
-        res = ElementTree(xml)
-        xml_str = res.toprettyxml(indent="\t")
-        with open(name, "w") as f:
-            f.write(xml_str)
-        print("Wrote %s", name)
+        child = ET.SubElement(xml,'targetfolder', {"path":"."})
+        child = ET.SubElement(xml,'capturetime', {"time":"24","unit":"h", })
+        child = ET.SubElement(xml,'datarate', {"time":"1","unit":"m", })
+        child = ET.SubElement(xml,'yoctopuc')
+        child = ET.SubElement(xml,'source', {"host":"usb"})
+        subChild = ET.SubElement(xml, "ymodule", {"id":"RX420MA1-123456", "type":"Yocto-4-20mA-Rx"})
+        ET.SubElement(subChild, "yfunction",  {"id":"genericSensor1", "signalName":"refTemperatur", "type":"input", "rawMin":"4.0", "rawMax":"20.0","min":"0", "max":"100", "unit":"C"})
+        ET.SubElement(subChild, "yfunction",  {"id":"genericSensor2", "signalName":"Temperatur", "type":"input", "rawMin":"4.0", "rawMax":"20.0","min":"0", "max":"100", "unit":"C"})
+        print(ET.tostring(xml))
+        
+        xml_str = b""
+        with open(name, "wb") as f:
+            f.write(ET.tostring(xml))
+        print("Wrote %s" % name)
 
 
 if __name__ == '__main__':
