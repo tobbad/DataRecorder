@@ -19,9 +19,9 @@ Als Spielfeld zum kennenlernen der Sensoren und der Herstellerbibliotheke wurde 
 ![Model View Controller Aufbau](./mvc.png)
 
 ## Graphic User Interface (GUI)
-Das Graphic User Interface (GUI) ist in der Datei `gui.py` implementiert. Als Bibliotheke wird PyQt [11] verwendet. Diese Biblioteke stellt die Funktionalität zur verfügung um ein graphisches Fenster plattformunabnängig zu implementieren. Das hat `DataRecorder` steht in der Titelebar. Es folgt eine Menubar mit den Einträgen `File`und `About` .
+Das Graphic User Interface (GUI) ist in der Datei `gui.py` implementiert. Als Bibliotheke wird PyQt [11] verwendet. Diese Biblioteke stellt die Funktionalität zur verfügung um ein graphisches Fenster plattformunabnänig zu implementieren. Das hat `DataRecorder` steht in der Titelebar. Es folgt eine Menubar mit den Einträgen `File`und `About` .
 
-Im folgenden werden als Tabs sowohl ein Recorder als auch ein Emulator (Optional) Grafik dargestellt
+Im folgenden werden als Tabs sowohl ein Recorder als auch ein Emulator (Optional) Grafik dargestellt. Im Erfassungstab wird die aktuelle Erassungszeit und die aktuelle Erfassungsrate dargestellt. Wird dieser Wert geändert, wird daraus wieder ein `configuration.xml` er
 
 ## Konfiguration
 ![Xml Konfiguration](./xmlConfig.png)
