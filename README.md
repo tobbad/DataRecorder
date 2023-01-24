@@ -12,7 +12,9 @@ Im zweiten Schritt soll im Anschluss an die Arbeitsprobe das Projekt so erweiter
 Das Programm soll eine konfiguierbare Anzahl Messsensoren sowohl als Empänger als auch als Sender unterstützen. Als Konfigurationsdatei wird ein XML Format verwendet, in dem die zu verwendenden Senoren und Emulatoren persistent abgespeichert werden.
 
 ## Architektur (grob skizziert, noch zu verbessern)
-Die persistente Konfiguration wird in das Programm geladen `configuration.py`. In einem nächsten Schritt wird das GUI gestartet. In der verwendeten Model-View-Contoller Architectur fungiert das GUI als View-Controller Komponente das in konfigurierten Erfassungsinterval die Messdaten vom `producer.py`Python modul abholt.
+Das 'main.py' ist der Eintrittspunkt zum Programm. Es lädt die persisdent Konfiguration aus dem 'configuration.xml'. Darin ist die letze Vewendung des Programms abgelegt (Datenrate, Folder für cvs Datenfile, Erfassungsdauer) und wird daher auch bei programmende mit den settings aktuellen settings gespeicher. Mit dem konfigurierten Sensoren werden die Sensoren im 'sensor.py' instantiert. Der Zugriff auf die Sensoren wird in dieser Klasse gekapselt. Dann von 'main.py' das Graphische User Intererface aufgesetz ('gui.py') und im Konstrutkor die Konfiguration und die Sensoren übergeben.
+
+Als Spielfeld zum kennenlernen der Sensoren und der Herstellerbibliotheke wurde ein stand alone script `producer.py` das hardcodiert in einem definierten Datenrate ein bestimmte Anzahl (24x60= 1440 = 1 Messpunk pro Minute) Messwerte erfasst und in ein CVS File speichert.
  
 ![Model View Controller Aufbau](./mvc.png)
 
@@ -24,6 +26,8 @@ Im folgenden werden als Tabs sowohl ein Recorder als auch ein Emulator (Optional
 ## Konfiguration
 ![Xml Konfiguration](./xmlConfig.png)
 ## Referenzen
+
+## 
 1. „GitHub Flavored Markdown Spec“. https://github.github.com/gfm/#example-14 (zugegriffen 15. Januar 2023).
 2. J. M. Willman, Beginning PyQt: A Hands-on Approach to GUI Programming with PyQt6, 2nd ed. Apress, 2022.
 3. B. Okken, „Python Testing with Pytest: Simple, Rapid, Effective, and Scalable: Simple, Rapid, Effective, and Scalable : Okken, Brian: Amazon.de: Bücher“, 2022. 
