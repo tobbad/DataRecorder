@@ -50,7 +50,7 @@ class producer:
             res.extend([nowS, deltaS])
         for ch in self.__devices:
             data.append([ch.get_currentValue(), ch.get_unit()])
-        res.extend( [data[0][0], data[0][1], data[1][0], data[1][1]])
+        res.extend( [(data[0][0]-4.0)/16*100, "C", (data[1][0]-4.0)/16*100, "C" ])
         return res
         
     def close(self):
@@ -65,25 +65,35 @@ conf = {
     "file": None,
     "csv": None,
     "cnt":0,
+    "thread":None
 }
 
+c=None
+
 def yocto_cb(sensor, value):
-    if conf["prod"] is None:
+    if c["prod"] is None:
         return
-    if conf["cnt"]>conf["max"]:
-        data = conf["prod"].get_values()
-        conf["csv"].writerow(data)
-        print("Write line %d %s"% (conf["cnt"],data))
-        conf["cnt"]+=1
+    if c["cnt"]<conf["max"]:
+        data = c["prod"].get_values()
+        c["csv"].writerow(data)
+        print("Write line %d %s"% (c["cnt"],data))
+        c["cnt"]+=1
     else:
-        conf["file"].close()
-    
+        print("Thread join %s" % c["thread"])
+        if  c["thread"] is not None:
+            c["thread"].join()
+            c["thread"]=None
+        print(c["thread"])
+       
+
 def YoctoMonitor():
-  while True:
+    while True:
       YAPI.Sleep(1000)
+      print("cnt = %d/ max= %d" % (conf["cnt"], conf["max"] ))
       if conf["cnt"]>conf["max"]:
+          print("Break %s" % conf["file"])
           break
-      conf["file"].close()
+
 
 
 if __name__ == '__main__':
@@ -99,8 +109,8 @@ if __name__ == '__main__':
     
     channel.append(YGenericSensor.FindGenericSensor(serial + '.genericSensor1'))
     channel.append(YGenericSensor.FindGenericSensor(serial + '.genericSensor2'))
-    channel[0].set_reportFrequency("1/s")
-    channel[1].set_reportFrequency("1/s")
+    channel[0].set_reportFrequency("20/s")
+    channel[1].set_reportFrequency("20/s")
     channel[0].registerTimedReportCallback(yocto_cb)
     channel[1].registerTimedReportCallback(yocto_cb)
     start = datetime.datetime.now()
@@ -112,12 +122,16 @@ if __name__ == '__main__':
     conf["csv"] = w
     conf["cnt"] = 0
     conf["max"] = 1440
-    t = Thread(target=YoctoMonitor)
-    t.start()
-
+    conf["thread"] = Thread(target=YoctoMonitor)
+    conf["thread"].start()
+    c=conf
+    #conf["thread"].run()
     while conf["cnt"] < conf["max"]:
         pass
-    f.close()   
+    f.close()  
+    print("Wait for %s" % conf["thread"])
+    conf["thread"].join()
     del p
+    
 
     
