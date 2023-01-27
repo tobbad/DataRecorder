@@ -82,14 +82,16 @@ class sensors():
         if YAPI.RegisterHub("usb", errmsg) != YAPI.SUCCESS:
             sys.exit("init error" + errmsg.value)
         sensor = YGenericSensor.FirstGenericSensor()
-        while sensor != None:
-            print(sensor)
-            self.iSen.append(sensori(sensor))
-            if sensor is None:
-                break
-            sensor =  YGenericSensor.nextGenericSensor(sensor) 
+        serial = sensor.get_module().get_serialNumber()
+        in_=YGenericSensor.FindGenericSensor(serial + '.genericSensor1')
+        if not in_.isOnline():
+            sys.exit()
+        self.iSen.append(sensori(in_))
+        in_ = YGenericSensor.FindGenericSensor(serial + '.genericSensor2')
+        if not in_.isOnline():
+            sys.exit()
+        self.iSen.append(sensori(in_))
         self.oSen=[]
-            
 
     def __str__(self):
         res = "In\n"
@@ -100,6 +102,7 @@ class sensors():
             res += "\t%s\n"%i
         return res
     
+<<<<<<< HEAD
     def get_values(self):
         res = []
         res.extend(self.iSen[0].get_values())
@@ -137,6 +140,8 @@ class sensors():
         YAPI.FreeAPI()
 
     
+=======
+>>>>>>> 5aeeb96 (WIP)
     def sensors(self):
         res =self.iSen
         res.append(self.oSen)
@@ -144,9 +149,15 @@ class sensors():
             
 if __name__ == "__main__":
     s = sensors()
+<<<<<<< HEAD
     s.capture_start(14, 1, "sdata.csv")
     while conf["cnt"] < conf["max"]:
         pass
     s.capture_stop()
      
     
+=======
+    print(s)    
+    print(s.get_values())
+
+>>>>>>> 5aeeb96 (WIP)

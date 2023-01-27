@@ -79,7 +79,6 @@ def yocto_cb(sensor, value):
         print("Write line %d %s"% (c["cnt"],data))
         c["cnt"]+=1
     else:
-<<<<<<< HEAD
         print("Thread join %s" % c["thread"])
         if  c["thread"] is not None:
             c["thread"].join()

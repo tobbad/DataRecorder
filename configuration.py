@@ -33,7 +33,6 @@ class configuration:
         child = ET.SubElement(xml,'datarate', {"time":"1","unit":"m", })
         child = ET.SubElement(xml,'yoctopuc')
         child = ET.SubElement(xml,'source', {"host":"usb"})
-<<<<<<< HEAD
         subChild = ET.SubElement(xml, "ymodule", {"id":"RX420MA1-123456", "type":"Yocto-4-20mA-Rx"})
         ET.SubElement(subChild, "yfunction",  {"id":"genericSensor1", "signalName":"refTemperatur", "type":"input", "rawMin":"4.0", "rawMax":"20.0","min":"0", "max":"100", "unit":"C"})
         ET.SubElement(subChild, "yfunction",  {"id":"genericSensor2", "signalName":"Temperatur", "type":"input", "rawMin":"4.0", "rawMax":"20.0","min":"0", "max":"100", "unit":"C"})
@@ -42,30 +41,6 @@ class configuration:
         with open(name, "wb") as f:
             f.write(ET.tostring(xml_str))
         print("Wrote %s" % name)
-=======
-        sensor = YGenericSensor.FirstGenericSensor()
-        errmsg = YRefParam()
-        channel=[]
-        if YAPI.RegisterHub("usb", errmsg) != YAPI.SUCCESS:
-            sys.exit("init error" + errmsg.value)
-        sensor = YGenericSensor.FirstGenericSensor()
-        serial = sensor.get_module().get_serialNumber()
-        channel.append(YGenericSensor.FindGenericSensor(serial + '.genericSensor1'))
-        channel.append(YGenericSensor.FindGenericSensor(serial + '.genericSensor2'))
-        print(channel)
-
-        print(sensor)
-        while sensor != None:
-            print(sensor)
-            sensor = sensor.nextGenericSensor()
-        ET.dump(xml)
-        xml_str = ET.tostring(xml)
-        
-    
-        with open(name, "wb") as f:
-            f.write(xml_str)
-        print("Wrote %s", name)
->>>>>>> 5366d33 (WIP)
 
 
 if __name__ == '__main__':
