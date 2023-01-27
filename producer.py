@@ -23,22 +23,23 @@ from yocto_genericsensor import *
 
 class producer:
     """
-     According tom the parameter set up device
+    According tom the parameter set up device
     """
+
     def __init__(self, parameter, addTime=False):
         self.__devices = []
-        #print(parameter)
+        # print(parameter)
         self.__addTime = addTime
         self.__start = datetime.datetime.now()
         if isinstance(parameter, list):
-            #print("Check list")
+            # print("Check list")
             for d in parameter:
                 print(d)
                 if not d.isOnline():
                     print("Device %s is not online" % d)
                 self.__devices.extend(parameter)
-            #print(self.__devices[0])
-    
+            # print(self.__devices[0])
+
     def get_values(self):
         res = []
         now = datetime.datetime.now()
@@ -50,56 +51,60 @@ class producer:
             res.extend([nowS, deltaS])
         for ch in self.__devices:
             data.append([ch.get_currentValue(), ch.get_unit()])
-        res.extend( [(data[0][0]-4.0)/16*100, "C", (data[1][0]-4.0)/16*100, "C" ])
+        res.extend(
+            [(data[0][0] - 4.0) / 16 * 100, "C", (data[1][0] - 4.0) / 16 * 100, "C"]
+        )
         return res
-        
+
     def close(self):
         YAPI.FreeAPI()
-    
+
     def __str__(self):
         return "Producer"
 
 
-conf = {
-    "prod":None,
-    "file": None,
-    "csv": None,
-    "cnt":0,
-    "thread":None
-}
+conf = {"prod": None, "file": None, "csv": None, "cnt": 0, "thread": None}
 
-c=None
+c = None
+
 
 def yocto_cb(sensor, value):
     if c["prod"] is None:
         return
-    if c["cnt"]<conf["max"]:
+    if c["cnt"] < conf["max"]:
         data = c["prod"].get_values()
         c["csv"].writerow(data)
-        print("Write line %d %s"% (c["cnt"],data))
-        c["cnt"]+=1
+        print("Write line %d %s" % (c["cnt"], data))
+        c["cnt"] += 1
     else:
         print("Thread join %s" % c["thread"])
-        if  c["thread"] is not None:
+        if c["thread"] is not None:
             c["thread"].join()
-            c["thread"]=None
+            c["thread"] = None
         print(c["thread"])
-       
+
 
 def YoctoMonitor():
     while True:
-      YAPI.Sleep(1000)
-      print("cnt = %d/ max= %d" % (conf["cnt"], conf["max"] ))
-      if conf["cnt"]>conf["max"]:
-          print("Break %s" % conf["file"])
-          
-          break
-      conf["file"].close()
-    
+        YAPI.Sleep(1000)
+        print("cnt = %d/ max= %d" % (conf["cnt"], conf["max"]))
+        if conf["cnt"] > conf["max"]:
+            print("Break %s" % conf["file"])
+
+            break
+        conf["file"].close()
 
 
-if __name__ == '__main__':
-    
+def YoctoMonitor():
+    while True:
+        YAPI.Sleep(1000)
+        if conf["cnt"] > conf["max"]:
+            break
+        conf["file"].close()
+
+
+if __name__ == "__main__":
+
     channel = []
     errmsg = YRefParam()
     if YAPI.RegisterHub("usb", errmsg) != YAPI.SUCCESS:
@@ -107,28 +112,28 @@ if __name__ == '__main__':
     sensor = YGenericSensor.FirstGenericSensor()
     print(sensor)
     serial = sensor.get_module().get_serialNumber()
-    #print(serial)
-    
-    channel.append(YGenericSensor.FindGenericSensor(serial + '.genericSensor1'))
-    channel.append(YGenericSensor.FindGenericSensor(serial + '.genericSensor2'))
+    # print(serial)
+
+    channel.append(YGenericSensor.FindGenericSensor(serial + ".genericSensor1"))
+    channel.append(YGenericSensor.FindGenericSensor(serial + ".genericSensor2"))
     channel[0].set_reportFrequency("20/s")
     channel[1].set_reportFrequency("20/s")
     channel[0].registerTimedReportCallback(yocto_cb)
     channel[1].registerTimedReportCallback(yocto_cb)
     start = datetime.datetime.now()
-    f = open("data.csv", 'w')
-    w = csv.writer(f, lineterminator='\n')
-    p =  producer(channel, True)
+    f = open("data.csv", "w")
+    w = csv.writer(f, lineterminator="\n")
+    p = producer(channel, True)
     conf["prod"] = p
     conf["file"] = f
     conf["csv"] = w
     conf["cnt"] = 0
     conf["max"] = 1440
     conf["thread"] = Thread(target=YoctoMonitor)
-    conf["thread"].deamon = true 
+    conf["thread"].deamon = true
     conf["thread"].start()
-    c=conf
-    #conf["thread"].run()
+    c = conf
+    # conf["thread"].run()
     while conf["cnt"] < conf["max"]:
         pass
     channel[0].registerTimedReportCallback(None)

@@ -13,8 +13,7 @@ import threading
 sys.path.append(os.path.join("..", "yoctolib_python", "Sources"))
 from yocto_api import *
 from yocto_genericsensor import *
-for item in dir():
-    print("\t %s"% item)
+
 
 class sensori:
     def __init__(self, sensor):
@@ -24,60 +23,58 @@ class sensori:
         self.functionType = self.sen.get_module().functionType(0)
         print("Create %s" % self)
         print(self.functionType)
-        
+
     def __str__(self):
         res = "type=%s " % (self.type)
         return res
-    
+
     def get_values(self):
-            return [self.sen.get_currentValue(), self.sen.get_unit()]
-    
+        return [self.sen.get_currentValue(), self.sen.get_unit()]
+
     def set_sample_intervall(self, seconds):
         self._seconds = seconds
-        self.sen.set_reportFrequency("%ss"% seconds)
+        self.sen.set_reportFrequency("%ss" % seconds)
 
     def registerTimedReportCallback(self, cb):
         self.sen.registerTimedReportCallback(cb)
 
-conf = {
-    "prod":None,
-    "file": None,
-    "csv": None,
-    "cnt":0,
-    "max":0,
-    "thread":None
-}
 
-c=None
+conf = {"prod": None, "file": None, "csv": None, "cnt": 0, "max": 0, "thread": None}
+
+c = None
+
 
 def yocto_cb(sensor, value):
-    print("yocto_cb %s, thread %s" % (c, threading.currentThread().getName() ))
+    print("yocto_cb %s, thread %s" % (c, threading.currentThread().getName()))
     if c["prod"] is None:
         return
-    if c["cnt"]<conf["max"]:
+    if c["cnt"] < conf["max"]:
         data = c["prod"].get_values()
         c["csv"].writerow(data)
-        print("Write line %d %s"% (c["cnt"],data))
-        c["cnt"]+=1
+        print("Write line %d %s" % (c["cnt"], data))
+        c["cnt"] += 1
     else:
         print("Thread join %s" % c["thread"])
-        if  c["thread"] is not None:
+        if c["thread"] is not None:
             c["thread"].join()
-            c["thread"]=None
+            c["thread"] = None
         print(c["thread"])
-       
+
 
 def YoctoMonitor():
     while True:
-      print("YoctoMonitor %s cnt = %d/ max= %d Thread %s" % (c, conf["cnt"], conf["max"], threading.currentThread().getName()))
-      YAPI.Sleep(1000)
-      sys.exit()
-      if conf["cnt"]>conf["max"]:
-          print("Break %s" % conf["file"])
-          break
+        print(
+            "YoctoMonitor %s cnt = %d/ max= %d Thread %s"
+            % (c, conf["cnt"], conf["max"], threading.currentThread().getName())
+        )
+        YAPI.Sleep(1000)
+        sys.exit()
+        if conf["cnt"] > conf["max"]:
+            print("Break %s" % conf["file"])
+            break
 
 
-class sensors():
+class sensors:
     def __init__(self):
         errmsg = YRefParam()
         self.iSen = []
@@ -89,49 +86,49 @@ class sensors():
             self.iSen.append(sensori(sensor))
             if sensor is None:
                 break
-            sensor =  YGenericSensor.nextGenericSensor(sensor) 
-        self.oSen=[]
-        sensor = FindCurrentLoopOutput()
-        print(sensor)
-        while sensor is not None:
-            print(sensor)
-            self.oSen.append(sensori(sensor))
-            if sensor is None:
-                break
-            sensor =  YGenericSensor.nextGenericSensor(sensor) 
-            
+            sensor = YGenericSensor.nextGenericSensor(sensor)
+        self.oSen = []
+        # sensor = YCurrentLoopOutput.FindCurrentLoopOutput("TX420MA1-123456.currentLoopOutput")
+        # print(sensor)
+        # while sensor is not None:
+        #     print(sensor)
+        #     self.oSen.append(sensori(sensor))
+        #     if sensor is None:
+        #         break
+        #     sensor =  YGenericSensor.nextGenericSensor(sensor)
 
     def __str__(self):
+
         res = "In\n"
         for i in self.iSen:
-            res += "\t%s\n"%i
-        res += "Out"  
+            res += "\t%s\n" % i
+        res += "Out"
         for o in self.oSen:
-            res += "\t%s\n"%i
+            res += "\t%s\n" % i
         return res
-    
-<<<<<<< HEAD
+
     def get_values(self):
         res = []
         res.extend(self.iSen[0].get_values())
         res.extend(self.iSen[1].get_values())
         return res
-    
+
     def capture_start(self, sample_cnt, sample_intervall, file_name):
         self._set_sample_interval(sample_intervall)
         conf["prod"] = self
-        conf['file'] = open(file_name, "w")
-        conf["csv"] = csv.writer(conf['file'], lineterminator='\n')
+        conf["file"] = open(file_name, "w")
+        conf["csv"] = csv.writer(conf["file"], lineterminator="\n")
         conf["cnt"] = 0
         conf["max"] = sample_cnt
         self.iSen[0].registerTimedReportCallback(yocto_cb)
         self.iSen[1].registerTimedReportCallback(yocto_cb)
         conf["thread"] = threading.Thread(target=YoctoMonitor)
-        c =  conf
-        print("Capture start %s in thread %s" % ( c, threading.currentThread().getName()) )
+        c = conf
+        print(
+            "Capture start %s in thread %s" % (c, threading.currentThread().getName())
+        )
         conf["thread"].run()
-        print("Working in thread %s" % (threading.currentThread().getName()) )
-
+        print("Working in thread %s" % (threading.currentThread().getName()))
 
     def capture_stop(self):
         self._close()
@@ -143,29 +140,22 @@ class sensors():
     def _set_sample_interval(self, seconds):
         self.iSen[0].set_sample_intervall(seconds)
         self.iSen[1].set_sample_intervall(seconds)
-        
+
     def _close(self):
         YAPI.FreeAPI()
 
-    
-=======
->>>>>>> 5aeeb96 (WIP)
     def sensors(self):
-        res =self.iSen
+        res = self.iSen
         res.append(self.oSen)
         return res
-            
+
+
 if __name__ == "__main__":
     s = sensors()
-<<<<<<< HEAD
     s.capture_start(14, 1, "sdata.csv")
     while conf["cnt"] < conf["max"]:
         pass
     s.capture_stop()
-     
-    
-=======
-    print(s)    
-    print(s.get_values())
 
->>>>>>> 5aeeb96 (WIP)
+    print(s)
+    print(s.get_values())
