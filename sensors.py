@@ -49,7 +49,7 @@ conf = {
 c=None
 
 def yocto_cb(sensor, value):
-    print("yocto_cb %s, thread %s" % (c, (threading.currentThread().getName() )))
+    print("yocto_cb %s, thread %s" % (c, threading.currentThread().getName() ))
     if c["prod"] is None:
         return
     if c["cnt"]<conf["max"]:
@@ -67,7 +67,7 @@ def yocto_cb(sensor, value):
 
 def YoctoMonitor():
     while True:
-      print("cnt = %d/ max= %d Thread %s" % (conf["cnt"], conf["max"], threading.currentThread().getName()))
+      print("YoctoMonitor %s cnt = %d/ max= %d Thread %s" % (c, conf["cnt"], conf["max"], threading.currentThread().getName()))
       YAPI.Sleep(1000)
       sys.exit()
       if conf["cnt"]>conf["max"]:
@@ -117,7 +117,7 @@ class sensors():
         self.iSen[1].registerTimedReportCallback(yocto_cb)
         conf["thread"] = threading.Thread(target=YoctoMonitor)
         c =  conf
-        print("capture start %s" % c)
+        print("Capture start %s in thread %s" % ( c, threading.currentThread().getName()) )
         conf["thread"].run()
         print("Working in thread %s" % (threading.currentThread().getName()) )
 
