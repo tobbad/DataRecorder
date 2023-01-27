@@ -9,19 +9,19 @@ Das Ziel dieses Projekts ist es einen Messdaten-Recorder mit einer Strommessung 
 
 Im zweiten Schritt soll im Anschluss an die Arbeitsprobe das Projekt so erweitert werden, dass aufgezeichnete Messwertdaten die als CSV Datei gelesen werden und über ein Yoctopuc[8] Emulator Modul [10] mit einem Strombereich von 4-20 **mA** ausgegeben werden. Der Verlauf der physikalischen Ausgabewerte soll im selben GUI, auf einem anderen Tab dargestellt werden.
 
-Das Programm soll eine konfigurierbare Anzahl Messsensoren sowohl als Empfänger als auch als Sender unterstützen. Als Konfigurationsdatei wird ein XML Format verwendet, in dem die zu verwendenden Sensoren und Emulatoren persistent abgespeichert werden.
+Das Programm soll eine konfigurierbare Anzahl Messsensoren als Empfänger unterstützen und später - bei der Realisierung des Emulators - die Transmittermodule. Als Konfigurationsdatei wird ein XML Format verwendet, in dem die zu verwendenden Sensoren und Transmitter persistent abgespeichert werden.
 
 ## Architektur (grob skizziert, noch zu verbessern)
-Das 'main.py' ist der Eintrittspunkt zum Programm. Es lädt die persistent Konfiguration aus dem 'configuration.xml'. Darin ist die Letze Verwendung des Programms abgelegt (Datenrate, Folder für cvs Datenfile, Erfassungsdauer) und wird daher auch bei Programm Ende mit den Settings aktuellen Settings gespeichert. Mit den konfigurierten Sensoren werden die Sensoren im 'sensor.py' instanziiert. Der Zugriff auf die Sensoren wird in dieser Klasse gekapselt. Dann von 'main.py' das Graphische User Interface aufgesetzt ('gui.py') und im Konstruktor die Konfiguration und die Sensoren übergeben.
+Das 'main.py' ist der Eintrittspunkt zum Programm. Es lädt die persistente Konfiguration aus dem 'configuration.xml'. Darin ist die letze Verwendung des Programms abgelegt (Datenrate, Folder für CVS Datenfile, Erfassungsdauer) und wird daher auch bei Programm Ende mit den aktuellen Settings gespeichert. Mit den konfigurierten Sensoren werden die Sensoren im 'sensor.py' instanziiert. Der Zugriff auf die Sensoren wird in dieser Klasse gekapselt. Dann von 'main.py' das Graphische User Interface aufgesetzt ('gui.py') und im Konstruktor die Konfiguration und die Sensoren übergeben.
 
-Als Spielfeld zum Kennenlernen der Sensoren und der Herstellerbibliotheke wurde ein Stand Alone script `producer.py` das hardcodiert in einem definierten Datenrate ein bestimmte Anzahl (24x60= 1440 = 1 Messpunkt pro Minute) Messwerte erfasst und in ein CVS File speichert.
+Als Spielfeld zum Kennenlernen der Sensoren und der Herstellerbibliotheke wurde ein Stand Alone script `producer.py` das hardcodiert in einer definierten Datenrate ein bestimmte Anzahl (24x60= 1440 = 1 Messpunkt pro Minute) Messwerte erfasst und in ein CVS File gespeichert.
  
 ![Model View Controller Aufbau](./mvc.png)
 
 ## Graphic User Interface (GUI)
-Das Graphic User Interface (GUI) ist in der Datei `gui.py` implementiert. Als Bibliotheken wird PyQt [11] verwendet. Diese Biblioteke stellt die Funktionalität zur verfügung um ein graphisches Fenster plattformunabnhänig zu implementieren. Das hat `DataRecorder` steht in der Titelebar. Es folgt eine Menubar mit den Einträgen `File` und `About` .
+Das Graphic User Interface (GUI) ist in der Datei `gui.py` implementiert. Als Bibliotheke wird PyQt [11] verwendet. Diese Biblioteke stellt die Funktionalität zur Verfügung um ein graphisches Fenster plattformunabnhänig zu implementieren. Das hat `DataRecorder` steht in der Titelbar. Es folgt eine Menubar mit den Einträgen `File` und `About` .
 
-Im folgenden werden als Tabs sowohl ein Recorder als auch ein Emulator (Optional) Grafik dargestellt. Im Erfassungstab wird die aktuelle Erfassungszeit und die aktuelle Erfassungsrate dargestellt. Wird dieser Wert geändert, wird daraus wieder ein `configuration.xml` erstellt und abgespeichert. In einer Legende können die erfassenden Sensoren selektiert werden, die dann in °C in der Grafik des Tabs dargestellt werden.  Die Grafik ist in einem Sliding Fenster dargestellt um den interessierten Bereich der Daten darzustellen.
+Im folgenden werden als Tabs sowohl ein Recorder als auch eine Emulatorgrafik (Optional) dargestellt. Im Erfassungstab wird die aktuelle Erfassungszeit und die aktuelle Erfassungsrate dargestellt. Wird dieser Wert geändert, wird daraus wieder ein `configuration.xml` erstellt und abgespeichert. In einer Legende können die erfassenden Sensoren selektiert werden, die dann in °C in der Grafik des Tabs dargestellt werden.  Die Grafik ist in einem Sliding Fenster dargestellt um den interessierten Bereich der Daten darzustellen.
 
 ## Konfiguration
 ![Xml Konfiguration](./xmlConfig.png)
