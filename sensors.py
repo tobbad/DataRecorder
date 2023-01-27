@@ -22,7 +22,6 @@ class sensori:
         self.type = self.sen.get_module().get_serialNumber()
         self.functionType = self.sen.get_module().functionType(0)
         print("Create %s" % self)
-        print(self.functionType)
 
     def __str__(self):
         res = "type=%s " % (self.type)
@@ -36,6 +35,7 @@ class sensori:
         self.sen.set_reportFrequency("%ss" % seconds)
 
     def registerTimedReportCallback(self, cb):
+        print("Registered CB on %s" % self.sen)
         self.sen.registerTimedReportCallback(cb)
 
 
@@ -45,7 +45,7 @@ c = None
 
 
 def yocto_cb(sensor, value):
-    print("yocto_cb %s, thread %s" % (c, threading.currentThread().getName()))
+    print("yocto_cb %s on %s, thread %s" % (c, sensor, threading.current_thread().name))
     if c["prod"] is None:
         return
     if c["cnt"] < conf["max"]:
@@ -65,10 +65,9 @@ def YoctoMonitor():
     while True:
         print(
             "YoctoMonitor %s cnt = %d/ max= %d Thread %s"
-            % (c, conf["cnt"], conf["max"], threading.currentThread().getName())
+            % (c, conf["cnt"], conf["max"], threading.current_thread().name)
         )
         YAPI.Sleep(1000)
-        sys.exit()
         if conf["cnt"] > conf["max"]:
             print("Break %s" % conf["file"])
             break
@@ -82,7 +81,6 @@ class sensors:
             sys.exit("init error" + errmsg.value)
         sensor = YGenericSensor.FirstGenericSensor()
         while sensor != None:
-            print(sensor)
             self.iSen.append(sensori(sensor))
             if sensor is None:
                 break
@@ -125,10 +123,10 @@ class sensors:
         conf["thread"] = threading.Thread(target=YoctoMonitor)
         c = conf
         print(
-            "Capture start %s in thread %s" % (c, threading.currentThread().getName())
+            "Capture start %s in thread %s" % (c, threading.current_thread().name)
         )
-        conf["thread"].run()
-        print("Working in thread %s" % (threading.currentThread().getName()))
+        conf["thread"].start()
+        print("Thread closed: %s" % (threading.current_thread().name))
 
     def capture_stop(self):
         self._close()

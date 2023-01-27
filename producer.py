@@ -69,6 +69,7 @@ c = None
 
 
 def yocto_cb(sensor, value):
+    print("Registerd cb on %s" % sensor)
     if c["prod"] is None:
         return
     if c["cnt"] < conf["max"]:
@@ -116,8 +117,8 @@ if __name__ == "__main__":
 
     channel.append(YGenericSensor.FindGenericSensor(serial + ".genericSensor1"))
     channel.append(YGenericSensor.FindGenericSensor(serial + ".genericSensor2"))
-    channel[0].set_reportFrequency("20/s")
-    channel[1].set_reportFrequency("20/s")
+    channel[0].set_reportFrequency("1s")
+    channel[1].set_reportFrequency("1s")
     channel[0].registerTimedReportCallback(yocto_cb)
     channel[1].registerTimedReportCallback(yocto_cb)
     start = datetime.datetime.now()
@@ -130,7 +131,7 @@ if __name__ == "__main__":
     conf["cnt"] = 0
     conf["max"] = 1440
     conf["thread"] = Thread(target=YoctoMonitor)
-    conf["thread"].deamon = true
+    conf["thread"].deamon = True
     conf["thread"].start()
     c = conf
     # conf["thread"].run()
