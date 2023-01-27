@@ -43,7 +43,7 @@ class producer:
         res = []
         now = datetime.datetime.now()
         delta = now - self.__start
-        nowS = now.strftime("%Y-%m-%dT%H:%M:%S+01:00")
+        nowS = now.strftime("%Y-%m-%dT%H:%M:%S.%f+01:00")
         deltaS = delta.total_seconds()
         data = []
         if self.__addTime:
@@ -92,6 +92,7 @@ def YoctoMonitor():
       print("cnt = %d/ max= %d" % (conf["cnt"], conf["max"] ))
       if conf["cnt"]>conf["max"]:
           print("Break %s" % conf["file"])
+          
           break
 
 
@@ -126,10 +127,11 @@ if __name__ == '__main__':
     conf["thread"].start()
     c=conf
     #conf["thread"].run()
-    while conf["cnt"] < conf["max"]:
-        pass
+    channel[0].registerTimedReportCallback(None)
+    channel[1].registerTimedReportCallback(None)
     f.close()  
     print("Wait for %s" % conf["thread"])
+    YAPI.FreeAPI()
     conf["thread"].join()
     del p
     
