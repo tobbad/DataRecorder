@@ -79,6 +79,7 @@ def yocto_cb(sensor, value):
         print("Write line %d %s"% (c["cnt"],data))
         c["cnt"]+=1
     else:
+<<<<<<< HEAD
         print("Thread join %s" % c["thread"])
         if  c["thread"] is not None:
             c["thread"].join()
@@ -94,7 +95,8 @@ def YoctoMonitor():
           print("Break %s" % conf["file"])
           
           break
-
+      conf["file"].close()
+    
 
 
 if __name__ == '__main__':
@@ -124,16 +126,16 @@ if __name__ == '__main__':
     conf["cnt"] = 0
     conf["max"] = 1440
     conf["thread"] = Thread(target=YoctoMonitor)
+    conf["thread"].deamon = true 
     conf["thread"].start()
     c=conf
     #conf["thread"].run()
+    while conf["cnt"] < conf["max"]:
+        pass
     channel[0].registerTimedReportCallback(None)
     channel[1].registerTimedReportCallback(None)
-    f.close()  
+    f.close()
     print("Wait for %s" % conf["thread"])
     YAPI.FreeAPI()
     conf["thread"].join()
     del p
-    
-
-    
