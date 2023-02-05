@@ -91,19 +91,9 @@ def YoctoMonitor():
         print("cnt = %d/ max= %d" % (conf["cnt"], conf["max"]))
         if conf["cnt"] > conf["max"]:
             print("Break %s" % conf["file"])
-
-            break
-        conf["file"].close()
-
-
-def YoctoMonitor():
-    while True:
-        YAPI.Sleep(1000)
-        if conf["cnt"] > conf["max"]:
-            break
-        conf["file"].close()
-
-
+            conf["file"].close()
+            return
+        
 if __name__ == "__main__":
 
     channel = []

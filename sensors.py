@@ -29,8 +29,9 @@ class sensori:
         return res
 
     def get_values(self):
-        if self.sen.get_currentValue()>0:
-            return [(self.sen.get_currentValue()-4)/16.0, "°C"]
+        value =self.sen.get_currentValue()
+        if value >0:
+            return [(value-4.0)/16.0*100, "°C"]
         else:
             return[self.sen.get_currentValue(),self.sen.get_unit()]
             
@@ -77,7 +78,7 @@ def YoctoMonitor(data):
                     "YoctoMonitor cnt = %d/ max= %d Thread %s"
                     % (conf["cnt"], conf["max"], threading.current_thread().name)
                      )
-                YAPI.Sleep(1)
+                YAPI.Sleep(500)
             else:
                 print("Good bye")
                 return
@@ -128,6 +129,7 @@ class sensors:
         res = []
         res.extend(self.iSen[0].get_values())
         res.extend(self.iSen[1].get_values())
+        print(res)
         return res
 
     def capture_start(self, sample_cnt, sample_intervall, file_name):
