@@ -78,7 +78,11 @@ def YoctoMonitor(data):
                     "YoctoMonitor cnt = %d/ max= %d Thread %s"
                     % (conf["cnt"], conf["max"], threading.current_thread().name)
                      )
+<<<<<<< HEAD
                 YAPI.Sleep(500)
+=======
+                YAPI.Sleep(1)
+>>>>>>> 31c8b6a (Sensor seems to work)
             else:
                 print("Good bye")
                 return
