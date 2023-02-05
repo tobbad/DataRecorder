@@ -174,7 +174,7 @@ class sensors:
 
 if __name__ == "__main__":
     s = sensors()
-    s.capture_start(1440,"20/s", "data.csv")
+    s.capture_start(10,"20/s", "data.csv")
     print("wait for acquisition finished")
     while  conf["cnt"] < conf["max"]:
         print("Stilll receve %d" % conf["cnt"])
