@@ -74,14 +74,13 @@ def YoctoMonitor(data):
         while True:
             if conf["cnt"] < conf["max"]:
                 print(
-                    "YoctoMonitor %s cnt = %d/ max= %d Thread %s"
-                    % (conf, conf["cnt"], conf["max"], threading.current_thread().name)
+                    "YoctoMonitor cnt = %d/ max= %d Thread %s"
+                    % (conf["cnt"], conf["max"], threading.current_thread().name)
                      )
-            YAPI.Sleep(1000)
-        else:
-            print("Throw exeption")
-            raise(Exception())
-            return
+                YAPI.Sleep(1)
+            else:
+                print("Good bye")
+                return
             
 
 
