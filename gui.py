@@ -14,25 +14,21 @@ for item in sys.path:
     
 from PyQt5.QtWidgets import *
 
-def getOpt():
-    p = optparse.OptionParser()
-    opt, args = p.parse_args()
-    return opt, args
-
-class App(QApplication):
-    def __init__(self, args):
+class App(QMainWindow):
+    def __init__(self):
         print("Create app")
-        super().__init__(args)
-        self.widget =self. QWidgets()
+        super().__init__()
         self.setWindowTitle("DataRecorder")
-        textLabel = QLabel(widget)
-        textLabel.setText("Hello World!")
-        textLabel.move(110,85)
-        
-        widget.setGeometry(50,50,320,200)
-        widget.show()
-        print("Widget show")
-        sys.exit(app.exec_())
+
+        button = QPushButton("Press Me!")
+        button.setCheckable(True)
+        button.clicked.connect(self.the_button_was_clicked)
+
+        # Set the central widget of the Window.
+        self.setCentralWidget(button)
+
+    def the_button_was_clicked(self):
+        print("Clicked!")
 
 
         
@@ -44,11 +40,11 @@ class App(QApplication):
 if __name__ == "__main__":
     #print("Initalize class")
     #app =  QApplication(sys.argv)
-    app = QApplication(sys.argv)
 
-    window = QPushButton("Push Me")
+    app  = QApplication(sys.argv)
+    window = App()
+    window = App()
     window.show()
-    
     app.exec()
         
     
