@@ -78,15 +78,7 @@ def YoctoMonitor(data):
                     "YoctoMonitor cnt = %d/ max= %d Thread %s"
                     % (conf["cnt"], conf["max"], threading.current_thread().name)
                      )
-<<<<<<< HEAD
-<<<<<<< HEAD
                 YAPI.Sleep(500)
-=======
-                YAPI.Sleep(1)
->>>>>>> 31c8b6a (Sensor seems to work)
-=======
-                YAPI.Sleep(500)
->>>>>>> 2b8eb2e (Sensor/Producer  seems to work)
             else:
                 print("Good bye")
                 return
@@ -182,11 +174,7 @@ class sensors:
 
 if __name__ == "__main__":
     s = sensors()
-<<<<<<< HEAD
     s.capture_start(1440,"20/s", "data.csv")
-=======
-    s.capture_start(10,"20/s", "data.csv")
->>>>>>> 9ce068f (Push to tobbad)
     print("wait for acquisition finished")
     while  conf["cnt"] < conf["max"]:
         print("Stilll receve %d" % conf["cnt"])
