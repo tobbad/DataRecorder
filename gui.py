@@ -11,17 +11,27 @@ import numpy as np
 
 import qrc_resources
 
-sys.path.append(os.sep.join(["C:","ProgramData","Anaconda3","sip"]))
 sys.path.append(os.sep.join(["C:","Users","tobias.badertscher","AppData","Local","miniconda3","Lib","site-packages"]))
-from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QVBoxLayout, QLabel, QPushButton, QStyle
-from PyQt5.QtGui import QIcon, QKeySequence
-from PyQt5.QtCore import pyqtSlot, pyqtSignal, QObject, QThread, QTimer, QTranslator, QLocale
+from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QVBoxLayout, QLabel, QPushButton, QStyle, QAction, QTabWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QFrame, QFileDialog
+from PyQt5.QtGui import QIcon, QKeySequence, QPixmap, QColor, QPalette
+from PyQt5.QtCore import pyqtSlot, pyqtSignal, QObject, QThread, QTimer, QTranslator, QLocale, QTimer 
 import pyqtgraph as pg
 import mkl
-print("PYTHONPATH:", os.environ.get('PYTHONPATH'))
-print("PATH:", os.environ.get('PATH'))
-    
-from PyQt5.QtWidgets import *
+import qrc_resources
+wd = os.sep.join(["C:","Users","tobias.badertscher","source", "repos", "python", "DataRecorder"])
+
+#print("PYTHONPATH:", os.environ.get('PYTHONPATH'))
+#print("PATH:", os.environ.get('PATH'))
+
+class Color(QWidget):
+
+    def __init__(self, color):
+        super(Color, self).__init__()
+        self.setAutoFillBackground(True)
+
+        palette = self.palette()
+        palette.setColor(QPalette.Window, QColor(color))
+        self.setPalette(palette)
 
 class App(QMainWindow):
     def __init__(self):
@@ -33,22 +43,30 @@ class App(QMainWindow):
         self.dirty = False
         self.filename = None
         self.data = None
-
+        self.btn = {}
+        self.data=None
+        self.doRecord = False
+        
+        self.timer  = QTimer()
+        self.timer.timeout.connect(self.StopRecord)
+        
         tabWidget = QTabWidget()
         # Add tab widget for Recorder an Emulator
+        #tabWidget.addTab(self.Recorder(), "Recorder")
         tabWidget.addTab(self.Recorder(), "Recorder")
         tabWidget.addTab(self.Icons(), "Icons")
+        tabWidget.addTab(self.WebExample(), "Web")
         tabWidget.addTab(self.Emulator(), "Emulator")
         tabWidget.currentChanged.connect(self.tabChanged)
         # Set the central widget of the Window.
         self.setCentralWidget(tabWidget)
-        
         self.sizeLabel = QLabel()
         self.sizeLabel.setFrameStyle(QFrame.StyledPanel|QFrame.Sunken)
         self.status = self.statusBar()
         self.status.setSizeGripEnabled(False)
         self.status.addPermanentWidget(self.sizeLabel)
         self.status.showMessage("Ready", 5000)
+        #self.load_file(wd+"\data.cvs")
         
     def _addMenuBar(self):
         fileOpenAction = self.createAction("&Open...", self.file_open)
@@ -94,10 +112,9 @@ class App(QMainWindow):
                 "Load data", local_dir,
                 fmt[0])
         if files:
-            self.load_file(files)
+            self.load_file(files[0])
         
-    def load_file(self, files):
-        fname, fileType = files
+    def load_file(self, fname):
         f = open(fname, encoding="cp1252")
         csvf =csv.reader(f, lineterminator="\n")
         self.datal=[]
@@ -118,28 +135,65 @@ class App(QMainWindow):
             self.data[idx][0]  = line[1]
             self.data[idx][1]  = line[2]
         print(self.data)
+        
             
+    def StartRecord(self):
+        self.timer.start(800)
+        self.doRecord = True
+        print("Start record")
+        
+        
+    def StopRecord(self):
+        self.timer.stop()
+        self.doRecord = False
+        self.doStop()
+        print("Stop recording")
+        
     def help_about(self):
         print("About)")
         
     def Recorder(self):
         print("Recorder")
         res = QWidget()
+        
         layout = QVBoxLayout()
         self.recorderGraph = pg.PlotWidget()
         layout.addWidget(self.recorderGraph)
-        vbox =QHBoxLayout()
-        icons = ["Clear","Save","Start","Stop"]
-        # for name in icons:
-        #     btn = QPushButton(name)
-        #     pixmapi = getattr(QStyle, name)
-        #     icon = self.style().standardIcon(pixmapi)
-        #     btn.setIcon(icon)
-        #     vbox.addWidget(btn)
-        #layout.addWidget(vbox)
         
+        hbox =QHBoxLayout()
+        icons = [["Start", self.doStart], ["Stop", self.doStop], ["Clear", self.doClear], ["Save", self.doSave]]
+        for name, fn  in icons:
+            self.btn[name] = QPushButton(name)
+            icon = QIcon(":/%s.svg" % name.lower())
+            self.btn[name].setIcon(icon)
+            self.btn[name].clicked.connect(fn)
+            self.btn[name].show()
+            hbox.addWidget(self.btn[name])
+            print("Add %s button"% name)
+        layout.addLayout(hbox)
+        res.setLayout(layout)
         res.setLayout(layout)  
+        self.btn["Stop"].hide()
         return res
+    
+    def doStart(self):
+        print("doStart")
+        self.btn["Start"].hide()
+        self.btn["Stop"].show()
+        
+    
+    def doStop(self):
+        if self.doRecord:
+            print("doStop")
+    
+    def doClear(self):
+        print("doClear")
+    
+    def doSave(self):
+        print("doSave")
+    
+    def WebExample(self):
+        res = QWidget()
 
     def Icons(self):
         print("Icon")
@@ -156,7 +210,23 @@ class App(QMainWindow):
             layout.addWidget(btn, int(n/4), int(n%4))
         res.setLayout(layout)
         return res
+
+    def doStart(self):
+        print("doStart")
+        self.btn["Stop"].show()
+        self.StartRecord()
         
+    def doStop(self):
+        print("doStop")
+        
+
+    def doClear(self):
+        print("doClear")
+        
+    def doSave(self):
+        print("doSave")
+        
+
     def Emulator(self):
         print("Emulator")
         res = QWidget()
@@ -209,7 +279,6 @@ if __name__ == "__main__":
     #print("Initalize class")
     app  = QApplication(sys.argv)
     window = App()
-    print(type(App))
     translator = QTranslator(app)
 
     defaultLocale = QLocale.system().name()
