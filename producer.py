@@ -96,7 +96,6 @@ def YoctoMonitor():
         
 if __name__ == "__main__":
 
-    channel = []
     errmsg = YRefParam()
     if YAPI.RegisterHub("usb", errmsg) != YAPI.SUCCESS:
         sys.exit("init error" + errmsg.value)
@@ -105,10 +104,11 @@ if __name__ == "__main__":
     serial = sensor.get_module().get_serialNumber()
     # print(serial)
 
+    channel = []
     channel.append(YGenericSensor.FindGenericSensor(serial + ".genericSensor1"))
     channel.append(YGenericSensor.FindGenericSensor(serial + ".genericSensor2"))
-    channel[0].set_reportFrequency("1s")
-    channel[1].set_reportFrequency("1s")
+    channel[0].set_reportFrequency("20/s")
+    channel[1].set_reportFrequency("20/s")
     channel[0].registerTimedReportCallback(yocto_cb)
     channel[1].registerTimedReportCallback(yocto_cb)
     start = datetime.datetime.now()
