@@ -8,8 +8,9 @@ import sys, os
 import optparse
 import csv
 import numpy as np
-from datetime import datetime
-
+from datetime import *
+import numpy as np
+from sensors import *
 import qrc_resources
 
 sys.path.append(os.sep.join(["C:","Users","tobias.badertscher","AppData","Local","miniconda3","Lib","site-packages"]))
@@ -65,11 +66,28 @@ class App(QMainWindow):
         self.status = self.statusBar()
         self.status.setSizeGripEnabled(False)
         self.status.addPermanentWidget(self.sizeLabel)
-        self.status.showMessage("Ready", 5000)
+        self.set_status("Ready")
+        self.sensor = sensors()
+        self.sensor.register_cb = self.append_data
         self.doRecord = False
         self.sampleIntervall_ms = 0
         self.captureTime_s = 0
         self.sampleUnit = None
+        self.capture_size = 0
+        self.sampleIntervall_ms =1
+        self.captureTime_s = 1
+
+
+    def append_data(self, data):
+        self.dirty = True
+        if self.data is None:
+            print("Capture finished")
+            return
+        if data is None:
+            self.sensor.capture_stop()
+        else:
+            self.data.append([data[0], data[1]])            
+            print("Append (%d, %d)" % self.data[-1])
         
     def _addMenuBar(self):
         fileOpenAction = self.createAction("&Open...", self.file_open)
@@ -143,6 +161,7 @@ class App(QMainWindow):
         
             
     def StartRecord(self):
+        self.data = np.array([ self.capture_size,2])
         now = datetime.now()
         nowS = now.strftime("%Y%m%d_%H%M%S.csv")
         self.fNameQL.setText(nowS)
@@ -150,14 +169,18 @@ class App(QMainWindow):
         print("Set time to %s" %nowS)
         self.timer.start(800)
         self.doRecord = True
+        self.sensor.capture_start()
+        self.doRecord = True
+        self.btn["Start"].hide()
+        self.btn["Stop"].show()
         print("Start record")
         
         
     def StopRecord(self):
         self.timer.stop()
         self.doRecord = False
-        self.doStop()
         print("Stop recording")
+        self.btn["Start"].show()
         
     def help_about(self):
         print("About")
@@ -168,12 +191,12 @@ class App(QMainWindow):
         
         layout = QVBoxLayout()
         self.recorderGraph = pg.PlotWidget()
-        self.recorderGraph.setLabel('left', "<span style=\"color:white;font-size:10px\">Temperature (°C)</span>")
+        self.recorderGraph.setLabel('left', "<span style=\"color:white;font-size:10px\">Temperature (Â°C)</span>")
         self.recorderGraph.setLabel('bottom', "<span style=\"color:white;font-size:10px\">Time (s)</span>")
         layout.addWidget(self.recorderGraph)
         
         hbox =QHBoxLayout()
-        icons = [["Start", self.doStart], ["Stop", self.doStop], ["Clear", self.doClear], ["Save", self.doSave]]
+        icons = [["Start", self.StartRecord], ["Stop", self.StopRecord], ["Clear", self.doClear], ["Save", self.doSave]]
         for name, fn  in icons:
             self.btn[name] = QPushButton(name)
             icon = QIcon(":/%s.svg" % name.lower())
@@ -186,20 +209,20 @@ class App(QMainWindow):
         
         hbox =QHBoxLayout()
         siLabel = QLabel("Sample interval")
+        self.sampleIntervall_ms = 200
+        self.captureTime_s = 1
         self.sIntVal = QSpinBox()
         self.sIntVal.setAlignment(Qt.AlignRight| Qt.AlignVCenter)
         self.sIntVal.valueChanged.connect(self.onSampleIntvalChanged)
         self.sIntVal.setRange(1,1000)
         siLabel.setBuddy(self.sIntVal)
         hbox.addWidget(siLabel)
-        self.sIntVal.valueChanged.connect(self.onSampleIntvalChanged)
         hbox.addWidget(self.sIntVal)
         
         self.sampleUnit = QComboBox()
         self.sampleUnit.addItems(["ms", "s"])
         hbox.addWidget(self.sampleUnit)
-        self.sampleUnit.currentIndexChanged.connect(self.onSampleIntvalChanged)
-        
+        print("sampleUnit created")
         duration = QLabel("Capture Time")
         self.captime = QSpinBox()
         self.captime.setAlignment(Qt.AlignRight| Qt.AlignVCenter)
@@ -210,7 +233,6 @@ class App(QMainWindow):
         hbox.addWidget(self.captime)
         self.sampcapDur = QComboBox()
         self.sampcapDur.addItems(["h", "m", "s"])
-        self.sampcapDur.currentIndexChanged.connect(self.onCaptureTimeChanged)
         hbox.addWidget(self.sampcapDur)
         self.progressBar = QProgressBar()
         self.progressBar.setValue(0)
@@ -233,11 +255,22 @@ class App(QMainWindow):
         hbox.addWidget(QLabel("Max:"))
         self._max = QLabel("%.2f" %120)
         hbox.addWidget(self._max)
+        
+        self.set_capture_size()
 
         layout.addLayout(hbox)
+        self.sIntVal.valueChanged.connect(self.onSampleIntvalChanged)
+        self.sampcapDur.currentIndexChanged.connect(self.onCaptureTimeChanged)
 
         res.setLayout(layout)
+        self.sampleUnit.currentIndexChanged.connect(self.onSampleIntvalChanged)
+        self.sampcapDur.currentIndexChanged.connect(self.onCaptureTimeChanged)
+
+        print("Recorder creaated")
         return res
+    
+    def set_status(self, text, time=5000):
+        self.status.showMessage("Ready", time)
     
     def onSampleIntvalChanged(self):
         if self.sampleUnit.currentIndex()==0:
@@ -246,6 +279,7 @@ class App(QMainWindow):
             self.sampleIntervall_ms =1000
         self.sampleIntervall_ms *= self.sIntVal.value()
         self.status.showMessage("Sample intervall is %d ms" % self.sampleIntervall_ms, 5000)
+        self.set_capture_size()
 
     def onCaptureTimeChanged(self):
         if self.sampcapDur.currentIndex()==2:
@@ -255,25 +289,15 @@ class App(QMainWindow):
         else:
             self.captureTime_s = 3600
         self.captureTime_s *= self.captime.value()
-        self.status.showMessage("Capture time is %d s" % self.captureTime_s, 5000)
+        self.set_status("Capture time is %d s" % self.captureTime_s)
+        self.set_capture_size()
 
+    def set_capture_size(self):
+        self.capture_size =  self.captureTime_s*1000/self.sampleIntervall_ms
     
-    
-    def doStart(self):
-        print("doStart")
-        self.btn["Start"].hide()
-        self.btn["Stop"].show()
-        self.doRecord = True
-        
-    
-    def doStop(self):
-        if self.doRecord:
-            print("doStop")
-            self.btn["Start"].show()
-            
     
     def doClear(self):
-        print("doClear")
+        self.data= None
     
     def doSave(self):
         if self.data is None:
@@ -287,6 +311,7 @@ class App(QMainWindow):
         csvf =csv.writer(f, lineterminator="\n")
         for i in range(len(self.data)):
             csvf.writerow([self.data[0][i],self.data[1][i]])
+        self.dirty = False
         f.close()
         
     
