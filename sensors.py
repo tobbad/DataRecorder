@@ -51,23 +51,28 @@ class sensori:
 conf = {"prod": None, "file": None, "csv": None, "cnt": 0, "max": 0, "thread": None, "start": None}
 
 c = None
-
+cb=None
 
 def yocto_cb(sensor, value):
-    #print("yocto_cb thread %s" % (threading.current_thread().name))
     if conf["prod"] is None:
         return
-    if c["cnt"] < c["max"]:
+    if c["cnt"] < c["max"]:            
         now = datetime.datetime.now()
         absTime = now.strftime("%Y-%m-%dT%H:%M:%S.%f+01:00")
         delta =(now - conf["start"]).total_seconds()
         data = [absTime, delta]
         data.extend(c["prod"].get_values())
-        c["csv"].writerow(data)
-        print("Write line %d %s" % (c["cnt"], data))
+        if cb is not None:
+            cb(data)
+            print("Write line %d %s to callback" % (c["cnt"], data))
+
+        else:
+            c["csv"].writerow(data)
+            print("Write line %d %s to file" % (c["cnt"], data))
         c["cnt"] += 1
     else:
         print("Thread join cnt %s" % c["cnt"])
+
 
 
 def YoctoMonitor(data):
@@ -106,6 +111,7 @@ class sensors:
             sys.exit()
         self.oSen = []
         conf["start"] = datetime.datetime.now()
+        self._cb = None
         # sensor = YCurrentLoopOutput.FindCurrentLoopOutput("TX420MA1-123456.currentLoopOutput")
         # print(sensor)
         # while sensor is not None:
@@ -129,24 +135,27 @@ class sensors:
         res = []
         res.extend(self.iSen[0].get_values())
         res.extend(self.iSen[1].get_values())
-        print(res)
         return res
 
+    def register_cp(self, fn):
+        self._cb = fn
+
     def capture_start(self, sample_cnt, sample_intervall, file_name):
-        conf["prod"] = self
-        conf["file"] = open(file_name, "w")
-        conf["csv"] = csv.writer(conf["file"], lineterminator="\n")
-        conf["cnt"] = 0
-        conf["max"] = sample_cnt
-        conf["thread"] = threading.Thread(target=YoctoMonitor, args=(conf,))
-        print("Capture started\n")
-        self._set_reportFrequency(sample_intervall)
-        self.iSen[0].registerTimedReportCallback(yocto_cb)
-        self.iSen[1].registerTimedReportCallback(yocto_cb)
-        global c
-        c = conf
-        conf["thread"].start()
-        print("Started thread: %s" % (threading.current_thread().name))
+        if self._cb is None:
+            conf["prod"] = self
+            conf["file"] = open(file_name, "w")
+            conf["csv"] = csv.writer(conf["file"], lineterminator="\n")
+            conf["cnt"] = 0
+            conf["max"] = sample_cnt
+            conf["thread"] = threading.Thread(target=YoctoMonitor, args=(conf,))
+            print("Capture started\n")
+            self._set_reportFrequency(sample_intervall)
+            self.iSen[0].registerTimedReportCallback(yocto_cb)
+            self.iSen[1].registerTimedReportCallback(yocto_cb)
+            global c
+            c = conf
+            conf["thread"].start()
+            print("Started thread: %s" % (threading.current_thread().name))
 
     def capture_stop(self):
         print("Capture stop")
@@ -171,6 +180,8 @@ class sensors:
         res.append(self.oSen)
         return res
 
+def pri(res):
+    print(res)
 
 if __name__ == "__main__":
     s = sensors()

@@ -8,13 +8,14 @@ import sys, os
 import optparse
 import csv
 import numpy as np
+from datetime import datetime
 
 import qrc_resources
 
 sys.path.append(os.sep.join(["C:","Users","tobias.badertscher","AppData","Local","miniconda3","Lib","site-packages"]))
-from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QVBoxLayout, QLabel, QPushButton, QStyle, QAction, QTabWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QFrame, QFileDialog
+from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QIcon, QKeySequence, QPixmap, QColor, QPalette
-from PyQt5.QtCore import pyqtSlot, pyqtSignal, QObject, QThread, QTimer, QTranslator, QLocale, QTimer 
+from PyQt5.QtCore import *
 import pyqtgraph as pg
 import mkl
 import qrc_resources
@@ -54,9 +55,8 @@ class App(QMainWindow):
         # Add tab widget for Recorder an Emulator
         #tabWidget.addTab(self.Recorder(), "Recorder")
         tabWidget.addTab(self.Recorder(), "Recorder")
-        tabWidget.addTab(self.Icons(), "Icons")
-        tabWidget.addTab(self.WebExample(), "Web")
-        tabWidget.addTab(self.Emulator(), "Emulator")
+        #tabWidget.addTab(self.Icons(), "Icons")
+        tabWidget.addTab(self.Emulator(), "Proberecorder")
         tabWidget.currentChanged.connect(self.tabChanged)
         # Set the central widget of the Window.
         self.setCentralWidget(tabWidget)
@@ -66,7 +66,10 @@ class App(QMainWindow):
         self.status.setSizeGripEnabled(False)
         self.status.addPermanentWidget(self.sizeLabel)
         self.status.showMessage("Ready", 5000)
-        #self.load_file(wd+"\data.cvs")
+        self.doRecord = False
+        self.sampleIntervall_ms = 0
+        self.captureTime_s = 0
+        self.sampleUnit = None
         
     def _addMenuBar(self):
         fileOpenAction = self.createAction("&Open...", self.file_open)
@@ -134,10 +137,17 @@ class App(QMainWindow):
         for idx, line in enumerate(self.datal):
             self.data[idx][0]  = line[1]
             self.data[idx][1]  = line[2]
-        print(self.data)
+        #print(self.data)
+        self.storeFName = self.filename
+        self.updatePlots()
         
             
     def StartRecord(self):
+        now = datetime.now()
+        nowS = now.strftime("%Y%m%d_%H%M%S.csv")
+        self.fNameQL.setText(nowS)
+        self.storeFName = nowS
+        print("Set time to %s" %nowS)
         self.timer.start(800)
         self.doRecord = True
         print("Start record")
@@ -150,7 +160,7 @@ class App(QMainWindow):
         print("Stop recording")
         
     def help_about(self):
-        print("About)")
+        print("About")
         
     def Recorder(self):
         print("Recorder")
@@ -158,6 +168,8 @@ class App(QMainWindow):
         
         layout = QVBoxLayout()
         self.recorderGraph = pg.PlotWidget()
+        self.recorderGraph.setLabel('left', "<span style=\"color:white;font-size:10px\">Temperature (°C)</span>")
+        self.recorderGraph.setLabel('bottom', "<span style=\"color:white;font-size:10px\">Time (s)</span>")
         layout.addWidget(self.recorderGraph)
         
         hbox =QHBoxLayout()
@@ -171,29 +183,113 @@ class App(QMainWindow):
             hbox.addWidget(self.btn[name])
             print("Add %s button"% name)
         layout.addLayout(hbox)
+        
+        hbox =QHBoxLayout()
+        siLabel = QLabel("Sample interval")
+        self.sIntVal = QSpinBox()
+        self.sIntVal.setAlignment(Qt.AlignRight| Qt.AlignVCenter)
+        self.sIntVal.valueChanged.connect(self.onSampleIntvalChanged)
+        self.sIntVal.setRange(1,1000)
+        siLabel.setBuddy(self.sIntVal)
+        hbox.addWidget(siLabel)
+        self.sIntVal.valueChanged.connect(self.onSampleIntvalChanged)
+        hbox.addWidget(self.sIntVal)
+        
+        self.sampleUnit = QComboBox()
+        self.sampleUnit.addItems(["ms", "s"])
+        hbox.addWidget(self.sampleUnit)
+        self.sampleUnit.currentIndexChanged.connect(self.onSampleIntvalChanged)
+        
+        duration = QLabel("Capture Time")
+        self.captime = QSpinBox()
+        self.captime.setAlignment(Qt.AlignRight| Qt.AlignVCenter)
+        self.captime.setRange(1,1000)
+        self.captime.valueChanged.connect(self.onCaptureTimeChanged)
+        duration.setBuddy(self.captime)
+        hbox.addWidget(duration)
+        hbox.addWidget(self.captime)
+        self.sampcapDur = QComboBox()
+        self.sampcapDur.addItems(["h", "m", "s"])
+        self.sampcapDur.currentIndexChanged.connect(self.onCaptureTimeChanged)
+        hbox.addWidget(self.sampcapDur)
+        self.progressBar = QProgressBar()
+        self.progressBar.setValue(0)
+        self.progressBar.resize(300,100)
+        hbox.addWidget(self.progressBar)
+        layout.addLayout(hbox)
+               
+        hbox =QHBoxLayout()
+        hbox.addWidget(QLabel("Plot name"))
+        self.fNameQL = QLineEdit()
+        hbox.addWidget(self.fNameQL)
+
+        hbox =QHBoxLayout()
+        hbox.addWidget(QLabel("Aktueller Wert:"))
+        self._actVal = QLabel("%.2f" % 0)
+        hbox.addWidget(self._actVal)
+        hbox.addWidget(QLabel("Min:"))
+        self._min = QLabel("%.2f" %0)
+        hbox.addWidget(self._min)
+        hbox.addWidget(QLabel("Max:"))
+        self._max = QLabel("%.2f" %120)
+        hbox.addWidget(self._max)
+
+        layout.addLayout(hbox)
+
         res.setLayout(layout)
-        res.setLayout(layout)  
-        self.btn["Stop"].hide()
         return res
+    
+    def onSampleIntvalChanged(self):
+        if self.sampleUnit.currentIndex()==0:
+            self.sampleIntervall_ms =1
+        else:
+            self.sampleIntervall_ms =1000
+        self.sampleIntervall_ms *= self.sIntVal.value()
+        self.status.showMessage("Sample intervall is %d ms" % self.sampleIntervall_ms, 5000)
+
+    def onCaptureTimeChanged(self):
+        if self.sampcapDur.currentIndex()==2:
+            self.captureTime_s = 1
+        elif self.sampcapDur.currentIndex()==1:
+            self.captureTime_s = 60
+        else:
+            self.captureTime_s = 3600
+        self.captureTime_s *= self.captime.value()
+        self.status.showMessage("Capture time is %d s" % self.captureTime_s, 5000)
+
+    
     
     def doStart(self):
         print("doStart")
         self.btn["Start"].hide()
         self.btn["Stop"].show()
+        self.doRecord = True
         
     
     def doStop(self):
         if self.doRecord:
             print("doStop")
+            self.btn["Start"].show()
+            
     
     def doClear(self):
         print("doClear")
     
     def doSave(self):
-        print("doSave")
+        if self.data is None:
+            print("No data captured")
+            return
+        fmt =  ["CSV Files (*.csv)", "Excel Files (*.xslc)"]
+        fname, ftype = QFileDialog.getSaveFileName(self, "Save File",
+                self.storeFName, fmt[0])
+        print("doSave  all %s" % fname )
+        f = open(fname,"w", encoding="cp1252")
+        csvf =csv.writer(f, lineterminator="\n")
+        for i in range(len(self.data)):
+            csvf.writerow([self.data[0][i],self.data[1][i]])
+        f.close()
+        
     
-    def WebExample(self):
-        res = QWidget()
 
     def Icons(self):
         print("Icon")
@@ -222,10 +318,7 @@ class App(QMainWindow):
 
     def doClear(self):
         print("doClear")
-        
-    def doSave(self):
-        print("doSave")
-        
+              
 
     def Emulator(self):
         print("Emulator")
@@ -235,26 +328,31 @@ class App(QMainWindow):
         layout.addWidget(self.emulatorGraph)
         res.setLayout(layout)   
         if self.data is not None:
-            self.updateEmulator()
+            self.updatePlots()
         return res
     
-    def updateEmulator(self):
-        print("Updat emulator graph")
+    def updatePlots(self):
+        print("Updat plots")
         if self.data is not None:
             x = self.data[:,0]
             y = self.data[:,1]
-            print(x,y)
+            minimum = y.min()
+            maximum = y.max()
+            self._actVal.setText("%.2f" % y[0])
+            self._min.setText("%.2f" % minimum)
+            self._max.setText("%.2f" % maximum)
+
+            print(minimum, maximum)
+            self.recorderGraph.setTitle(self.filename.split("/")[-1])
+            self.emulatorGraph.setTitle(self.filename.split("/")[-1])
+     
             self.emulatorGraph.plot(x,y)
+            self.recorderGraph.plot(x,y)
         
 
     def tabChanged(self, index):
+        self.updatePlots()
         print("Tab changed %d" %(index))
-        if index == 0:
-            pass
-        elif index == 1:
-            pass
-        elif index == 2:
-            self.updateEmulator()
 
     def okToContinue(self):
         if self.dirty:
