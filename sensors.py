@@ -122,7 +122,6 @@ class sensors:
         #     sensor =  YGenericSensor.nextGenericSensor(sensor)
 
     def __str__(self):
-
         res = "In\n"
         for i in self.iSen:
             res += "\t%s\n" % i
@@ -133,34 +132,42 @@ class sensors:
 
     def get_values(self):
         res = []
-        res.extend(self.iSen[0].get_values())
-        res.extend(self.iSen[1].get_values())
+        if conf["cnt"] < conf["max"]:
+            res.extend(self.iSen[0].get_values())
+            res.extend(self.iSen[1].get_values())
+        else:
+            print("Terminate")
+            res = None
         return res
 
-    def register_cp(self, fn):
+    def register_callback(self, fn):
+        print("Register cb %s in sensor" % fn)
+        global cb
+        cb = fn
         self._cb = fn
 
-    def capture_start(self, sample_cnt, sample_intervall, file_name):
+    def capture_start(self, sample_cnt, sample_intervall, file_name=None):
+        conf["prod"] = self
         if self._cb is None:
-            conf["prod"] = self
             conf["file"] = open(file_name, "w")
             conf["csv"] = csv.writer(conf["file"], lineterminator="\n")
-            conf["cnt"] = 0
-            conf["max"] = sample_cnt
-            conf["thread"] = threading.Thread(target=YoctoMonitor, args=(conf,))
-            print("Capture started\n")
-            self._set_reportFrequency(sample_intervall)
-            self.iSen[0].registerTimedReportCallback(yocto_cb)
-            self.iSen[1].registerTimedReportCallback(yocto_cb)
-            global c
-            c = conf
-            conf["thread"].start()
-            print("Started thread: %s" % (threading.current_thread().name))
+        conf["cnt"] = 0
+        conf["max"] = sample_cnt
+        conf["thread"] = threading.Thread(target=YoctoMonitor, args=(conf,))
+        print("Capture started with sample inmterval %s" %sample_intervall)
+        self._set_reportFrequency(sample_intervall)
+        self.iSen[0].registerTimedReportCallback(yocto_cb)
+        self.iSen[1].registerTimedReportCallback(yocto_cb)
+        global c
+        c = conf
+        conf["thread"].start()
+        print("Started thread: %s" % (threading.current_thread().name))
 
     def capture_stop(self):
         print("Capture stop")
-        conf["file"].close()
-        conf["file"] = None
+        if file_name is not None:
+            conf["file"].close()
+            conf["file"] = None
         self.iSen[0].registerTimedReportCallback(None)
         self.iSen[1].registerTimedReportCallback(None)
         self.iSen[0].set_reportFrequency("OFF")
@@ -188,9 +195,9 @@ if __name__ == "__main__":
     s.capture_start(1440,"20/s", "data.csv")
     print("wait for acquisition finished")
     while  conf["cnt"] < conf["max"]:
-        print("Stilll receve %d" % conf["cnt"])
+        print("Stil receve %d" % conf["cnt"])
         sleep(1)
-    print("Aqsition stop")
+    print("Aqistion stop")
     s.capture_stop()
     conf["thread"].join()
     sys.exit()
