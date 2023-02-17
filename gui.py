@@ -77,7 +77,7 @@ class App(QMainWindow):
             print("Finshed capturing (%d, %d)" % (self.data.shape))
             self.sensor.capture_stop()
         else:
-            np.append(self.data, [data[0], data[1]])            
+            np.append([data[0], data[1]], self.data)            
             print(self.data[-1])
         
     def _addMenuBar(self):
@@ -161,7 +161,7 @@ class App(QMainWindow):
         self.timer.start(800)
         self.doRecord = True
         if self.sampleIntervall_ms > 1000:
-            sampInt = "%ds" % self.sampleIntervall_ms/1000
+            sampInt = "%ds" % (self.sampleIntervall_ms/1000)
             self.sensor.capture_start(self.capture_size, sampInt)
         else:
             sampInt = "%d/s" % (1000/self.sampleIntervall_ms)
@@ -172,7 +172,6 @@ class App(QMainWindow):
         self.btn["Stop"].show()
         print("Start record")
         
-        
     def doStop(self):
         self.timer.stop()
         self.doRecord = False
@@ -180,7 +179,8 @@ class App(QMainWindow):
         self.btn["Start"].show()
 
     def doClear(self):
-         self.data= None
+        print("doClear")
+        self.data= None
      
     def doSave(self):
          if self.data is None:
@@ -189,7 +189,7 @@ class App(QMainWindow):
          fmt =  ["CSV Files (*.csv)", "Excel Files (*.xslc)"]
          fname, ftype = QFileDialog.getSaveFileName(self, "Save File",
                  self.storeFName, fmt[0])
-         print("doSave  all %s" % fname )
+         print("doSave  all %s of size %d" % (fname, len(self.data)))
          f = open(fname,"w", encoding="cp1252")
          csvf =csv.writer(f, lineterminator="\n")
          for i in range(len(self.data)):
@@ -272,7 +272,7 @@ class App(QMainWindow):
         layout.addLayout(hbox)
         
         hbox =QHBoxLayout()
-        hbox.addWidget(QLabel("Aktueller Messwert (mA)"))
+        hbox.addWidget(QLabel("Aktueller Rohwert (mA)"))
         self._actMeasVal = QLabel("%.2f" % 0)
         hbox.addWidget(self._actVal)
         hbox.addWidget(QLabel("Min:"))
