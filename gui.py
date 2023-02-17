@@ -297,6 +297,7 @@ class App(QMainWindow):
     
     
     def doClear(self):
+        print("doClear")
         self.data= None
     
     def doSave(self):
