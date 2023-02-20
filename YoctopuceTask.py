@@ -9,11 +9,100 @@ import os, sys
 import csv
 import threading
 from time import *
+sys.path.append(os.sep.join(["C:","Users","tobias.badertscher","AppData","Local","miniconda3","Lib","site-packages"]))
+from PyQt6.QtCore import pyqtSlot, pyqtSignal, QObject, QThread, QTimer
 
 # add ../../Sources to the PYTHONPATH
 sys.path.append(os.path.join("..", "yoctolib_python", "Sources"))
 from yocto_api import *
 from yocto_genericsensor import *
+
+def except_hook(cls, exception, traceback):
+    sys.__excepthook__(cls, exception, traceback)
+sys.excepthook = except_hook
+
+def currThread():
+    return '[thread-' + str(int(QThread.currentThreadId())) + ']'
+
+class YoctopuceTask(QObject):
+
+    startTask = pyqtSignal()        # in: start the task
+    stopTask = pyqtSignal()         # in: stop the task
+    getData = pyqtSignal(str)       # get Data
+    statusMsg = pyqtSignal(str)     # out: publish the task status
+    arrival = pyqtSignal(dict)      # out: publish a new device arrival
+    newValue = pyqtSignal(str,str)  # out: publish a new function value
+    removal = pyqtSignal(dict)      # out: publish a device disconnect
+
+    def __init__(self):
+        super(YoctopuceTask, self).__init__()
+        # connect incoming signals
+        self.startTask.connect(self.initAPI)
+        self.stopTask.connect(self.freeAPI)
+
+    @pyqtSlot()
+    def initAPI(self):
+        print('Yoctopuce task started', currThread())
+        errmsg = YRefParam()
+        YAPI.RegisterLogFunction(self.logfun)
+        # Setup the API to use Yoctopuce devices on localhost
+        if YAPI.RegisterHub("usb", errmsg) != YAPI.SUCCESS:            
+            self.statusMsg.emit('Failed to init Yoctopuce API: ' +
+                                errmsg.value)
+            return
+        YAPI.RegisterDeviceArrivalCallback(self.deviceArrival)
+        YAPI.RegisterDeviceRemovalCallback(self.deviceRemoval)
+        self.statusMsg.emit('Yoctopuce task ready')
+        # prepare to scan Yoctopuce events periodically
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.handleEvents)
+        self.checkDevices = 0
+        self.timer.start(50)
+
+    @pyqtSlot()
+    def freeAPI(self):
+        self.timer.stop()
+        YAPI.FreeAPI()
+        self.statusMsg.emit('Yoctopuce task stopped')
+
+    @pyqtSlot()
+    def handleEvents(self):
+        if self.checkDevices <= 0:
+            YAPI.UpdateDeviceList()
+            self.checkDevices = 10
+        else:
+            self.checkDevices -= 1
+        YAPI.HandleEvents()
+
+    def deviceArrival(self, m: YModule):
+        serialNumber = m.get_serialNumber()
+        print("Device arrival SerNr %d" % (serialNumber))
+        # build a description of the device as a dictionnary
+        device = { 'serial': serialNumber, 'functions': {} }
+        fctcount = m.functionCount()
+        for i in range(fctcount):
+            device['functions'][m.functionId(i)] = m.functionType(i)
+        m.set_userData(device)
+        # pass it to the UI thread via the arrival signal
+        self.arrival.emit(device)
+        # make sure to get notified about each new value
+        for functionId in device['functions']:
+            bt = YFunction.FindFunction(serialNumber + '.' + functionId)
+            bt.registerValueCallback(self.functionValueChangeCallback)
+
+    def functionValueChangeCallback(self, fct: YFunction, value: str):
+        hardwareId = fct.get_hardwareId()
+        self.newValue.emit(hardwareId, value)
+
+    def deviceRemoval(self, m: YModule):
+        # pass the disconnect to the UI thread via the removal signal
+        self.removal.emit(m.get_userData())
+
+    def logfun(self, line: str):
+        msg = line.rstrip()
+        print("API Log: " + msg, currThread())
+        # show low-level API logs as status
+        self.statusMsg.emit(msg)
 
 
 class sensori:
