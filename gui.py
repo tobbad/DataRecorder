@@ -7,10 +7,12 @@ Created on Mon Feb  6 09:47:21 2023
 import sys, os
 import optparse
 import csv
+from math import *
 import numpy as np
 from datetime import *
 import numpy as np
 from sensors import sensors
+
 
 sys.path.append(os.sep.join(["C:","Users","tobias.badertscher","AppData","Local","miniconda3","Lib","site-packages"]))
 from PyQt5.QtWidgets import QFileDialog, QWidget, QMainWindow, QApplication, QAction, QTabWidget, QVBoxLayout, QHBoxLayout, QPushButton
@@ -33,14 +35,20 @@ class App(QMainWindow):
         self.status = self.statusBar()
         self._addMenuBar()
         self.dirty = False
-        self.filename = None
+        self.filename = "./"
         self.data = None
         self.btn = {}
-        self.data=None
         self.doRecord = False
+        self.sensor = sensors()
+        self.sensor.register_callback(self.append_data)
+        self.doRecord = False
+        self.sampleIntervall_ms = 0
+        self.captureTime_s = 0
+        self.capture_size = 0
+        self.sampleIntervall_ms =1
+        self.captureTime_s = 1
+        self.mydata = []
         
-        self.timer  = QTimer()
-        self.timer.timeout.connect(self.doStop)
         
         tabWidget = QTabWidget()
         # Add tab widget for Recorder an Emulator
@@ -56,29 +64,22 @@ class App(QMainWindow):
         self.status.setSizeGripEnabled(False)
         self.status.addPermanentWidget(self.sizeLabel)
         self.set_status("Ready")
-        self.sensor = sensors()
-        self.sensor.register_callback(self.append_data)
-        self.doRecord = False
-        self.sampleIntervall_ms = 0
-        self.captureTime_s = 0
-        self.capture_size = 0
-        self.sampleIntervall_ms =1
-        self.captureTime_s = 1
         # self.sampleUnit  = None
         # self.sampcapDur  = None
 
 
     def append_data(self, data):
         self.dirty = True
-        if self.data is None:
-            print("Capture finished")
-            return
+        print("Append data")
         if data is None:
-            print("Finshed capturing (%d, %d)" % (self.data.shape))
+            print(self.mydata)
+            print("Finished capturing (%d, %d)" % (len(self.mydata), len(self.mydata[0])))
+            print(self.mydata)
+            self.updatePlots()
             self.sensor.capture_stop()
         else:
-            np.append([data[0], data[1]], self.data)            
-            print(self.data[-1])
+            print("Data %s append to\n %s" % (data, self.mydata))
+            self.mydata.append([data[0], data[1]] )            
         
     def _addMenuBar(self):
         fileOpenAction = self.createAction("&Open...", self.file_open)
@@ -152,13 +153,12 @@ class App(QMainWindow):
         
             
     def doStart(self):
-        self.data = np.array([ self.capture_size,2])
         now = datetime.now()
         nowS = now.strftime("%Y%m%d_%H%M%S.csv")
+        self.filename = nowS
         self.fNameQL.setText(nowS)
         self.storeFName = nowS
         print("Set time to %s" %nowS)
-        self.timer.start(800)
         self.doRecord = True
         if self.sampleIntervall_ms > 1000:
             sampInt = "%ds" % (self.sampleIntervall_ms/1000)
@@ -173,14 +173,13 @@ class App(QMainWindow):
         print("Start record")
         
     def doStop(self):
-        self.timer.stop()
         self.doRecord = False
         print("Stop recording")
         self.btn["Start"].show()
 
     def doClear(self):
         print("doClear")
-        self.data= None
+        self.mydata= None
      
     def doSave(self):
          if self.data is None:
@@ -189,11 +188,11 @@ class App(QMainWindow):
          fmt =  ["CSV Files (*.csv)", "Excel Files (*.xslc)"]
          fname, ftype = QFileDialog.getSaveFileName(self, "Save File",
                  self.storeFName, fmt[0])
-         print("doSave  all %s of size %d" % (fname, len(self.data)))
+         print("doSave  all %s of size %d" % (fname, len(self.mydata)))
          f = open(fname,"w", encoding="cp1252")
          csvf =csv.writer(f, lineterminator="\n")
-         for i in range(len(self.data)):
-             csvf.writerow([self.data[0][i],self.data[1][i]])
+         for i in range(len(self.mydata)):
+             csvf.writerow([self.mydata[0][i],self.mydata[1][i]])
          self.dirty = False
          f.close()
         
@@ -321,7 +320,7 @@ class App(QMainWindow):
         self.set_capture_size()
 
     def set_capture_size(self):
-        self.capture_size =  self.captureTime_s*1000/self.sampleIntervall_ms
+        self.capture_size =  int(ceil(self.captureTime_s*1000/self.sampleIntervall_ms))
         self.set_status("Capture size %d" % self.capture_size)   
         print("Capture size is now %d: captureTime %d s, sampleInterval %d ms" % (self.capture_size, self.captureTime_s, self.sampleIntervall_ms))
        
@@ -351,13 +350,20 @@ class App(QMainWindow):
         self.emulatorGraph = pg.PlotWidget()
         layout.addWidget(self.emulatorGraph)
         res.setLayout(layout)   
-        if self.data is not None:
+        if len(self.mydata) ==0:
+            print(self.mydata)
             self.updatePlots()
         return res
     
     def updatePlots(self):
-        print("Updat plots")
-        if self.data is not None:
+        print("Updata plot with data of size %d" % len(self.mydata))
+        if len(self.mydata) >0:
+            self.data = np.zeros([3, len(self.mydata)])
+            for i in range(len(self.mydata)):
+                self.data[0][i] = float(self.mydata[i][1])
+                self.data[1][i] = float(self.mydata[i][2])
+                self.data[2][i] = float(self.mydata[i][4])
+            print("Updat plots on %s"% self.data)
             x = self.data[:,0]
             y = self.data[:,1]
             minimum = y.min()
@@ -369,7 +375,7 @@ class App(QMainWindow):
             print(minimum, maximum)
             self.recorderGraph.setTitle(self.filename.split("/")[-1])
             self.emulatorGraph.setTitle(self.filename.split("/")[-1])
-     
+         
             self.emulatorGraph.plot(x,y)
             self.recorderGraph.plot(x,y)
         

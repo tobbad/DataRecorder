@@ -29,11 +29,13 @@ class sensori:
         return res
 
     def get_values(self):
+        res = None
         value =self.sen.get_currentValue()
         if value >0:
-            return [(value-4.0)/16.0*100, "°C"]
+            res = [(value-4.0)/16.0*100, "°C"]
         else:
-            return[self.sen.get_currentValue(),self.sen.get_unit()]
+            res =[self.sen.get_currentValue(),self.sen.get_unit()]
+        return res
             
 
     def set_reportFrequency(self, seconds):
@@ -55,21 +57,31 @@ cb=None
 
 def yocto_cb(sensor, value):
     if conf["prod"] is None:
+        print("Producer is None")
         return
-    if c["cnt"] < c["max"]:            
+    if c["cnt"] < c["max"]+1:
         now = datetime.datetime.now()
         absTime = now.strftime("%Y-%m-%dT%H:%M:%S.%f+01:00")
         delta =(now - conf["start"]).total_seconds()
         data = [absTime, delta]
-        data.extend(c["prod"].get_values())
+        supData = c["prod"].get_values()
+        if supData is None:
+            print("Terminate with None Datacapture")
+            data = None
+        else:
+            data.extend(supData)
         if cb is not None:
             cb(data)
             print("Write line %d %s to callback" % (c["cnt"], data))
-
         else:
-            c["csv"].writerow(data)
-            print("Write line %d %s to file" % (c["cnt"], data))
+            if c["cnt"]< c["max"]:
+                if data is not None:
+                    c["csv"].writerow(data)
+                    print("Write line %d %s to file" % (c["cnt"], data))
+            else:
+                print("Capture finished")
         c["cnt"] += 1
+        print("cnt is now %d"%  c["cnt"])
     else:
         print("Thread join cnt %s" % c["cnt"])
 
@@ -78,14 +90,14 @@ def yocto_cb(sensor, value):
 def YoctoMonitor(data):
         print("YoctoMonitor started")
         while True:
-            if conf["cnt"] < conf["max"]:
+            if conf["cnt"] < conf["max"]+1:
                 print(
                     "YoctoMonitor cnt = %d/ max= %d Thread %s"
                     % (conf["cnt"], conf["max"], threading.current_thread().name)
                      )
                 YAPI.Sleep(500)
             else:
-                print("Good bye")
+                print("Good bye %d" %conf["cnt"])
                 return
             
 
@@ -122,7 +134,7 @@ class sensors:
         #     sensor =  YGenericSensor.nextGenericSensor(sensor)
 
     def __str__(self):
-        res = "In\n"
+        res = "\nIn\n"
         for i in self.iSen:
             res += "\t%s\n" % i
         res += "Out"
@@ -132,12 +144,14 @@ class sensors:
 
     def get_values(self):
         res = []
-        if conf["cnt"] < conf["max"]:
-            res.extend(self.iSen[0].get_values())
-            res.extend(self.iSen[1].get_values())
-        else:
-            print("Terminate")
-            res = None
+        print("Check %d<%d" % ( conf["cnt"],conf["max"]))
+        if conf["cnt"] < conf["max"]+1:
+            if conf["cnt"] ==  conf["max"]:
+                print("Terminate capture in get_values")
+                return None
+            else:
+                res.extend(self.iSen[0].get_values())
+                res.extend(self.iSen[1].get_values())
         return res
 
     def register_callback(self, fn):
