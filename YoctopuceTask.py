@@ -8,6 +8,7 @@ Created on Sun Jan 22 18:51:51 2023
 import os, sys
 import csv
 import threading
+from datetime import *
 from time import *
 sys.path.append(os.sep.join(["C:","Users","tobias.badertscher","AppData","Local","miniconda3","Lib","site-packages"]))
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, QObject, QThread, QTimer
@@ -42,6 +43,7 @@ class YoctopuceTask(QObject):
         self.sensor = []
         self.sampelInterval_ms  = None
         self.capture_size = 0
+        self.callback = None
 
     @pyqtSlot()
     def initAPI(self):
@@ -100,37 +102,32 @@ class YoctopuceTask(QObject):
                 s.registerTimedReportCallback(self.new_data)
             print("Capture started")
             self.start = now = datetime.datetime.now()
+    def register_callback(self, fn):
+        self.callback = fn
 
-    def new_data(self, value): 
+
+    def new_data(self, value1, value2): 
+        print("New data in yocto")
+        now = datetime.datetime.now()
         absTime = now.strftime("%Y-%m-%dT%H:%M:%S.%f+01:00")
         delta = (now - self.start).total_seconds()
         data = [absTime, delta]
         for s in self.sensor:
-            data.extend(s.get_values)
+            data.extend([s.get_values()[0],s.get_values()[1]])
+        if self.callback is not None:
+            self.callback(data)
+        self.capture_size -= 1
+        if self.capture_size == 0:
+            self.capture_stop()   
+            self.callback(None)
         print("New Data %s" % data)           
-           
  
-    def deviceArrival_old(self, m: YModule):
-        serialNumber = m.get_serialNumber()
-        print("Device arrival SerNr %s %s, " % (serialNumber, m))
-        # build a description of the device as a dictionnary
-        device = { 'serial': serialNumber, 'functions': {} }
-        fctcount = m.functionCount()
-        for i in range(fctcount):
-            device['functions'][m.functionId(i)] = m.functionType(i)
-        m.set_userData(device)
-        # pass it to the UI thread via the arrival signal
-        self.arrival.emit(device)
-        # make sure to get notified about each new value
-        for idx, functionId in enumerate(device['functions']):
-            bt = YGenericSensor.FindFunction(serialNumber + '.' + functionId)
-            print(bt)
-            bt.registerValueCallback(self.functionValueChangeCallback)
-            if "genericSensor" in functionId:
-                sensor = sensori(bt)
-                self.sensor.append(sensor)
-                print("Y deviceArrival %d %s, %s"%( idx, self.sensor[-1], functionId))
-
+    def capture_stop(self):
+        print("Capture in Yoctopuc Task finished ")
+            for s in self.sensor:
+                s.registerTimedReportCallback(None)
+            print("Capture finished")
+  
     def setSampleInterval_ms(self, sample_interval_ms):
         if sample_interval_ms > 1000:
             sampInt = "%ds" % (sample_interval_ms/1000)

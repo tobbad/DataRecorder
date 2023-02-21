@@ -54,6 +54,7 @@ class SensorDisplay(QMainWindow):
         self.functionValues = {}
         self.yoctoTask = None
         self.setUpGUI()
+        
 
         
     def setUpGUI(self):    
@@ -280,29 +281,36 @@ class SensorDisplay(QMainWindow):
          # Start Yoctopuce I/O task in a separate thread
          self.yoctoThread = QThread()
          self.yoctoThread.start()
+         self.updateSignal = QtCore.pyQtSignal(int, self)
          self.yoctoTask = YoctopuceTask()
+         self.yoctoTask.connect(self.showMsg)
          self.yoctoTask.statusMsg.connect(self.showMsg)
          self.yoctoTask.arrival.connect(self.arrival)
          self.yoctoTask.newValue.connect(self.newValue)
          self.yoctoTask.removal.connect(self.removal)
          self.yoctoTask.moveToThread(self.yoctoThread)
          self.yoctoTask.startTask.emit()
-       
+         self.yoctoTask.register_callback(self.append_data)
+         
+    def append_data(self, data):
+        pass
+        
     @pyqtSlot(dict)
     def arrival(self, device):
         # log arrival
         print('Device connected:', device, currThread())
         # for relay functions, create a toggle button
                
-    @pyqtSlot(str,str)
-    def newValue(self, hardwareId, value):
-        if hardwareId not in self.functionValues:
-            # create a new label when first value arrives
-            newLabel = QLabel(self)
-            self.layout.addWidget(newLabel)
-            self.functionValues[hardwareId] = newLabel
-        # then update it for each reported value
-        self.functionValues[hardwareId].setText(hardwareId + ": " + value)
+    @pyqtSlot(str, str)
+    def newValue(self, value1, value2, value3):
+        print(value1, value2, value3)
+        # if hardwareId not in self.functionValues:
+        #     # create a new label when first value arrives
+        #     newLabel = QLabel(self)
+        #     self.layout.addWidget(newLabel)
+        #     self.functionValues[hardwareId] = newLabel
+        # # then update it for each reported value
+        # self.functionValues[hardwareId].setText(hardwareId + ": " + value)
 
     @pyqtSlot(dict)
     def removal(self, device):
@@ -414,7 +422,6 @@ class SensorDisplay(QMainWindow):
             self._min.setText("%.2f" % minimum)
             self._max.setText("%.2f" % maximum)
 
-            print(minimum, maximum)
             self.recorderGraph.setTitle(self.filename.split("/")[-1])
             self.emulatorGraph.setTitle(self.filename.split("/")[-1])
          
