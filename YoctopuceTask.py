@@ -10,7 +10,7 @@ import csv
 import threading
 from time import *
 sys.path.append(os.sep.join(["C:","Users","tobias.badertscher","AppData","Local","miniconda3","Lib","site-packages"]))
-from PyQt6.QtCore import pyqtSlot, pyqtSignal, QObject, QThread, QTimer
+from PyQt5.QtCore import pyqtSlot, pyqtSignal, QObject, QThread, QTimer
 
 # add ../../Sources to the PYTHONPATH
 sys.path.append(os.path.join("..", "yoctolib_python", "Sources"))
@@ -39,6 +39,9 @@ class YoctopuceTask(QObject):
         # connect incoming signals
         self.startTask.connect(self.initAPI)
         self.stopTask.connect(self.freeAPI)
+        self.sensor = []
+        self.sampelInterval_ms  = None
+        self.capture_size = 0
 
     @pyqtSlot()
     def initAPI(self):
@@ -76,7 +79,40 @@ class YoctopuceTask(QObject):
 
     def deviceArrival(self, m: YModule):
         serialNumber = m.get_serialNumber()
-        print("Device arrival SerNr %d" % (serialNumber))
+        print("Device arrival SerNr %s %s, " % (serialNumber, m))
+        sensor = YGenericSensor.FirstGenericSensor()
+        print("Sensor %s" %sensor )
+        while sensor != None:
+            newSensor = sensori(sensor)
+            self.sensor.append(newSensor)
+            print("Added sensor %s" % newSensor)
+            sensor = YGenericSensor.nextGenericSensor(sensor)
+        print("Added %s input sensors" % (len(self.sensor)))
+        if len(self.sensor) == 0:
+            print("No sensors detected")
+            sys.exit()
+ 
+    def capture_start(self):
+        print("Capture in Yoctopuc Task started (%d    ms)" %(self.capture_size))
+        print("Capture in Yoctopuc Task started (   %d ms)" %( self.sampelInterval_ms))
+        if self.capture_size is not None and self.sampelInterval_ms is not None:
+            for s in self.sensor:
+                s.registerTimedReportCallback(self.new_data)
+            print("Capture started")
+            self.start = now = datetime.datetime.now()
+
+    def new_data(self, value): 
+        absTime = now.strftime("%Y-%m-%dT%H:%M:%S.%f+01:00")
+        delta = (now - self.start).total_seconds()
+        data = [absTime, delta]
+        for s in self.sensor:
+            data.extend(s.get_values)
+        print("New Data %s" % data)           
+           
+ 
+    def deviceArrival_old(self, m: YModule):
+        serialNumber = m.get_serialNumber()
+        print("Device arrival SerNr %s %s, " % (serialNumber, m))
         # build a description of the device as a dictionnary
         device = { 'serial': serialNumber, 'functions': {} }
         fctcount = m.functionCount()
@@ -86,9 +122,31 @@ class YoctopuceTask(QObject):
         # pass it to the UI thread via the arrival signal
         self.arrival.emit(device)
         # make sure to get notified about each new value
-        for functionId in device['functions']:
-            bt = YFunction.FindFunction(serialNumber + '.' + functionId)
+        for idx, functionId in enumerate(device['functions']):
+            bt = YGenericSensor.FindFunction(serialNumber + '.' + functionId)
+            print(bt)
             bt.registerValueCallback(self.functionValueChangeCallback)
+            if "genericSensor" in functionId:
+                sensor = sensori(bt)
+                self.sensor.append(sensor)
+                print("Y deviceArrival %d %s, %s"%( idx, self.sensor[-1], functionId))
+
+    def setSampleInterval_ms(self, sample_interval_ms):
+        if sample_interval_ms > 1000:
+            sampInt = "%ds" % (sample_interval_ms/1000)
+        else:
+            sampInt = "%d/s" % (1000/sample_interval_ms)
+        self.reportFrequncy = sampInt
+        for s in self.sensor:
+            s.set_reportFrequency(sampInt)
+        self.sampelInterval_ms = sample_interval_ms
+        self.logfun("Sample interval  %s ms" % (sample_interval_ms ))
+        print("Sample frequency:  %s" % (sampInt ))
+
+    def set_capture_size(self, capture_size):
+        self.capture_size = capture_size
+        self.logfun("Capture size   %s" % (capture_size))
+        print("Capture size   %s" % (capture_size))
 
     def functionValueChangeCallback(self, fct: YFunction, value: str):
         hardwareId = fct.get_hardwareId()

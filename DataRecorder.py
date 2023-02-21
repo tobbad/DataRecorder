@@ -23,6 +23,11 @@ import pyqtgraph as pg
 #import mkl
 import qrc_resources
 wd = os.sep.join(["C:","Users","tobias.badertscher","source", "repos", "python", "DataRecorder"])
+
+def except_hook(cls, exception, traceback):
+    sys.__excepthook__(cls, exception, traceback)
+sys.excepthook = except_hook
+
 def currThread():
     return '[thread-' + str(int(QThread.currentThreadId())) + ']'
 
@@ -46,26 +51,35 @@ class SensorDisplay(QMainWindow):
         self.captureTime_s = 1
         self.rawData = []        
         self.unit  =[]
+        self.functionValues = {}
+        self.yoctoTask = None
         self.setUpGUI()
 
         
     def setUpGUI(self):    
         self.setWindowTitle("DataRecorder")
         self.addMenuBar()
+        
+        self.layout = QVBoxLayout()
         tabWidget = QTabWidget()
-        # Add tab widget for Recorder an Emulator
-        #tabWidget.addTab(self.Recorder(), "Recorder")
-        #tabWidget.addTab(self.Icons(), "Icons")
-        #tabWidget.addTab(self.Emulator(), "Proberecorder")
-        tabWidget.currentChanged.connect(self.tabChanged)
-        # Set the central widget of the Window.
-        self.setCentralWidget(tabWidget)
         self.sizeLabel = QLabel()
         self.sizeLabel.setFrameStyle(QFrame.StyledPanel|QFrame.Sunken)
         self.message = self.statusBar()
         self.message.setSizeGripEnabled(False)
         self.message.addPermanentWidget(self.sizeLabel)
+        # Add tab widget for Recorder an Emulator
+        tabWidget.addTab(self.Recorder(), "Recorder")
+        #tabWidget.addTab(self.Icons(), "Icons")
+        tabWidget.addTab(self.Emulator(), "Proberecorder")
+        tabWidget.currentChanged.connect(self.tabChanged)
+        
+        widget = QWidget()
+        widget.setLayout(self.layout)
+        # Set the central widget of the Window.
+        self.layout.addWidget(tabWidget)
+        self.setCentralWidget(widget)
         self.showMsg("Ready")
+        print("Gui Ready")
 
     def addMenuBar(self):
         fileOpenAction = self.createAction("&Open...", self.file_open)
@@ -307,14 +321,7 @@ class SensorDisplay(QMainWindow):
         self.fNameQL.setText(nowS)
         self.storeFName = nowS
         print("Set time to %s" %nowS)
-        self.doRecord = True
-        if self.sampleIntervall_ms > 1000:
-            sampInt = "%ds" % (self.sampleIntervall_ms/1000)
-            self.sensor.capture_start(self.capture_size, sampInt)
-        else:
-            sampInt = "%d/s" % (1000/self.sampleIntervall_ms)
-            print("%d ms %s" %(self.sampleIntervall_ms, sampInt))
-            self.sensor.capture_start(self.capture_size, sampInt)
+        self.yoctoTask.capture_start()
         self.doRecord = True
         self.btn["Start"].hide()
         self.btn["Stop"].show()
@@ -358,6 +365,8 @@ class SensorDisplay(QMainWindow):
         else:
             self.sampleIntervall_ms =1
         self.sampleIntervall_ms *= self.sIntVal.value()
+        if self.yoctoTask is not None:
+            self.yoctoTask.setSampleInterval_ms(self.sampleIntervall_ms)
         print("Sample intervall is %d ms" % self.sampleIntervall_ms)
         print("Call onSampleIntvalChanged %s" % (self.sampcapDur.currentIndex() ))
         if self.sampcapDur.currentIndex()==0:
@@ -376,6 +385,8 @@ class SensorDisplay(QMainWindow):
     def set_capture_size(self):
         self.capture_size =  int(ceil(self.captureTime_s*1000/self.sampleIntervall_ms))
         self.showMsg("Capture size %d" % self.capture_size)   
+        if self.yoctoTask is not None:
+            self.yoctoTask.set_capture_size(self.capture_size)
         print("Capture size is now %d: captureTime %d s, sampleInterval %d ms" % (self.capture_size, self.captureTime_s, self.sampleIntervall_ms))
        
     def tabChanged(self, index):
@@ -433,6 +444,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = SensorDisplay()
     window.capture()
+    window.show()
     sys.exit(app.exec())
         
     
