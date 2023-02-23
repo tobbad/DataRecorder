@@ -7,7 +7,7 @@ Created on Mon Feb  6 09:47:21 2023
 import sys, os
 import optparse
 import csv
-from math import *
+from math import ceil
 import numpy as np
 from datetime import *
 import numpy as np
@@ -54,8 +54,6 @@ class SensorDisplay(QMainWindow):
         self.functionValues = {}
         self.yoctoTask = None
         self.setUpGUI()
-        
-
         
     def setUpGUI(self):    
         self.setWindowTitle("DataRecorder")
@@ -221,19 +219,22 @@ class SensorDisplay(QMainWindow):
         res.setLayout(layout)   
         if self.dataSize ==0:
             print(self.rawData)
+            self.setNewData()
             self.updatePlots()
         return res
-
 
     def append_data(self, data):
         self.dirty = True
         print("Append data")
-        if data is None:
-            print(self.rawData)
+        if data[0] is None:
             print("Finished capturing (%d, %d)" % (len(self.rawData), len(self.rawData[0])))
             print(self.rawData)
+            
+            self.setNewData()
             self.updatePlots()
-            self.sensor.capture_stop()
+            self.doStop()
+            for s in self.yoctoTask.sensor:
+                s.capture_stop()
         else:
             print("Data %s append to\n %s" % (data, self.rawData))
             if len(self.unit) == 0:
@@ -275,26 +276,22 @@ class SensorDisplay(QMainWindow):
             self.data[idx][1]  = line[2]
         #print(self.data)
         self.storeFName = self.filename
+        self.setNewData()
         self.updatePlots()
  
     def capture(self):
          # Start Yoctopuce I/O task in a separate thread
          self.yoctoThread = QThread()
          self.yoctoThread.start()
-         self.updateSignal = QtCore.pyQtSignal(int, self)
          self.yoctoTask = YoctopuceTask()
-         self.yoctoTask.connect(self.showMsg)
          self.yoctoTask.statusMsg.connect(self.showMsg)
          self.yoctoTask.arrival.connect(self.arrival)
          self.yoctoTask.newValue.connect(self.newValue)
          self.yoctoTask.removal.connect(self.removal)
          self.yoctoTask.moveToThread(self.yoctoThread)
+         self.yoctoTask.updateSignal.connect(self.append_data)
          self.yoctoTask.startTask.emit()
-         self.yoctoTask.register_callback(self.append_data)
          
-    def append_data(self, data):
-        pass
-        
     @pyqtSlot(dict)
     def arrival(self, device):
         # log arrival
@@ -342,13 +339,14 @@ class SensorDisplay(QMainWindow):
 
     def doClear(self):
         print("doClear")
-        self.rawData= None
+        self.rawData= []
      
     def doSave(self):
          if self.data is None:
              print("No data captured")
              return
          fmt =  ["CSV Files (*.csv)", "Excel Files (*.xslc)"]
+         
          fname, ftype = QFileDialog.getSaveFileName(self, "Save File",
                  self.storeFName, fmt[0])
          print("doSave  all %s of size %d" % (fname, self.dataSize))
@@ -398,14 +396,15 @@ class SensorDisplay(QMainWindow):
         print("Capture size is now %d: captureTime %d s, sampleInterval %d ms" % (self.capture_size, self.captureTime_s, self.sampleIntervall_ms))
        
     def tabChanged(self, index):
+        self.setNewData()
         self.updatePlots()
         print("Tab changed %d" %(index))
     
     @property
     def dataSize(self):
         return  len(self.rawData)
-    
-    def updatePlots(self):
+
+    def setNewData(self):
         print("Updata plot with data of size %d" % self.dataSize)
         if self.dataSize > 0 :
             self.data = np.zeros([ self.dataSize, 3])
@@ -413,7 +412,11 @@ class SensorDisplay(QMainWindow):
                 self.data[i][0] = float(self.rawData[i][0])
                 self.data[i][1] = float(self.rawData[i][1])
                 self.data[i][2] = float(self.rawData[i][2])
+            
+    def updatePlots(self):
+        if self.data is not None:
             print("Updat plots on %s"% self.data)
+    
             x = self.data[:,0]
             y = self.data[:,1]
             minimum = y.min()
@@ -421,7 +424,7 @@ class SensorDisplay(QMainWindow):
             self._actVal.setText("%.2f" % y[0])
             self._min.setText("%.2f" % minimum)
             self._max.setText("%.2f" % maximum)
-
+    
             self.recorderGraph.setTitle(self.filename.split("/")[-1])
             self.emulatorGraph.setTitle(self.filename.split("/")[-1])
          

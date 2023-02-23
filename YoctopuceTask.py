@@ -34,6 +34,8 @@ class YoctopuceTask(QObject):
     arrival = pyqtSignal(dict)      # out: publish a new device arrival
     newValue = pyqtSignal(str,str)  # out: publish a new function value
     removal = pyqtSignal(dict)      # out: publish a device disconnect
+    updateSignal = pyqtSignal(list) # out: Send data to th gui
+    sensor = None
 
     def __init__(self):
         super(YoctopuceTask, self).__init__()
@@ -43,7 +45,14 @@ class YoctopuceTask(QObject):
         self.sensor = []
         self.sampelInterval_ms  = None
         self.capture_size = 0
-        self.callback = None
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.handleEvents)
+        self.checkDevices = 0
+        self.timer.start(50)
+        self._sampleCnt = 0
+        self.file = None
+        self.initAPI()
+
 
     @pyqtSlot()
     def initAPI(self):
@@ -59,10 +68,6 @@ class YoctopuceTask(QObject):
         YAPI.RegisterDeviceRemovalCallback(self.deviceRemoval)
         self.statusMsg.emit('Yoctopuce task ready')
         # prepare to scan Yoctopuce events periodically
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.handleEvents)
-        self.checkDevices = 0
-        self.timer.start(50)
 
     @pyqtSlot()
     def freeAPI(self):
@@ -78,56 +83,72 @@ class YoctopuceTask(QObject):
         else:
             self.checkDevices -= 1
         YAPI.HandleEvents()
-
+        
+    def setFilename(self, fname):
+        if self.file is None:
+            self.file = open(fname, "w")
+            self.cvsfile = csv.writer(self.file, lineterminator="\n")
+  
     def deviceArrival(self, m: YModule):
         serialNumber = m.get_serialNumber()
         print("Device arrival SerNr %s %s, " % (serialNumber, m))
-        sensor = YGenericSensor.FirstGenericSensor()
-        print("Sensor %s" %sensor )
-        while sensor != None:
-            newSensor = sensori(sensor)
+        pSensor = YGenericSensor.FirstGenericSensor()
+        print("Sensor %s" %pSensor )
+        while pSensor != None:
+            newSensor = sensor(pSensor)
             self.sensor.append(newSensor)
             print("Added sensor %s" % newSensor)
-            sensor = YGenericSensor.nextGenericSensor(sensor)
+            pSensor = YGenericSensor.nextGenericSensor(pSensor)
         print("Added %s input sensors" % (len(self.sensor)))
         if len(self.sensor) == 0:
             print("No sensors detected")
             sys.exit()
  
     def capture_start(self):
-        print("Capture in Yoctopuc Task started (%d    ms)" %(self.capture_size))
-        print("Capture in Yoctopuc Task started (   %d ms)" %( self.sampelInterval_ms))
+        print("Capture in Yoctopuc Task started (cnt = %d  with %d ms)" %(self.capture_size, self.sampelInterval_ms))
         if self.capture_size is not None and self.sampelInterval_ms is not None:
             for s in self.sensor:
                 s.registerTimedReportCallback(self.new_data)
+                s.set_reportFrequency(sample_intervall)
             print("Capture started")
             self.start = now = datetime.datetime.now()
-    def register_callback(self, fn):
-        self.callback = fn
+            self._sampleCnt = 0
 
-
+ 
     def new_data(self, value1, value2): 
-        print("New data in yocto")
         now = datetime.datetime.now()
         absTime = now.strftime("%Y-%m-%dT%H:%M:%S.%f+01:00")
         delta = (now - self.start).total_seconds()
         data = [absTime, delta]
         for s in self.sensor:
             data.extend([s.get_values()[0],s.get_values()[1]])
-        if self.callback is not None:
-            self.callback(data)
+        self.updateSignal.emit(data)
+        if self.file is not None:
+            self.cvsfile.writerow(data)
+            
+        self._sampleCnt += 1
         self.capture_size -= 1
-        if self.capture_size == 0:
-            self.capture_stop()   
-            self.callback(None)
         print("New Data %s" % data)           
- 
+        if self.capture_size == 0:
+            self.capture_stop()
+            self.updateSignal.emit([None,None])
+            print("Finished capture in yoctopuc")
+            
+    @property
+    def sampleCnt(self):
+        print("Sample couut %d" % self._sampleCnt)
+        return self._sampleCnt
+    
     def capture_stop(self):
         print("Capture in Yoctopuc Task finished ")
-            for s in self.sensor:
-                s.registerTimedReportCallback(None)
-            print("Capture finished")
-  
+        for s in self.sensor:
+            s.registerTimedReportCallback(None)
+        print("Capture finished")
+        if self.file is not None:
+            self.file.close()
+            self.file = None
+        YAPI.FreeAPI()
+      
     def setSampleInterval_ms(self, sample_interval_ms):
         if sample_interval_ms > 1000:
             sampInt = "%ds" % (sample_interval_ms/1000)
@@ -137,13 +158,15 @@ class YoctopuceTask(QObject):
         for s in self.sensor:
             s.set_reportFrequency(sampInt)
         self.sampelInterval_ms = sample_interval_ms
-        self.logfun("Sample interval  %s ms" % (sample_interval_ms ))
+        self.logfun("Sample interval  %d ms" % (sample_interval_ms ))
         print("Sample frequency:  %s" % (sampInt ))
 
     def set_capture_size(self, capture_size):
         self.capture_size = capture_size
-        self.logfun("Capture size   %s" % (capture_size))
-        print("Capture size   %s" % (capture_size))
+        self.logfun("Capture size is set to  %d" % (capture_size))
+        print("Capture size is set to %d" % (capture_size))
+        self._sampleCnt = 0
+        self.capture_size =capture_size
 
     def functionValueChangeCallback(self, fct: YFunction, value: str):
         hardwareId = fct.get_hardwareId()
@@ -160,7 +183,7 @@ class YoctopuceTask(QObject):
         self.statusMsg.emit(msg)
 
 
-class sensori:
+class sensor:
     def __init__(self, sensor):
         self.sen = sensor
         self._seconds = None
@@ -192,178 +215,26 @@ class sensori:
             print("Registered CB on %s" % self.sen)
         self.sen.registerTimedReportCallback(cb)
 
-
-conf = {
-    "prod": None,
-    "file": None,
-    "csv": None,
-    "cnt": 0,
-    "max": 0,
-    "thread": None,
-    "start": None,
-}
-
-c = None
-cb = None
-
-
-def yocto_cb(sensor, value):
-    if conf["prod"] is None:
-        print("Producer is None")
-        return
-    if c["cnt"] < c["max"] + 1:
-        now = datetime.datetime.now()
-        absTime = now.strftime("%Y-%m-%dT%H:%M:%S.%f+01:00")
-        delta = (now - conf["start"]).total_seconds()
-        data = [absTime, delta]
-        supData = c["prod"].get_values()
-        if supData is None:
-            print("Terminate with None Datacapture")
-            data = None
-        else:
-            data.extend(supData)
-        if cb is not None:
-            cb(data)
-            print("Write line %d %s to callback" % (c["cnt"], data))
-        else:
-            if c["cnt"] < c["max"]:
-                if data is not None:
-                    c["csv"].writerow(data)
-                    print("Write line %d %s to file" % (c["cnt"], data))
-            else:
-                print("Capture finished")
-        c["cnt"] += 1
-        print("cnt is now %d" % c["cnt"])
-    else:
-        print("Thread join cnt %s" % c["cnt"])
-
-
-def YoctoMonitor(data):
-    print("YoctoMonitor started")
-    while True:
-        if conf["cnt"] < conf["max"] + 1:
-            print(
-                "YoctoMonitor cnt = %d/ max= %d Thread %s"
-                % (conf["cnt"], conf["max"], threading.current_thread().name)
-            )
-            YAPI.Sleep(500)
-        else:
-            print("Good bye %d" % conf["cnt"])
-            return
-
-
-class sensors:
-    def __init__(self):
-        errmsg = YRefParam()
-        print("Set up sensors")
-        self.iSen = []
-        if YAPI.RegisterHub("usb", errmsg) != YAPI.SUCCESS:
-            sys.exit("init error" + errmsg.value)
-        sensor = YGenericSensor.FirstGenericSensor()
-        while sensor != None:
-            newSensor = sensori(sensor)
-            self.iSen.append(newSensor)
-            print("Added sensor %s" % newSensor)
-            sensor = YGenericSensor.nextGenericSensor(sensor)
-            if sensor is None:
-                break
-        print("Added %s input sensors" % (len(self.iSen)))
-        if len(self.iSen) == 0:
-            print("No sensors detected")
-            sys.exit()
-        self.oSen = []
-        conf["start"] = datetime.datetime.now()
-        self._cb = None
-        # sensor = YCurrentLoopOutput.FindCurrentLoopOutput("TX420MA1-123456.currentLoopOutput")
-        # print(sensor)
-        # while sensor is not None:
-        #     print(sensor)
-        #     self.oSen.append(sensori(sensor))
-        #     if sensor is None:
-        #         break
-        #     sensor =  YGenericSensor.nextGenericSensor(sensor)
-
-    def __str__(self):
-        res = "\nIn\n"
-        for i in self.iSen:
-            res += "\t%s\n" % i
-        res += "Out"
-        for o in self.oSen:
-            res += "\t%s\n" % i
-        return res
-
-    def get_values(self):
-        res = []
-        print("Check %d<%d" % (conf["cnt"], conf["max"]))
-        if conf["cnt"] < conf["max"] + 1:
-            if conf["cnt"] == conf["max"]:
-                print("Terminate capture in get_values")
-                return None
-            else:
-                res.extend(self.iSen[0].get_values())
-                res.extend(self.iSen[1].get_values())
-        return res
-
-    def register_callback(self, fn):
-        print("Register cb %s in sensor" % fn)
-        global cb
-        cb = fn
-        self._cb = fn
-
-    def capture_start(self, sample_cnt, sample_intervall, file_name=None):
-        conf["prod"] = self
-        if self._cb is None:
-            conf["file"] = open(file_name, "w")
-            conf["csv"] = csv.writer(conf["file"], lineterminator="\n")
-        conf["cnt"] = 0
-        conf["max"] = sample_cnt
-        conf["thread"] = threading.Thread(target=YoctoMonitor, args=(conf,))
-        print("Capture started with sample inmterval %s" % sample_intervall)
-        self._set_reportFrequency(sample_intervall)
-        self.iSen[0].registerTimedReportCallback(yocto_cb)
-        self.iSen[1].registerTimedReportCallback(yocto_cb)
-        global c
-        c = conf
-        conf["thread"].start()
-        print("Started thread: %s" % (threading.current_thread().name))
-
     def capture_stop(self):
-        print("Capture stop")
-        if file_name is not None:
-            conf["file"].close()
-            conf["file"] = None
-        self.iSen[0].registerTimedReportCallback(None)
-        self.iSen[1].registerTimedReportCallback(None)
-        self.iSen[0].set_reportFrequency("OFF")
-        res = self.iSen[1].set_reportFrequency("OFF")
-        print("Close Yoctopuc")
-        self._close()
+        self.sen.registerTimedReportCallback(None)
+        self.set_reportFrequency("OFF")
 
-    def _set_reportFrequency(self, sample_intervall):
-        self.iSen[0].set_reportFrequency(sample_intervall)
-        self.iSen[1].set_reportFrequency(sample_intervall)
-
-    def _close(self):
-        YAPI.FreeAPI()
-
-    def sensors(self):
-        res = self.iSen
-        res.append(self.oSen)
-        return res
-
-
-def pri(res):
-    print(res)
 
 
 if __name__ == "__main__":
-    s = sensors()
-    s.capture_start(1440, "20/s", "data.csv")
+    cnt = 1440
+    
+    s = YoctopuceTask()
+    
+    s.setFilename("data.csv")
+    s.setSampleInterval_ms(200)
+    s.set_capture_size(cnt)
+    
+    s.capture_start()
     print("wait for acquisition finished")
-    while conf["cnt"] < conf["max"]:
-        print("Stil receve %d" % conf["cnt"])
+    while s.sampleCnt < cnt:
+        print("Stil receve %d" % cnt)
         sleep(1)
     print("Aqistion stop")
     s.capture_stop()
-    conf["thread"].join()
     sys.exit()
