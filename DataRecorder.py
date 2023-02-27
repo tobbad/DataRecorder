@@ -12,12 +12,44 @@ import numpy as np
 from datetime import *
 import numpy as np
 from YoctopuceTask import YoctopuceTask
+sys.path.append(
+    os.sep.join(
+        [
+            "C:",
+            "Users",
+            "tobias.badertscher",
+            "AppData",
+            "Local",
+            "miniconda3",
+            "Lib",
+            "site-packages",
+        ]
+    )
+)
+from PyQt5.QtWidgets import (
+    QFileDialog,
+    QWidget,
+    QMainWindow,
+    QApplication,
+    QAction,
+    QTabWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QLabel, 
+    QSpinBox, 
+    QComboBox, 
+    QProgressBar, 
+    QLineEdit, 
+    QGridLayout, 
+    QFrame, 
+    QIcon, QKeySequence, 
+    QPixmap, 
+    QColor, 
+    QPalette,
+    QIntValidator
+)
 
-
-sys.path.append(os.sep.join(["C:","Users","tobias.badertscher","AppData","Local","miniconda3","Lib","site-packages"]))
-from PyQt5.QtWidgets import QFileDialog, QWidget, QMainWindow, QApplication, QAction, QTabWidget, QVBoxLayout, QHBoxLayout, QPushButton
-from PyQt5.QtWidgets import QLabel, QSpinBox, QComboBox, QProgressBar, QLineEdit, QGridLayout, QFrame
-from PyQt5.QtGui import QIcon, QKeySequence, QPixmap, QColor, QPalette, QIntValidator
 from PyQt5.QtCore import *
 import pyqtgraph as pg
 #import mkl
