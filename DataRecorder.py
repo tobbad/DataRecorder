@@ -42,8 +42,11 @@ from PyQt5.QtWidgets import (
     QProgressBar, 
     QLineEdit, 
     QGridLayout, 
-    QFrame, 
-    QIcon, QKeySequence, 
+    QFrame
+)
+from PyQt5.QtGui import (
+    QIcon, 
+    QKeySequence, 
     QPixmap, 
     QColor, 
     QPalette,
@@ -75,9 +78,7 @@ class SensorDisplay(QMainWindow):
         self.data = None
         self.btn = {}
         self.doRecord = False
-        self.doRecord = False
         self.sampleIntervall_ms = 0
-        self.captureTime_s = 0
         self.capture_size = 0
         self.sampleIntervall_ms =1
         self.captureTime_s = 1
@@ -85,6 +86,7 @@ class SensorDisplay(QMainWindow):
         self.unit  =[]
         self.functionValues = {}
         self.yoctoTask = None
+        self.emData = None
         self.setUpGUI()
         
     def setUpGUI(self):    
@@ -234,7 +236,7 @@ class SensorDisplay(QMainWindow):
         self._max = QLabel("%.2f" %20)
         hbox.addWidget(self._max)
         layout.addLayout(hbox)
-       
+               
         self.set_capture_size()
         layout.addLayout(hbox)
  
@@ -255,8 +257,7 @@ class SensorDisplay(QMainWindow):
         self.emulatorGraph = pg.PlotWidget()
         layout.addWidget(self.emulatorGraph)
         res.setLayout(layout)   
-        if self.dataSize ==0:
-            print(self.rawData)
+        if self.emData is not None:
             self.setNewData()
             self.updatePlots()
         return res
@@ -272,14 +273,9 @@ class SensorDisplay(QMainWindow):
             self.yoctoTask = None
         else:
             print("Data %s appended." % (data))
-            if len(self.unit) == 0:
-                self.unit.append(data[3])
-                self.unit.append(data[5])
-            self.rawData.append([float(data[1]), float(data[2]), float(data[4])])
-        
+            self.rawData.append(data)
+       
     def file_open(self):
-        if not self.okToContinue():
-            return
         local_dir = (os.path.dirname(self.filename)
                if self.filename is not None else ".")
         fmt =  ["CSV Files (*.csv)", "Excel Files (*.xslc)"]
@@ -287,30 +283,35 @@ class SensorDisplay(QMainWindow):
                 "Load data", local_dir,
                 fmt[0])
         if files:
-            self.load_file(files[0])
+            self.emulatorFile = files[0]
+            self.load_file(self.emulatorFile)
         
     def load_file(self, fname):
         f = open(fname, encoding="cp1252")
         csvf =csv.reader(f, lineterminator="\n")
-        self.datal=[]
+        datal=[]
+        self.emUnit = []
         for idx, line in enumerate(csvf):
             time = line[0]
             relTime= float(line[1])
             val1 = float(line[2])
-            unit1 = line[3]
+            self.emUnit.append(line[3])
             val2 = float(line[4])
-            unit2 = line[5]
-            self.datal.append([time, relTime, val1, unit1, val2, unit2])
+            self.emUnit.append(line[5])
+            datal.append([time, relTime, val1, self.emUnit[0], val2, self.emUnit[1]])
         f.close()
-        self.data = np.zeros([idx+1,2])
+        self.emData = np.zeros([idx+1,3])
         print("Create numpy array of length %d" % (idx))
-        self.filename= fname
-        print("Load file %s :"% (self.filename))
-        for idx, line in enumerate(self.datal):
-            self.data[idx][0]  = line[1]
-            self.data[idx][1]  = line[2]
+        self.emUnit= []
+        print("Load file %s :"% (fname))
+        for idx, line in enumerate(datal):
+            self.emData[idx][0]  = float(line[1])
+            self.emData[idx][1]  = float(line[2])
+            self.emData[idx][2]  = float(line[4])
+        print("Set emData to \n%s" %(self.emData))
         #print(self.data)
-        self.storeFName = self.filename
+        self.emFile = fname
+        print("Set emulator file name to %s" %self.emFile)
         self.setNewData()
         self.updatePlots()
  
@@ -382,10 +383,11 @@ class SensorDisplay(QMainWindow):
              return
          fmt =  ["CSV Files (*.csv)", "Excel Files (*.xslc)"]
          
-         fname, ftype = QFileDialog.getSaveFileName(self, "Save File",
+         fname, ftype = QFileDialog.getSaveFileName(self, "Store captured data",
                  self.storeFName, fmt[0])
          print("doSave  all %s of size %d\n%s" % (fname, self.dataSize, self.data))
-         f = open(fname,"w", encoding="cp1252")
+         self.cFileName = fname
+         f = open( self.cFileName,"w", encoding="cp1252")
          csvf =csv.writer(f, lineterminator="\n")
          for i in range(self.dataSize):
              csvf.writerow([self.data[i][0], self.data[i][1], self.data[i][2]])
@@ -435,26 +437,34 @@ class SensorDisplay(QMainWindow):
        
     def tabChanged(self, index):
         self.setNewData()
+        
         self.updatePlots()
         print("Tab changed %d" %(index))
     
     @property
-    def dataSize(self):
+    def rawDataSize(self):
         return  len(self.rawData)
 
     def setNewData(self):
-        print("Updata plot with data of size %d" % self.dataSize)
-        if self.dataSize > 0 :
-            self.data = np.zeros([ self.dataSize, 3])
-            for i in range(self.dataSize):
-                self.data[i][0] = float(self.rawData[i][0])
-                self.data[i][1] = float(self.rawData[i][1])
-                self.data[i][2] = float(self.rawData[i][2])
+        print("Set new data of size %d/%d" %( self.rawDataSize, len(self.emData)))
+        if len(self.rawData) > 0 :
+            self.data = np.zeros([ self.rawDataSize, 3])
+            for i in range(self.rawDataSize):
+                self.data[i][0] = float(self.rawData[i][1])
+                self.data[i][1] = float(self.rawData[i][2])
+                self.data[i][2] = float(self.rawData[i][4])
+        if self.emData is not None:
+            print("Show emulator data")
+            self.emdata = np.zeros([ len(self.emData), 3])
+            for i in range(len(self.emData)):
+                self.emdata[i][0] = float(self.emData[i][0])
+                self.emdata[i][1] = float(self.emData[i][1])
+                self.emdata[i][2] = float(self.emData[i][2])
+            print(self.emdata)
             
     def updatePlots(self):
+        print("Updat plots on \n%s  and \n %s " %( self.data, self.emData))
         if self.data is not None:
-            print("Updat plots on\n%s" % self.data)
-    
             x = self.data[:,0]
             y = self.data[:,1]
             minimum = y.min()
@@ -462,13 +472,14 @@ class SensorDisplay(QMainWindow):
             self._actVal.setText("%.2f" % y[0])
             self._min.setText("%.2f" % minimum)
             self._max.setText("%.2f" % maximum)
-    
             self.recorderGraph.setTitle(self.filename.split("/")[-1])
-            self.emulatorGraph.setTitle(self.filename.split("/")[-1])
-         
+        if self.emdata is not None:
+            print("Plot emulator data %s" % self.emFile.split("/")[-1])
+            x = self.emdata[:,0]
+            y = self.emdata[:,1]
             self.emulatorGraph.plot(x,y)
-            self.recorderGraph.plot(x,y)
-        
+            self.emulatorGraph.setTitle(self.emFile.split("/")[-1])
+     
 
 
 
