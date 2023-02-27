@@ -90,6 +90,7 @@ class YoctopuceTask(QObject):
         YAPI.HandleEvents()
         
     def setFilename(self, fname):
+        print("Set filename to %s" % fname)
         if self.file is None:
             self.file = open(fname, "w")
             self.cvsfile = csv.writer(self.file, lineterminator="\n")
@@ -129,11 +130,11 @@ class YoctopuceTask(QObject):
             data.extend([s.get_values()[0],s.get_values()[1]])
         self.updateSignal.emit(data)
         if self.file is not None:
+            print("\t Stored to file")
             self.cvsfile.writerow(data)
             
         self._sampleCnt += 1
         self.capture_size -= 1
-        print("New Data %s" % data)           
         if self.capture_size == 0:
             self.updateSignal.emit([None,None])
             print("Finished capture in yoctopuc")
@@ -152,7 +153,7 @@ class YoctopuceTask(QObject):
         if self.file is not None:
             self.file.close()
             self.file = None
-        self.FreeAPI    
+        self.freeAPI    
     def setSampleInterval_ms(self, sample_interval_ms):
         self.sample_interval_ms = sample_interval_ms
         if self.sample_interval_ms>0:
@@ -231,7 +232,7 @@ if __name__ == "__main__":
     
     s = YoctopuceTask()
     
-    s.setFilename("data.csv")
+    s.setFilename("sdata.csv")
     s.setSampleInterval_ms(200)
     s.set_capture_size(cnt)
     

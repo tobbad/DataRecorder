@@ -155,7 +155,6 @@ class SensorDisplay(QMainWindow):
         self.sampleUnit = QComboBox()
         self.sampleUnit.addItems(["s","ms"])
         hbox.addWidget(self.sampleUnit)
-        print("sampleUnit created %s" % (type(self.sampleUnit)))
         duration = QLabel("Capture Time")
         self.captime_edit = QLineEdit()
         self.captime_edit.setText("1")
@@ -234,11 +233,11 @@ class SensorDisplay(QMainWindow):
         self.dirty = True
         if data[0] is None:
             print("Finished capturing (%d, %d)" % (len(self.rawData), len(self.rawData[0])))
-            print(self.rawData)
             self.setNewData()
             self.updatePlots()
             self.doStop()
             self.yoctoTask.capture_stop()
+            self.yoctoTask = None
         else:
             print("Data %s appended." % (data))
             if len(self.unit) == 0:
@@ -353,11 +352,11 @@ class SensorDisplay(QMainWindow):
          
          fname, ftype = QFileDialog.getSaveFileName(self, "Save File",
                  self.storeFName, fmt[0])
-         print("doSave  all %s of size %d" % (fname, self.dataSize))
+         print("doSave  all %s of size %d\n%s" % (fname, self.dataSize, self.data))
          f = open(fname,"w", encoding="cp1252")
          csvf =csv.writer(f, lineterminator="\n")
          for i in range(self.dataSize):
-             csvf.writerow([self.rawData[0][i],self.rawData[1][i]])
+             csvf.writerow([self.data[i][0], self.data[i][1], self.data[i][2]])
          self.dirty = False
          f.close()
         
@@ -422,7 +421,7 @@ class SensorDisplay(QMainWindow):
             
     def updatePlots(self):
         if self.data is not None:
-            print("Updat plots on\n"% self.data)
+            print("Updat plots on\n%s" % self.data)
     
             x = self.data[:,0]
             y = self.data[:,1]
