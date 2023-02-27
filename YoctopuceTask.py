@@ -43,15 +43,20 @@ class YoctopuceTask(QObject):
         self.startTask.connect(self.initAPI)
         self.stopTask.connect(self.freeAPI)
         self.sensor = []
-        self.sampelInterval_ms  = None
         self.capture_size = 0
+        
         self.timer = QTimer()
         self.timer.timeout.connect(self.handleEvents)
-        self.checkDevices = 0
         self.timer.start(50)
+        
+        self.checkDevices = 0
         self._sampleCnt = 0
         self.file = None
         self.initAPI()
+        self.start = now = datetime.datetime.now()
+        self.reportFrequncy = None
+        self.sampelInterval_ms  = None
+        
 
 
     @pyqtSlot()
@@ -105,11 +110,11 @@ class YoctopuceTask(QObject):
             sys.exit()
  
     def capture_start(self):
-        print("Capture in Yoctopuc Task started (cnt = %d  with %d ms)" %(self.capture_size, self.sampelInterval_ms))
-        if self.capture_size is not None and self.sampelInterval_ms is not None:
+        print("Capture in Yoctopuc Task started (cnt = %d  with %d ms)" %(self.capture_size, self.sample_interval_ms))
+        if self.capture_size is not None and self.sample_interval_ms is not None:
             for s in self.sensor:
                 s.registerTimedReportCallback(self.new_data)
-                s.set_reportFrequency(sample_intervall)
+                s.set_reportFrequency(self.reportFrequncy)
             print("Capture started")
             self.start = now = datetime.datetime.now()
             self._sampleCnt = 0
@@ -130,7 +135,6 @@ class YoctopuceTask(QObject):
         self.capture_size -= 1
         print("New Data %s" % data)           
         if self.capture_size == 0:
-            self.capture_stop()
             self.updateSignal.emit([None,None])
             print("Finished capture in yoctopuc")
             
@@ -142,24 +146,26 @@ class YoctopuceTask(QObject):
     def capture_stop(self):
         print("Capture in Yoctopuc Task finished ")
         for s in self.sensor:
+            s.set_reportFrequency("OFF")
             s.registerTimedReportCallback(None)
         print("Capture finished")
         if self.file is not None:
             self.file.close()
             self.file = None
-        YAPI.FreeAPI()
-      
+        self.FreeAPI    
     def setSampleInterval_ms(self, sample_interval_ms):
-        if sample_interval_ms > 1000:
-            sampInt = "%ds" % (sample_interval_ms/1000)
+        self.sample_interval_ms = sample_interval_ms
+        if self.sample_interval_ms>0:
+            if self.sample_interval_ms > 1000:
+                self.reportFrequncy = "%ds" % (self.sample_interval_ms/1000)
+            else:
+                self.reportFrequncy = "%d/s" % (1000/self.sample_interval_ms )
         else:
-            sampInt = "%d/s" % (1000/sample_interval_ms)
-        self.reportFrequncy = sampInt
+            self.reportFrequncy = "OFF"
         for s in self.sensor:
-            s.set_reportFrequency(sampInt)
-        self.sampelInterval_ms = sample_interval_ms
-        self.logfun("Sample interval  %d ms" % (sample_interval_ms ))
-        print("Sample frequency:  %s" % (sampInt ))
+            s.set_reportFrequency(self.reportFrequncy)
+        print("Y Set Sample interval to %d, Rep Freq to %s" %((sample_interval_ms, self.reportFrequncy  )))
+        self.logfun("Set Sample interval to %d, Rep Freq to %s" % (sample_interval_ms, self.reportFrequncy  ))
 
     def set_capture_size(self, capture_size):
         self.capture_size = capture_size
@@ -186,7 +192,6 @@ class YoctopuceTask(QObject):
 class sensor:
     def __init__(self, sensor):
         self.sen = sensor
-        self._seconds = None
         self.type = self.sen.get_module().get_serialNumber()
         self.functionType = self.sen.get_module().functionType(0)
         print("Create %s" % self)
@@ -204,20 +209,20 @@ class sensor:
             res = [self.sen.get_currentValue(), self.sen.get_unit()]
         return res
 
+    def capture_stop(self):
+        self.set_reportFrequency("OFF")
+        self.sen.registerTimedReportCallback(None)
+
     def set_reportFrequency(self, seconds):
-        self._seconds = seconds
+        print("Sensor: Set report frequency to %s" % ( seconds))
         self.sen.set_reportFrequency(seconds)
 
     def registerTimedReportCallback(self, cb):
         if cb is None:
-            print("Unregistered CB on %s" % self.sen)
+            print("Sensor: Unregistered CB on %s" % self.sen)
         else:
-            print("Registered CB on %s" % self.sen)
+            print("Sensor: Registered CB on %s" % self.sen)
         self.sen.registerTimedReportCallback(cb)
-
-    def capture_stop(self):
-        self.sen.registerTimedReportCallback(None)
-        self.set_reportFrequency("OFF")
 
 
 

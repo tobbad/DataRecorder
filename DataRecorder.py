@@ -17,7 +17,7 @@ from YoctopuceTask import YoctopuceTask
 sys.path.append(os.sep.join(["C:","Users","tobias.badertscher","AppData","Local","miniconda3","Lib","site-packages"]))
 from PyQt5.QtWidgets import QFileDialog, QWidget, QMainWindow, QApplication, QAction, QTabWidget, QVBoxLayout, QHBoxLayout, QPushButton
 from PyQt5.QtWidgets import QLabel, QSpinBox, QComboBox, QProgressBar, QLineEdit, QGridLayout, QFrame
-from PyQt5.QtGui import QIcon, QKeySequence, QPixmap, QColor, QPalette
+from PyQt5.QtGui import QIcon, QKeySequence, QPixmap, QColor, QPalette, QIntValidator
 from PyQt5.QtCore import *
 import pyqtgraph as pg
 #import mkl
@@ -138,27 +138,34 @@ class SensorDisplay(QMainWindow):
         layout.addLayout(hbox)
         
         hbox =QHBoxLayout()
-        siLabel = QLabel("Sample interval")
         self.sampleIntervall_ms = 200
         self.captureTime_s = 1
-        self.sIntVal = QSpinBox()
-        self.sIntVal.setAlignment(Qt.AlignRight| Qt.AlignVCenter)
-        self.sIntVal.setRange(1,1000)
-        siLabel.setBuddy(self.sIntVal)
+        onlyInt0_1000 = QIntValidator( 1, 999, self)
+        
+        siLabel = QLabel("Sample interval")
+        
+        self.sIntVal_edit = QLineEdit()
+        self.sIntVal_edit.setAlignment(Qt.AlignRight| Qt.AlignVCenter)
+        self.sIntVal_edit.setText("1")
+        self.sIntVal_edit.setValidator(onlyInt0_1000)
+        siLabel.setBuddy(self.sIntVal_edit)
         hbox.addWidget(siLabel)
-        hbox.addWidget(self.sIntVal)
+        hbox.addWidget(self.sIntVal_edit)
         
         self.sampleUnit = QComboBox()
         self.sampleUnit.addItems(["s","ms"])
         hbox.addWidget(self.sampleUnit)
         print("sampleUnit created %s" % (type(self.sampleUnit)))
         duration = QLabel("Capture Time")
-        self.captime = QSpinBox()
-        self.captime.setAlignment(Qt.AlignRight| Qt.AlignVCenter)
-        self.captime.setRange(1,1000)
-        duration.setBuddy(self.captime)
+        self.captime_edit = QLineEdit()
+        self.captime_edit.setText("1")
+        self.captime_edit.setAlignment(Qt.AlignRight| Qt.AlignVCenter)
+        self.captime_edit.setPlaceholderText("xxxx")
+        self.captime_edit.setValidator(onlyInt0_1000)
+        duration.setBuddy(self.captime_edit)
         hbox.addWidget(duration)
-        hbox.addWidget(self.captime)
+        
+        hbox.addWidget(self.captime_edit)
         self.sampcapDur = QComboBox()
         self.sampcapDur.addItems(["s", "m", "h"])
         hbox.addWidget(self.sampcapDur)
@@ -201,8 +208,8 @@ class SensorDisplay(QMainWindow):
         layout.addLayout(hbox)
  
         res.setLayout(layout)
-        self.sIntVal.valueChanged.connect(self.onTimingChanged)
-        self.captime.valueChanged.connect(self.onTimingChanged)
+        self.sIntVal_edit.textChanged.connect(self.onTimingChanged)
+        self.captime_edit.textChanged.connect(self.onTimingChanged)
         self.sampleUnit.currentIndexChanged.connect(self.onTimingChanged)
         self.sampcapDur.currentIndexChanged.connect(self.onTimingChanged)
 
@@ -225,18 +232,15 @@ class SensorDisplay(QMainWindow):
 
     def append_data(self, data):
         self.dirty = True
-        print("Append data")
         if data[0] is None:
             print("Finished capturing (%d, %d)" % (len(self.rawData), len(self.rawData[0])))
             print(self.rawData)
-            
             self.setNewData()
             self.updatePlots()
             self.doStop()
-            for s in self.yoctoTask.sensor:
-                s.capture_stop()
+            self.yoctoTask.capture_stop()
         else:
-            print("Data %s append to\n %s" % (data, self.rawData))
+            print("Data %s appended." % (data))
             if len(self.unit) == 0:
                 self.unit.append(data[3])
                 self.unit.append(data[5])
@@ -370,9 +374,10 @@ class SensorDisplay(QMainWindow):
             self.sampleIntervall_ms =1000
         else:
             self.sampleIntervall_ms =1
-        self.sampleIntervall_ms *= self.sIntVal.value()
-        if self.yoctoTask is not None:
-            self.yoctoTask.setSampleInterval_ms(self.sampleIntervall_ms)
+        sInt =  1 if self.sIntVal_edit.text() == None else self.sIntVal_edit.text()
+        print("Sample Int str \"%s\"" % sInt)
+        self.sampleIntervall_ms *= int(sInt)
+        self.yoctoTask.setSampleInterval_ms(self.sampleIntervall_ms)
         print("Sample intervall is %d ms" % self.sampleIntervall_ms)
         print("Call onSampleIntvalChanged %s" % (self.sampcapDur.currentIndex() ))
         if self.sampcapDur.currentIndex()==0:
@@ -384,7 +389,9 @@ class SensorDisplay(QMainWindow):
         else:
             print("h")
             self.captureTime_s = 3600
-        self.captureTime_s *= self.captime.value()
+        capTime = 1 if self.captime_edit.text() == None else self.captime_edit.text()
+        print("Set capture time to \"%s\"" % (capTime))
+        self.captureTime_s *= int(capTime)
         print("Capture time is %d s" % self.captureTime_s)
         self.set_capture_size()
 
@@ -415,7 +422,7 @@ class SensorDisplay(QMainWindow):
             
     def updatePlots(self):
         if self.data is not None:
-            print("Updat plots on %s"% self.data)
+            print("Updat plots on\n"% self.data)
     
             x = self.data[:,0]
             y = self.data[:,1]
