@@ -215,7 +215,7 @@ class SensorDisplay(QMainWindow):
         self.fNameQL = QLineEdit()
         hbox.addWidget(self.fNameQL)
         layout.addLayout(hbox)
-        
+
         gLayout = QGridLayout()
         label = QLabel("Aktueller Wert")
         gLayout.addWidget(label, 0, 0)
@@ -223,7 +223,7 @@ class SensorDisplay(QMainWindow):
         gLayout.addWidget(self._actVal, 0, 1)
         label = QLabel("Min:")
         gLayout.addWidget(label, 0, 2)
-        self._actmin = QLabel("%.2f" %0)
+        self._actmin = QLabel("%.2f" % 0)
         gLayout.addWidget(self._actmin, 0, 3)
         label = QLabel("Max:")
         gLayout.addWidget(label, 0, 4)
@@ -480,7 +480,8 @@ class SensorDisplay(QMainWindow):
         print("Updat plots")
         if self.data is not None:
             x = self.data[:,0]
-            y = self.data[:,1]
+            y1 = self.data[:,1]
+            y2 = self.data[:,1]
             minimum = y.min()
             maximum = y.max()
             self._actVal.setText("%.2f" % y[-1])
@@ -489,7 +490,8 @@ class SensorDisplay(QMainWindow):
             progress = 100.0*len(self.rawData)/float(self.capture_size)
             print("Progress %.1f" % progress)
             self.progressBar.setValue(int(progress))
-            self.recorderGraph.plot(x,y)
+            self.recorderGraph.plot(x,y1)
+            self.recorderGraph.plot(x,y2)
             self.recorderGraph.setTitle(self.storeFName.split("/")[-1])
         if self.emdata is not None:
             if self.emFile is None:
@@ -497,8 +499,10 @@ class SensorDisplay(QMainWindow):
             else:
                 fname =self.emFile.split("/")[-1]
             x = self.emdata[:,0]
-            y = self.emdata[:,1]
-            self.emulatorGraph.plot(x,y)
+            y1 = self.emdata[:,1]
+            y2 = self.emdata[:,2]
+            self.emulatorGraph.plot(x,y1)
+            self.emulatorGraph.plot(x,y2)
             self.emulatorGraph.setTitle(self.emFile.split("/")[-1])
      
 

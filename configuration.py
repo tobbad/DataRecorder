@@ -12,26 +12,27 @@ addPath = os.path.join("..", "yoctolib_python", "Sources")
 sys.path.append(addPath)
 # print(sys.path)
 import xml.etree.ElementTree as ET
+import xml.dom.minidom
 from yocto_api import *
 from yocto_genericsensor import *
-from sensors import sensors
+#from YoctopuceTask import YoctopuceTask
 
 
 class configuration:
-    def __init__(self):
+    def __init__(self, yocto):
+        self.yocto = yocto
         self.createNewConf("Example.xml")
 
     def createNewConf(self, name):
 
         # ElementTree.Comment("Bla bla")
-        sen = sensors()
-        self.sensors = sen.sensors()
-        print(self.sensors[0].type)
-        xml = ET.Element("configuration")
+        self.sensors = self.yocto.getSensors()
+        print(self.sensors)
+        root = ET.Element("configuration")
 
-        child = ET.SubElement(xml, "targetfolder", {"path": "."})
+        child = ET.SubElement(root, "targetfolder", {"path": "."})
         child = ET.SubElement(
-            xml,
+            root,
             "capturetime",
             {
                 "time": "24",
@@ -39,17 +40,17 @@ class configuration:
             },
         )
         child = ET.SubElement(
-            xml,
+            root,
             "datarate",
             {
                 "time": "1",
                 "unit": "m",
             },
         )
-        child = ET.SubElement(xml, "yoctopuc")
-        child = ET.SubElement(xml, "source", {"host": "usb"})
+        child = ET.SubElement(root, "yoctopuc")
+        child = ET.SubElement(root, "source", {"host": "usb"})
         subChild = ET.SubElement(
-            xml, "ymodule", {"id": "RX420MA1-123456", "type": "Yocto-4-20mA-Rx"}
+            root, "ymodule", {"id": "RX420MA1-123456", "type": "Yocto-4-20mA-Rx"}
         )
         ET.SubElement(
             subChild,
@@ -58,10 +59,10 @@ class configuration:
                 "id": "genericSensor1",
                 "signalName": "refTemperatur",
                 "type": "input",
-                "rawMin": "4.0",
+                "rawMin": "2.0",
                 "rawMax": "20.0",
                 "min": "0",
-                "max": "100",
+                "max": "120",
                 "unit": "C",
             },
         )
@@ -76,15 +77,24 @@ class configuration:
                 "rawMax": "20.0",
                 "min": "0",
                 "max": "100",
-                "unit": "C",
+                "unit": "°C",
             },
         )
-        xml_str = ET.tostring(xml)
+        xml_str = xml.dom.minidom.parseString(ET.tostring(root, xml_declaration=True)).toprettyxml()
+        print(xml_str)
+        #root.write(name)
+        # xml_str = ET.tostring(root)
 
         with open(name, "wb") as f:
-            f.write(ET.tostring(xml_str))
+             f.write(bytes(xml_str, 'utf-8'))
         print("Wrote %s" % name)
 
+    def getR2PFunction(self):
+        def convert(val, unit):
+            res = [[(val-4.0)/16.0*100, "°C"], [val, unit]]
+            return res
+        
+    
 
 if __name__ == "__main__":
     print("Create file")

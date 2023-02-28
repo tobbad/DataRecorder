@@ -12,6 +12,7 @@ from datetime import *
 from time import *
 sys.path.append(os.sep.join(["C:","Users","tobias.badertscher","AppData","Local","miniconda3","Lib","site-packages"]))
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, QObject, QThread, QTimer
+from configuration import configuration
 
 # add ../../Sources to the PYTHONPATH
 sys.path.append(os.path.join("..", "yoctolib_python", "Sources"))
@@ -35,7 +36,6 @@ class YoctopuceTask(QObject):
     newValue = pyqtSignal(str,str)  # out: publish a new function value
     removal = pyqtSignal(dict)      # out: publish a device disconnect
     updateSignal = pyqtSignal(list) # out: Send data to th gui
-    sensor = None
 
     def __init__(self):
         super(YoctopuceTask, self).__init__()
@@ -98,10 +98,12 @@ class YoctopuceTask(QObject):
     def deviceArrival(self, m: YModule):
         serialNumber = m.get_serialNumber()
         print("Device arrival SerNr %s %s, " % (serialNumber, m))
+        self.conf = configuration(self)
+        self.conFunc = self.conf.getR2PFunction()
         pSensor = YGenericSensor.FirstGenericSensor()
         print("Sensor %s" %pSensor )
         while pSensor != None:
-            newSensor = sensor(pSensor)
+            newSensor = sensor(pSensor, self.conFunc)
             self.sensor.append(newSensor)
             print("Added sensor %s" % newSensor)
             pSensor = YGenericSensor.nextGenericSensor(pSensor)
@@ -187,11 +189,15 @@ class YoctopuceTask(QObject):
         print("API Log: " + msg, currThread())
         # show low-level API logs as status
         self.statusMsg.emit(msg)
+    
+    def getSensors(self):
+        return self.sensor
 
 
 class sensor:
-    def __init__(self, sensor):
+    def __init__(self, sensor, fun):
         self.sen = sensor
+        self.fun = fun
         self.type = self.sen.get_module().get_serialNumber()
         self.functionType = self.sen.get_module().functionType(0)
         print("Create %s" % self)
@@ -201,10 +207,9 @@ class sensor:
         return res
 
     def get_values(self):
-        res = None
         value = self.sen.get_currentValue()
         if value > 0:
-            res = [(value - 4.0) / 16.0 * 100, "°C"]
+            res = [self.fun[0](value), self.fun[1]]
         else:
             res = [self.sen.get_currentValue(), self.sen.get_unit()]
         return res
