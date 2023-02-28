@@ -21,7 +21,7 @@ from yocto_genericsensor import *
 class configuration:
     def __init__(self, yocto):
         self.yocto = yocto
-        self.createNewConf("Example.xml")
+        self.createNewConf("configuration.xml")
 
     def createNewConf(self, name):
 
