@@ -79,6 +79,7 @@ class SensorDisplay(QMainWindow):
         self.emFile = ""
         self.filename = "./"
         self.data = None
+        self.emdata=None
         self.btn = {}
         self.doRecord = False
         self.sampleIntervall_ms = 0
@@ -174,10 +175,12 @@ class SensorDisplay(QMainWindow):
         hbox.addWidget(self.yaxisScale)
         self.showGen1 = QCheckBox('Show generic1', self)
         self.showGen1.setChecked(True)
+        self.showGen1.setStyleSheet("color: rgb(255, 0, 0);")
         self.showGen1.stateChanged.connect(self.updatePlots)
         hbox.addWidget(self.showGen1)
         self.showGen2 = QCheckBox('Show generic2', self)
         self.showGen2.setChecked(True)
+        self.showGen2.setStyleSheet("color: rgb(0, 255, 0);")
         self.showGen2.stateChanged.connect(self.updatePlots)
         
         hbox.addWidget(self.showGen2) 
@@ -295,15 +298,18 @@ class SensorDisplay(QMainWindow):
         self.emulatorGraph.setLabel('bottom', "<span style=\"color:white;font-size:10px\">Time (s)</span>")
         layout.addWidget(self.emulatorGraph)
         
+        
         hbox =QHBoxLayout()
         self.showeGen1 = QCheckBox('Show generic1', self)
         self.showeGen1.stateChanged.connect(self.updatePlots)
         self.showeGen1.setChecked(True)
+        self.showeGen1.setStyleSheet("color: rgb(255, 0, 0);")
+        
         hbox.addWidget(self.showeGen1)
         self.showeGen2 = QCheckBox('Show generic2', self)
         self.showeGen2.setChecked(True)
         self.showeGen2.stateChanged.connect(self.updatePlots)
-
+        self.showeGen2.setStyleSheet("color: rgb(0, 255, 0);")
         hbox.addWidget(self.showeGen2) 
         layout.addLayout(hbox)
         
