@@ -12,6 +12,7 @@ import numpy as np
 from datetime import *
 import numpy as np
 from YoctopuceTask import YoctopuceTask
+
 sys.path.append(
     os.sep.join(
         [
@@ -42,7 +43,8 @@ from PyQt5.QtWidgets import (
     QProgressBar, 
     QLineEdit, 
     QGridLayout, 
-    QFrame
+    QFrame,
+    QCheckBox
 )
 from PyQt5.QtGui import (
     QIcon, 
@@ -162,6 +164,28 @@ class SensorDisplay(QMainWindow):
         layout.addWidget(self.recorderGraph)
         
         hbox =QHBoxLayout()
+        hbox.addWidget(QLabel("X AxisScale"))
+        self.xaxisScale = QComboBox()
+        self.xaxisScale.addItems(["fixed", "variabel"])
+        hbox.addWidget(self.xaxisScale)
+        hbox.addWidget(QLabel("Y AxisScale"))
+        self.yaxisScale = QComboBox()
+        self.yaxisScale.addItems(["fixed", "variabel"])
+        hbox.addWidget(self.yaxisScale)
+        self.showGen1 = QCheckBox('Show generic1', self)
+        self.showGen1.setChecked(True)
+        self.showGen1.stateChanged.connect(self.updatePlots)
+        hbox.addWidget(self.showGen1)
+        self.showGen2 = QCheckBox('Show generic2', self)
+        self.showGen2.setChecked(True)
+        self.showGen2.stateChanged.connect(self.updatePlots)
+        
+        hbox.addWidget(self.showGen2) 
+     
+        layout.addLayout(hbox)
+        
+        
+        hbox =QHBoxLayout()
         icons = [["Start", self.doStart], ["Stop", self.doStop], ["Clear", self.doClear], ["Save", self.doSave]]
         for name, fn  in icons:
             self.btn[name] = QPushButton(name)
@@ -210,11 +234,6 @@ class SensorDisplay(QMainWindow):
         hbox.addWidget(self.progressBar)
         layout.addLayout(hbox)
                
-        hbox =QHBoxLayout()
-        hbox.addWidget(QLabel("Plot name"))
-        self.fNameQL = QLineEdit()
-        hbox.addWidget(self.fNameQL)
-        layout.addLayout(hbox)
 
         gLayout = QGridLayout()
         label = QLabel("Aktueller Wert")
@@ -247,6 +266,12 @@ class SensorDisplay(QMainWindow):
         self.rawUnit = QLabel("mA")
         gLayout.addWidget(self.rawUnit, 1, 6)
         layout.addLayout(gLayout)
+        hbox =QHBoxLayout()
+        
+        hbox.addWidget(QLabel("Plot name"))
+        self.fNameQL = QLineEdit()
+        hbox.addWidget(self.fNameQL)
+        layout.addLayout(hbox)
                
         self.set_capture_size()
         layout.addLayout(hbox)
@@ -264,11 +289,56 @@ class SensorDisplay(QMainWindow):
     def Emulator(self):
         print("Emulator")
         res = QWidget()
-        layout = QGridLayout()
+        layout =QVBoxLayout()
         self.emulatorGraph = pg.PlotWidget()
         self.emulatorGraph.setLabel('left', "<span style=\"color:white;font-size:10px\">Temperature (°C)</span>")
         self.emulatorGraph.setLabel('bottom', "<span style=\"color:white;font-size:10px\">Time (s)</span>")
         layout.addWidget(self.emulatorGraph)
+        
+        hbox =QHBoxLayout()
+        self.showeGen1 = QCheckBox('Show generic1', self)
+        self.showeGen1.stateChanged.connect(self.updatePlots)
+        self.showeGen1.setChecked(True)
+        hbox.addWidget(self.showeGen1)
+        self.showeGen2 = QCheckBox('Show generic2', self)
+        self.showeGen2.setChecked(True)
+        self.showeGen2.stateChanged.connect(self.updatePlots)
+
+        hbox.addWidget(self.showeGen2) 
+        layout.addLayout(hbox)
+        
+        gLayout = QGridLayout()
+        label = QLabel("Aktueller Wert")
+        gLayout.addWidget(label, 0, 0)
+        self._acteVal = QLabel("%.2f" % 0)
+        gLayout.addWidget(self._acteVal, 0, 1)
+        label = QLabel("Min:")
+        gLayout.addWidget(label, 0, 2)
+        self._acetmin = QLabel("%.2f" % 0)
+        gLayout.addWidget(self._acetmin, 0, 3)
+        label = QLabel("Max:")
+        gLayout.addWidget(label, 0, 4)
+        self._actemax = QLabel("%.2f" %120)
+        gLayout.addWidget(self._actemax, 0, 5)
+        self.peUnit = QLabel("°C")
+        gLayout.addWidget(self.peUnit, 0, 6)
+        
+        label = QLabel("Aktueller Rohwert")
+        gLayout.addWidget(label, 1, 0)
+        self._acteRawVal = QLabel("%.2f" % 0)
+        gLayout.addWidget(self._acteRawVal, 1, 1)
+        label = QLabel("Min:")
+        gLayout.addWidget(label, 1, 2)
+        self._acteRawMin = QLabel("%.2f" %0)
+        gLayout.addWidget(self._acteRawMin, 1, 3)
+        label = QLabel("Max:")
+        gLayout.addWidget(label, 1, 4)
+        self._acteRawMax = QLabel("%.2f" %120)
+        gLayout.addWidget(self._acteRawMax, 1, 5)
+        self.raweUnit = QLabel("mA")
+        gLayout.addWidget(self.raweUnit, 1, 6)
+        layout.addLayout(gLayout)
+        
         res.setLayout(layout)   
         if self.emData is not None:
             self.setNewData()
@@ -490,9 +560,14 @@ class SensorDisplay(QMainWindow):
             progress = 100.0*len(self.rawData)/float(self.capture_size)
             print("Progress %.1f" % progress)
             self.progressBar.setValue(int(progress))
-            self.recorderGraph.plot(x,y1)
-            self.recorderGraph.plot(x,y2)
+            self.recorderGraph.clear()
+            if self.showGen1.checkState():            
+                self.recorderGraph.plot(x, y1, name="genericSensor1", pen=pg.mkPen("red"))
+            if self.showGen1.checkState():            
+                self.recorderGraph.plot(x,y2, name="genericSensor2", pen=pg.mkPen("green"))
             self.recorderGraph.setTitle(self.storeFName.split("/")[-1])
+            self.recorderGraph.addLegend()
+
         if self.emdata is not None:
             if self.emFile is None:
                 fname = ""
@@ -501,8 +576,12 @@ class SensorDisplay(QMainWindow):
             x = self.emdata[:,0]
             y1 = self.emdata[:,1]
             y2 = self.emdata[:,2]
-            self.emulatorGraph.plot(x,y1)
-            self.emulatorGraph.plot(x,y2)
+            self.emulatorGraph.clear()
+            self.emulatorGraph.addLegend()
+            if self.showeGen1.checkState():
+                p1 = self.emulatorGraph.plot(x,y1, name="genericSensor1", pen=pg.mkPen("red"))
+            if self.showeGen2.checkState():
+                p2 = self.emulatorGraph.plot(x,y2, name="genericSensor2",pen=pg.mkPen("green"))
             self.emulatorGraph.setTitle(self.emFile.split("/")[-1])
      
 

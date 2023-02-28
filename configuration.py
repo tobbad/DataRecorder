@@ -81,9 +81,6 @@ class configuration:
             },
         )
         xml_str = xml.dom.minidom.parseString(ET.tostring(root, xml_declaration=True)).toprettyxml()
-        print(xml_str)
-        #root.write(name)
-        # xml_str = ET.tostring(root)
 
         with open(name, "wb") as f:
              f.write(bytes(xml_str, 'utf-8'))
@@ -92,6 +89,11 @@ class configuration:
     def getR2PFunction(self):
         def convert(val, unit):
             res = [[(val-4.0)/16.0*100, "°C"], [val, unit]]
+            return res
+        
+    def getP2RFunction(self):
+        def convert(val, unit):
+            res = [[float(val)/100.0*16.0+4.0, "°C"], [val, unit]]
             return res
         
     
