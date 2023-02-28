@@ -147,8 +147,7 @@ class YoctopuceTask(QObject):
     def capture_stop(self):
         print("Capture in Yoctopuc Task finished ")
         for s in self.sensor:
-            s.set_reportFrequency("OFF")
-            s.registerTimedReportCallback(None)
+            s.capture_stop()
         print("Capture finished")
         if self.file is not None:
             self.file.close()
@@ -214,9 +213,9 @@ class sensor:
         self.set_reportFrequency("OFF")
         self.sen.registerTimedReportCallback(None)
 
-    def set_reportFrequency(self, seconds):
-        print("Sensor: Set report frequency to %s" % ( seconds))
-        self.sen.set_reportFrequency(seconds)
+    def set_reportFrequency(self, secondsInStr):
+        print("Sensor: Set report frequency to %s" % ( secondsInStr))
+        self.sen.set_reportFrequency(secondsInStr)
 
     def registerTimedReportCallback(self, cb):
         if cb is None:

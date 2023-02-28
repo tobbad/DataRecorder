@@ -74,6 +74,7 @@ class SensorDisplay(QMainWindow):
         print("Create app")
         super().__init__()
         self.dirty = False
+        self.emFile = ""
         self.filename = "./"
         self.data = None
         self.btn = {}
@@ -86,7 +87,7 @@ class SensorDisplay(QMainWindow):
         self.unit  =[]
         self.functionValues = {}
         self.yoctoTask = None
-        self.emData = None
+        self.emData = []
         self.setUpGUI()
         
     def setUpGUI(self):    
@@ -156,6 +157,7 @@ class SensorDisplay(QMainWindow):
         layout = QVBoxLayout()
         self.recorderGraph = pg.PlotWidget()
         self.recorderGraph.setLabel('left', "<span style=\"color:white;font-size:10px\">Temperature (°C)</span>")
+        self.recorderGraph.setLabel('right', "<span style=\"color:white;font-size:10px\">Temperature (mA)</span>")
         self.recorderGraph.setLabel('bottom', "<span style=\"color:white;font-size:10px\">Time (s)</span>")
         layout.addWidget(self.recorderGraph)
         
@@ -202,7 +204,7 @@ class SensorDisplay(QMainWindow):
         self.sampcapDur = QComboBox()
         self.sampcapDur.addItems(["s", "m", "h"])
         hbox.addWidget(self.sampcapDur)
-        self.progressBar = QProgressBar()
+        self.progressBar = QProgressBar(minimum=0, maximum=100, objectName="bar")
         self.progressBar.setValue(0)
         self.progressBar.resize(300,100)
         hbox.addWidget(self.progressBar)
@@ -212,30 +214,39 @@ class SensorDisplay(QMainWindow):
         hbox.addWidget(QLabel("Plot name"))
         self.fNameQL = QLineEdit()
         hbox.addWidget(self.fNameQL)
-
-        hbox =QHBoxLayout()
-        hbox.addWidget(QLabel("Aktueller Wert (°C)"))
-        self._actVal = QLabel("%.2f" % 0)
-        hbox.addWidget(self._actVal)
-        hbox.addWidget(QLabel("Min:"))
-        self._min = QLabel("%.2f" %0)
-        hbox.addWidget(self._min)
-        hbox.addWidget(QLabel("Max:"))
-        self._max = QLabel("%.2f" %120)
-        hbox.addWidget(self._max)
         layout.addLayout(hbox)
         
-        hbox =QHBoxLayout()
-        hbox.addWidget(QLabel("Aktueller Rohwert (mA)"))
-        self._actMeasVal = QLabel("%.2f" % 0)
-        hbox.addWidget(self._actVal)
-        hbox.addWidget(QLabel("Min:"))
-        self._min = QLabel("%.2f" %0)
-        hbox.addWidget(self._min)
-        hbox.addWidget(QLabel("Max:"))
-        self._max = QLabel("%.2f" %20)
-        hbox.addWidget(self._max)
-        layout.addLayout(hbox)
+        gLayout = QGridLayout()
+        label = QLabel("Aktueller Wert")
+        gLayout.addWidget(label, 0, 0)
+        self._actVal = QLabel("%.2f" % 0)
+        gLayout.addWidget(self._actVal, 0, 1)
+        label = QLabel("Min:")
+        gLayout.addWidget(label, 0, 2)
+        self._actmin = QLabel("%.2f" %0)
+        gLayout.addWidget(self._actmin, 0, 3)
+        label = QLabel("Max:")
+        gLayout.addWidget(label, 0, 4)
+        self._actmax = QLabel("%.2f" %120)
+        gLayout.addWidget(self._actmax, 0, 5)
+        self.pUnit = QLabel("°C")
+        gLayout.addWidget(self.pUnit, 0, 6)
+        
+        label = QLabel("Aktueller Rohwert")
+        gLayout.addWidget(label, 1, 0)
+        self._actRawVal = QLabel("%.2f" % 0)
+        gLayout.addWidget(self._actRawVal, 1, 1)
+        label = QLabel("Min:")
+        gLayout.addWidget(label, 1, 2)
+        self._actRawMin = QLabel("%.2f" %0)
+        gLayout.addWidget(self._actRawMin, 1, 3)
+        label = QLabel("Max:")
+        gLayout.addWidget(label, 1, 4)
+        self._actRawMax = QLabel("%.2f" %120)
+        gLayout.addWidget(self._actRawMax, 1, 5)
+        self.rawUnit = QLabel("mA")
+        gLayout.addWidget(self.rawUnit, 1, 6)
+        layout.addLayout(gLayout)
                
         self.set_capture_size()
         layout.addLayout(hbox)
@@ -255,6 +266,8 @@ class SensorDisplay(QMainWindow):
         res = QWidget()
         layout = QGridLayout()
         self.emulatorGraph = pg.PlotWidget()
+        self.emulatorGraph.setLabel('left', "<span style=\"color:white;font-size:10px\">Temperature (°C)</span>")
+        self.emulatorGraph.setLabel('bottom', "<span style=\"color:white;font-size:10px\">Time (s)</span>")
         layout.addWidget(self.emulatorGraph)
         res.setLayout(layout)   
         if self.emData is not None:
@@ -263,16 +276,18 @@ class SensorDisplay(QMainWindow):
         return res
 
     def append_data(self, data):
-        self.dirty = True
-        if data[0] is None:
+       if data[0] is None:
             print("Finished capturing (%d, %d)" % (len(self.rawData), len(self.rawData[0])))
             self.setNewData()
             self.updatePlots()
             self.doStop()
             self.yoctoTask.capture_stop()
             self.yoctoTask = None
-        else:
+       else:
             print("Data %s appended." % (data))
+            if len(self.rawData)%20 ==0:
+                self.setNewData()
+                self.updatePlots()
             self.rawData.append(data)
        
     def file_open(self):
@@ -385,12 +400,14 @@ class SensorDisplay(QMainWindow):
          
          fname, ftype = QFileDialog.getSaveFileName(self, "Store captured data",
                  self.storeFName, fmt[0])
-         print("doSave  all %s of size %d\n%s" % (fname, self.dataSize, self.data))
+         if fname is None:
+             fname = self.fNameQL.text()
          self.cFileName = fname
+         print("doSave  all %s of size %d" % (self.cFileName, self.rawDataSize))
          f = open( self.cFileName,"w", encoding="cp1252")
          csvf =csv.writer(f, lineterminator="\n")
-         for i in range(self.dataSize):
-             csvf.writerow([self.data[i][0], self.data[i][1], self.data[i][2]])
+         for i in range(self.rawDataSize):
+             csvf.writerow(self.rawData[i])
          self.dirty = False
          f.close()
         
@@ -437,7 +454,6 @@ class SensorDisplay(QMainWindow):
        
     def tabChanged(self, index):
         self.setNewData()
-        
         self.updatePlots()
         print("Tab changed %d" %(index))
     
@@ -454,27 +470,32 @@ class SensorDisplay(QMainWindow):
                 self.data[i][1] = float(self.rawData[i][2])
                 self.data[i][2] = float(self.rawData[i][4])
         if self.emData is not None:
-            print("Show emulator data")
             self.emdata = np.zeros([ len(self.emData), 3])
             for i in range(len(self.emData)):
                 self.emdata[i][0] = float(self.emData[i][0])
                 self.emdata[i][1] = float(self.emData[i][1])
                 self.emdata[i][2] = float(self.emData[i][2])
-            print(self.emdata)
             
     def updatePlots(self):
-        print("Updat plots on \n%s  and \n %s " %( self.data, self.emData))
+        print("Updat plots")
         if self.data is not None:
             x = self.data[:,0]
             y = self.data[:,1]
             minimum = y.min()
             maximum = y.max()
-            self._actVal.setText("%.2f" % y[0])
-            self._min.setText("%.2f" % minimum)
-            self._max.setText("%.2f" % maximum)
-            self.recorderGraph.setTitle(self.filename.split("/")[-1])
+            self._actVal.setText("%.2f" % y[-1])
+            self._actmin.setText("%.2f" % minimum)
+            self._actmax.setText("%.2f" % maximum)
+            progress = 100.0*len(self.rawData)/float(self.capture_size)
+            print("Progress %.1f" % progress)
+            self.progressBar.setValue(int(progress))
+            self.recorderGraph.plot(x,y)
+            self.recorderGraph.setTitle(self.storeFName.split("/")[-1])
         if self.emdata is not None:
-            print("Plot emulator data %s" % self.emFile.split("/")[-1])
+            if self.emFile is None:
+                fname = ""
+            else:
+                fname =self.emFile.split("/")[-1]
             x = self.emdata[:,0]
             y = self.emdata[:,1]
             self.emulatorGraph.plot(x,y)
