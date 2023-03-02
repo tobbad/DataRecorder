@@ -54,8 +54,8 @@ class YoctopuceTask(QObject):
         self.file = None
         self.initAPI()
         self.start = now = datetime.datetime.now()
-        self.reportFrequncy = None
-        self.sampelInterval_ms  = None
+        self.reportFrequncy = "1s"
+        self.sampelInterval_ms  = 1000
         
 
 
@@ -99,11 +99,10 @@ class YoctopuceTask(QObject):
         serialNumber = m.get_serialNumber()
         print("Device arrival SerNr %s %s, " % (serialNumber, m))
         self.conf = configuration(self)
-        self.conFunc = self.conf.getR2PFunction()
         pSensor = YGenericSensor.FirstGenericSensor()
         print("Sensor %s" %pSensor )
         while pSensor != None:
-            newSensor = sensor(pSensor, self.conFunc)
+            newSensor = sensor(pSensor)
             self.sensor.append(newSensor)
             print("Added sensor %s" % newSensor)
             pSensor = YGenericSensor.nextGenericSensor(pSensor)
@@ -118,7 +117,7 @@ class YoctopuceTask(QObject):
             for s in self.sensor:
                 s.registerTimedReportCallback(self.new_data)
                 s.set_reportFrequency(self.reportFrequncy)
-            print("Capture started")
+            print("Capture started on %s" % (self.sensor))
             self.start = now = datetime.datetime.now()
             self._sampleCnt = 0
 
@@ -131,10 +130,6 @@ class YoctopuceTask(QObject):
         for s in self.sensor:
             data.extend([s.get_values()[0],s.get_values()[1]])
         self.updateSignal.emit(data)
-        if self.file is not None:
-            print("\t Stored to file")
-            self.cvsfile.writerow(data)
-            
         self._sampleCnt += 1
         self.capture_size -= 1
         if self.capture_size == 0:
@@ -155,6 +150,7 @@ class YoctopuceTask(QObject):
             self.file.close()
             self.file = None
         self.freeAPI    
+        
     def setSampleInterval_ms(self, sample_interval_ms):
         self.sample_interval_ms = sample_interval_ms
         if self.sample_interval_ms>0:
@@ -195,23 +191,18 @@ class YoctopuceTask(QObject):
 
 
 class sensor:
-    def __init__(self, sensor, fun):
+    def __init__(self, sensor):
         self.sen = sensor
-        self.fun = fun
         self.type = self.sen.get_module().get_serialNumber()
         self.functionType = self.sen.get_module().functionType(0)
-        print("Create %s" % self)
+        print("Create %s %s" % (self,  self.functionType))
 
     def __str__(self):
         res = "type=%s " % (self.type)
         return res
 
     def get_values(self):
-        value = self.sen.get_currentValue()
-        if value > 0:
-            res = [self.fun[0](value), self.fun[1]]
-        else:
-            res = [self.sen.get_currentValue(), self.sen.get_unit()]
+        res = [self.sen.get_currentValue(), self.sen.get_unit()]
         return res
 
     def capture_stop(self):

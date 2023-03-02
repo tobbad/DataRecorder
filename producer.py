@@ -23,7 +23,7 @@ from yocto_genericsensor import *
 
 class producer:
     """
-    According tom the parameter set up device
+    According to the parameter set up device
     """
 
     def __init__(self, parameter, addTime=False):
