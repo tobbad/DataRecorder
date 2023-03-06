@@ -45,7 +45,8 @@ from PyQt5.QtWidgets import (
     QLineEdit, 
     QGridLayout, 
     QFrame,
-    QCheckBox
+    QCheckBox,
+    QRadioButton
 )
 from PyQt5.QtGui import (
     QIcon, 
@@ -53,7 +54,10 @@ from PyQt5.QtGui import (
     QPixmap, 
     QColor, 
     QPalette,
-    QIntValidator
+    QIntValidator,
+    QFontMetrics,
+    QPainter
+
 )
 
 from PyQt5.QtCore import *
@@ -68,6 +72,33 @@ sys.excepthook = except_hook
 
 def currThread():
     return '[thread-' + str(int(QThread.currentThreadId())) + ']'
+
+class VerticalLabel(QLabel):
+
+    def __init__(self, *args):
+        QLabel.__init__(self, *args)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.translate(0, self.height())
+        painter.rotate(-90)
+        # calculate the size of the font
+        fm = QFontMetrics(painter.font())
+        xoffset = int(fm.boundingRect(self.text()).width()/2)
+        yoffset = int(fm.boundingRect(self.text()).height()/2)
+        x = int(self.width()/2) + yoffset
+        y = int(self.height()/2) - xoffset
+        # because we rotated the label, x affects the vertical placement, and y affects the horizontal
+        painter.drawText(y, x, self.text())
+        painter.end()
+        
+    def minimumSizeHint(self):
+        size = QLabel.minimumSizeHint(self)
+        return Size(size.height(), size.width())
+
+    def sizeHint(self):
+        size = QtWidget.QLabel.sizeHint(self)
+        return QSize(size.height(), size.width())
 
 #print("PYTHONPATH:", os.environ.get('PYTHONPATH'))
 #print("PATH:", os.environ.get('PATH'))
@@ -94,6 +125,7 @@ class SensorDisplay(QMainWindow):
         self.emData = []
         self.setUpGUI()
         self.plotname = ""
+        self.connected = newState = False
         
         
     def setUpGUI(self):    
@@ -203,12 +235,12 @@ class SensorDisplay(QMainWindow):
         hbox.addWidget(self.yaxisScale)
         self.showGen1 = QCheckBox('Show generic1', self)
         self.showGen1.setChecked(True)
-        self.showGen1.setStyleSheet("color: rgb(255, 0, 0);")
+        self.showGen1.setStyleSheet("background-color:red")
         self.showGen1.stateChanged.connect(self.updatePlots)
         hbox.addWidget(self.showGen1)
         self.showGen2 = QCheckBox('Show generic2', self)
         self.showGen2.setChecked(True)
-        self.showGen2.setStyleSheet("color: rgb(0, 255, 0);")
+        self.showGen2.setStyleSheet("background-color:green")
         self.showGen2.stateChanged.connect(self.updatePlots)
         hbox.addWidget(self.showGen2) 
         layout.addLayout(hbox)
@@ -305,38 +337,113 @@ class SensorDisplay(QMainWindow):
         hbox.addWidget(self.progressBar)
         layout.addLayout(hbox)
                
-
+        frame1 = QFrame()
+        frame1.setStyleSheet("QFrame {background-color: rgb(200, 255, 255);"
+                                "border-width: 1;"
+                                "border-radius: 3;"
+                                "border-style: solid;"
+                                "border-color: rgb(10, 10, 10)}"
+                                )
+        frame1.setFrameShape(QFrame.StyledPanel)
+        frame1.setLineWidth(3)
+        #frame1.setStyleSheet("background-color: blue")
+        #frame1.setFrameStyle(QFrame.VLine|QFrame.Sunken)
+        
         gLayout = QGridLayout()
-        label = QLabel("Messwert")
+        
+        label = QLabel("generic1")
         gLayout.addWidget(label, 0, 0)
-        self._actVal = QLabel("%.2f" % 0)
-        gLayout.addWidget(self._actVal, 0, 1)
-        label = QLabel("Min:")
+        
+        self.gen1Icon = QIcon(":/redLed.svg")
+         
+        label = QLabel("Messwert")
         gLayout.addWidget(label, 0, 2)
-        self._actmin = QLabel("%.2f" % 0)
-        gLayout.addWidget(self._actmin, 0, 3)
-        label = QLabel("Max:")
+        self._actVal = QLabel("%.2f" % 0)
+        gLayout.addWidget(self._actVal, 0, 3)
+        label = QLabel("Min:")
         gLayout.addWidget(label, 0, 4)
+        self._actmin = QLabel("%.2f" % 0)
+        gLayout.addWidget(self._actmin, 0, 5)
+        label = QLabel("Max:")
+        gLayout.addWidget(label, 0, 6)
         self._actmax = QLabel("%.2f" %120)
-        gLayout.addWidget(self._actmax, 0, 5)
+        gLayout.addWidget(self._actmax, 0, 7)
         self.pUnit = QLabel("°C")
-        gLayout.addWidget(self.pUnit, 0, 6)
+        gLayout.addWidget(self.pUnit, 0, 8)
+
         
         label = QLabel("Rohwert")
-        gLayout.addWidget(label, 1, 0)
-        self._actRawVal = QLabel("%.2f" % 0)
-        gLayout.addWidget(self._actRawVal, 1, 1)
-        label = QLabel("Min:")
         gLayout.addWidget(label, 1, 2)
-        self._actRawMin = QLabel("%.2f" %0)
-        gLayout.addWidget(self._actRawMin, 1, 3)
-        label = QLabel("Max:")
+        self._actRawVal = QLabel("%.2f" % 0)
+        gLayout.addWidget(self._actRawVal, 1, 3)
+        label = QLabel("Min:")
         gLayout.addWidget(label, 1, 4)
+        self._actRawMin = QLabel("%.2f" %0)
+        gLayout.addWidget(self._actRawMin, 1, 5)
+        label = QLabel("Max:")
+        gLayout.addWidget(label, 1, 6)
         self._actRawMax = QLabel("%.2f" %120)
-        gLayout.addWidget(self._actRawMax, 1, 5)
+        gLayout.addWidget(self._actRawMax, 1, 7)
         self.rawUnit = QLabel("mA")
-        gLayout.addWidget(self.rawUnit, 1, 6)
-        layout.addLayout(gLayout)
+        gLayout.addWidget(self.rawUnit, 1, 8)
+        frame1.setLayout(gLayout)
+        layout.addWidget(frame1)
+        
+        frame2 = QFrame()
+        frame2.setStyleSheet("QFrame {background-color: rgb(255, 255, 200);"
+                                "border-width: 1;"
+                                "border-radius: 3;"
+                                "border-style: solid;"
+                                "border-color: rgb(10, 10, 10)}"
+                                )
+        frame2.setFrameShape(QFrame.StyledPanel)
+        frame2.setLineWidth(3)
+        #frame1.setStyleSheet("background-color: blue")
+        #frame1.setFrameStyle(QFrame.VLine|QFrame.Sunken)
+        
+        gLayout = QGridLayout()
+        
+        label = QLabel("generic2")
+        gLayout.addWidget(label, 0, 0)
+        
+        self.conState = QIcon(":redLed.svg")
+        gLayout.addWidget(self.conState, 0, 1)
+        
+        label = QLabel("Messwert")
+        gLayout.addWidget(label, 0, 2)
+        self._actVal = QLabel("%.2f" % 0)
+        gLayout.addWidget(self._actVal, 0, 3)
+        label = QLabel("Min:")
+        gLayout.addWidget(label, 0, 4)
+        self._actmin = QLabel("%.2f" % 0)
+        gLayout.addWidget(self._actmin, 0, 5)
+        label = QLabel("Max:")
+        gLayout.addWidget(label, 0, 6)
+        self._actmax = QLabel("%.2f" %120)
+        gLayout.addWidget(self._actmax, 0, 7)
+        self.pUnit = QLabel("°C")
+        gLayout.addWidget(self.pUnit, 0, 8)
+
+        
+        label = QLabel("Rohwert")
+        gLayout.addWidget(label, 1, 2)
+        self._actRawVal = QLabel("%.2f" % 0)
+        gLayout.addWidget(self._actRawVal, 1, 3)
+        label = QLabel("Min:")
+        gLayout.addWidget(label, 1, 4)
+        self._actRawMin = QLabel("%.2f" %0)
+        gLayout.addWidget(self._actRawMin, 1, 5)
+        label = QLabel("Max:")
+        gLayout.addWidget(label, 1, 6)
+        self._actRawMax = QLabel("%.2f" %120)
+        gLayout.addWidget(self._actRawMax, 1, 7)
+        self.rawUnit = QLabel("mA")
+        gLayout.addWidget(self.rawUnit, 1, 8)
+        frame2.setLayout(gLayout)
+        layout.addWidget(frame2)
+
+        
+        
         hbox =QHBoxLayout()
         
         hbox.addWidget(QLabel("File name"))
@@ -357,8 +464,11 @@ class SensorDisplay(QMainWindow):
         layout.addLayout(hbox)
  
         res.setLayout(layout)
+<<<<<<< HEAD
+=======
         self.QFilename.textChanged.connect(self.recorderFileNameChanged)
         self.QPlotname.textChanged.connect(self.plotNameChanged)
+>>>>>>> 5cb43c6829634cca58ea0c0adbb5038c36a0a74b
         self.sIntVal_edit.textChanged.connect(self.onTimingChanged)
         self.captime_edit.textChanged.connect(self.onTimingChanged)
         self.sampleUnit.currentIndexChanged.connect(self.onTimingChanged)
@@ -366,6 +476,11 @@ class SensorDisplay(QMainWindow):
 
         print("Recorder created")
         return res
+
+    def onStateClicked(self):
+        radioButton = self.sender()
+        if radioButton.isChecked():
+            print("state is %s" % (radioButton.state))
 
     def plotNameChanged(self):
         self.plotname = self.QPlotname.text()
@@ -520,6 +635,7 @@ class SensorDisplay(QMainWindow):
             if hardwareId in self.functionValues:
                 print("ID " % (hardwareId))
         # for relay functions, create a toggle button
+        self.updatedConected(True)
                
     @pyqtSlot(str, str)
     def newValue(self, value1, value2, value3):
@@ -534,13 +650,23 @@ class SensorDisplay(QMainWindow):
 
     @pyqtSlot(dict)
     def removal(self, device):
-        # log arrival
+        # log removal
         print('Device disconnected:', device, self.currThread())
         # mark all reported values as disconnected
         for functionId in device['functions']:
             hardwareId = device['serial'] + '.' + functionId
             if hardwareId in self.functionValues:
                 self.functionValues[hardwareId].setText(hardwareId + ": disconnected")
+        self.updatedConected(False)
+
+    def updateConected(self, newState):
+        self.connected = newState
+        if newState:
+            self.gen1Icon = QIcon(":greenLed.svg")
+        else:
+            self.gen1Icon = QIcon(":redLed.svg")
+            
+
               
     def doStart(self):
         now = datetime.now()
@@ -596,6 +722,33 @@ class SensorDisplay(QMainWindow):
         self.message.showMessage(text, time)
     
     def onTimingChanged(self):
+<<<<<<< HEAD
+        print("Call onSampleIntvalChanged %s" % ( self.sampleUnit.currentIndex()))
+        if self.sampleUnit.currentIndex()==0:
+            self.sampleIntervall_ms =1000
+        else:
+            self.sampleIntervall_ms =1
+        sInt =  1 if self.sIntVal_edit.text() == None else self.sIntVal_edit.text()
+        print("Sample Int str \"%s\"" % sInt)
+        self.sampleIntervall_ms *= int(sInt)
+        self.yoctoTask.setSampleInterval_ms(self.sampleIntervall_ms)
+        print("Sample intervall is %d ms" % self.sampleIntervall_ms)
+        print("Call onSampleIntvalChanged %s" % (self.sampcapDur.currentIndex() ))
+        if self.sampcapDur.currentIndex()==0:
+            print("s")
+            self.captureTime_s = 1
+        elif self.sampcapDur.currentIndex()==1:
+            print("min")
+            self.captureTime_s = 60
+        else:
+            print("h")
+            self.captureTime_s = 3600
+        capTime = 1 if self.captime_edit.text() == None else self.captime_edit.text()
+        print("Set capture time to \"%s\"" % (capTime))
+        self.captureTime_s *= int(capTime)
+        print("Capture time is %d s" % self.captureTime_s)
+        self.set_capture_size()
+=======
         if not self.doRecord:
             print("Call onSampleIntvalChanged %s" % ( self.sampleUnit.currentIndex()))
             if self.sampleUnit.currentIndex()==0:
@@ -624,6 +777,7 @@ class SensorDisplay(QMainWindow):
             self.set_capture_size()
         else:
             print("Sample in progress: Can not update timing")
+>>>>>>> 5cb43c6829634cca58ea0c0adbb5038c36a0a74b
 
     def set_capture_size(self):
         self.capture_size =  int(ceil(self.captureTime_s*1000/self.sampleIntervall_ms))
