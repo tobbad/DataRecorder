@@ -48,7 +48,7 @@ class YoctopuceTask(QObject):
         self.timer = QTimer()
         self.timer.timeout.connect(self.handleEvents)
         self.timer.start(50)
-        
+        self.conf = None
         self.checkDevices = 0
         self._sampleCnt = 0
         self.file = None
@@ -96,26 +96,27 @@ class YoctopuceTask(QObject):
             self.cvsfile = csv.writer(self.file, lineterminator="\n")
   
     def deviceArrival(self, m: YModule):
-        sensor = []
+        newSensorList = []
         serialNumber = m.get_serialNumber()
         print("Device arrival SerNr %s %s, " % (serialNumber, m))
-        self.conf = configuration(self)
+        if self.conf == None:
+            self.conf = configuration(self)
+            
         pSensor = YGenericSensor.FirstGenericSensor()
         print("Sensor %s" %pSensor )
-        if isinstance(self.sensor,dict):
-            print("Skip add sensors")
-            return            
+        if len(self.sensor)>3:
+            return
         while pSensor != None:
             newSensor = sensor(pSensor)
-            sensor.append(newSensor)
+            newSensorList.append(newSensor)
             print("Added sensor %s " %(newSensor))
             pSensor = YGenericSensor.nextGenericSensor(pSensor)
-        print("Added %s input sensors" % (len(sensor)))
         sen = {}
-        for s in sensor:
+        for s in newSensorList:
             sen[s.name] = s
         self.sensor = sen
-        print("Registered Sensors %s" % (self.sensor))
+        print("Registered %d Sensors %s" % (len(self.sensor), self.sensor))
+        self.arrival.emit(self.sensor)
         if len(self.sensor) == 0:
             print("No sensors detected")
             sys.exit()
@@ -124,7 +125,7 @@ class YoctopuceTask(QObject):
         print("Removed %s" % m)
         self.sensor = {}
         # pass the disconnect to the UI thread via the removal signal
-        self.removal.emit()
+        self.removal.emit({})
  
     def capture_start(self):
         print("sensors is %s %d" %(self.sensor, len(self.sensor)))
@@ -150,7 +151,7 @@ class YoctopuceTask(QObject):
         delta = (now - self.start).total_seconds()
         data = [absTime, delta]
         for s in self.sensor.values():
-            data.extend([s.get_values()[0],s.get_values()[1]])
+            data.extend([s.name ,s.get_values()[0],s.get_values()[1]])
         self.updateSignal.emit(data)
         self._sampleCnt += 1
         self.capture_size -= 1
@@ -212,12 +213,16 @@ class sensor:
     def __init__(self, sensor):
         self.sen = sensor
         name = sensor.get_friendlyName()
-        if "1" in name:
+        print(name)
+        if "1" in name.split(".")[1]:
             self._name = "generic1"
+            print(self._name)
         elif "2" in name:
             self._name = "generic2"
+            print(self._name)
         else:
             self._name = "unknown"
+            print(self._name)
 
         self.type = self.sen.get_module().get_serialNumber()
         self.functionType = self.sen.get_module().functionType(0)
