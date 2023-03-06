@@ -771,10 +771,17 @@ class SensorDisplay(QMainWindow):
     
     @property
     def pDataSize(self):
+<<<<<<< HEAD
         if self.pData is not None:
             return  len(self.pData['generic1'])
         else:
             return -1
+=======
+        if self.pData is not None and len(self.pData)>20:
+            return  len(self.pData['generic1'])
+        else:
+            return 0
+>>>>>>> e119fd8 (Proper sensors nameing)
 
     def setNewData(self):
         if self.pData is None:
@@ -792,8 +799,13 @@ class SensorDisplay(QMainWindow):
             for i in range(self.pDataSize):
                 self.data1[i][0] = float(self.pData["generic1"][i][1])
                 self.data1[i][1] = float(self.pData["generic1"][i][2])
+<<<<<<< HEAD
                 self.data2[i][0] = float(self.pData["generic2"][i][1])
                 self.data2[i][1] = float(self.pData["generic2"][i][2])
+=======
+                self.data1[i][0] = float(self.pData["generic2"][i][1])
+                self.data1[i][1] = float(self.pData["generic2"][i][4])
+>>>>>>> e119fd8 (Proper sensors nameing)
         if self.emData is not None:
             self.emdata = np.zeros([ len(self.emData), 3])
             for i in range(len(self.emData)):
@@ -802,6 +814,7 @@ class SensorDisplay(QMainWindow):
                 self.emdata[i][2] = float(self.emData[i][2])
             
     def updatePlots(self):
+<<<<<<< HEAD
         print("Updat plots with len pData size = %d" % (self.pDataSize))
         if self.pData is not None and self.pDataSize >0:
             x = self.data1[:,0]
@@ -819,15 +832,43 @@ class SensorDisplay(QMainWindow):
             self._actVal2.setText("%.2f" % g2[-1])
             self._actmin2.setText("%.2f" % g2min)
             self._actmax2.setText("%.2f" % g2max)
+=======
+        print("Updat plots")
+        if self.data is not None and len(self.data["generic1"])>10:
+            x = self.data["generic1"][:,0]
+            gy1 = self.data1[:,1]
+            gy2 = self.data2[:,1]
+            y1min = gy1.min()
+            y2min = gy1.min()
+            y1max = gy1.max()
+            y2max = gy1.max()
+            y1min = gy1.min()
+            y2min = gy1.min()
+            y1max = gy1.max()
+            y2max = gy1.max()
+            self._actVal1.setText("%.2f" % gy1[-1])
+            self._actmin1.setText("%.2f" % gy1min)
+            self._actmax1.setText("%.2f" % gy1max)
+            self._actVal2.setText("%.2f" % gy2[-1])
+            self._actmin2.setText("%.2f" % gy2min)
+            self._actmax2.setText("%.2f" % gy2max)
+>>>>>>> e119fd8 (Proper sensors nameing)
             progress = 100.0*len(self.rawdata)/float(self.capture_size)
             #print("Progress %.1f of %d " % (progress, self.capture_size))
             self.progressBar.setValue(int(progress))
             self.recorderGraph.clear()
             if self.showGen1CB.checkState():            
+<<<<<<< HEAD
                 self.recorderGraph.plot(x, g1, name="generic1", pen=pg.mkPen("green"))
             if self.showGen2CB.checkState():            
                 self.recorderGraph.plot(x, g2, name="generic2", pen=pg.mkPen("red"))
             self.recorderGraph.setTitle(self.filename.split("/")[-1])
+=======
+                self.recorderGraph.plot(x, gy1, name="generic1", pen=pg.mkPen("red"))
+            if self.showGen2CB.checkState():            
+                self.recorderGraph.plot(x, gy2, name="generic2", pen=pg.mkPen("green"))
+            self.recorderGraph.setTitle(self.storeFName.split("/")[-1])
+>>>>>>> e119fd8 (Proper sensors nameing)
             self.recorderGraph.addLegend()
 
         if self.emdata is not None:
