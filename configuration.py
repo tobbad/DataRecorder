@@ -27,7 +27,6 @@ class configuration:
 
         # ElementTree.Comment("Bla bla")
         self.sensors = self.yocto.getSensors()
-        print(self.sensors)
         root = ET.Element("configuration")
 
         child = ET.SubElement(root, "targetfolder", {"path": "."})
@@ -91,7 +90,7 @@ class configuration:
             if val>0:
                 res = [(val-4.0)/16.0*100, "°C"]
             else:
-                res = [val, unit]                
+                res = [val, unit]      
             return res
         return convert
         

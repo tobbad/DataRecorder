@@ -114,11 +114,11 @@ class SensorDisplay(QMainWindow):
         self.emdata=None
         self.btn = {}
         self.doRecord = False
-        self.sampleIntervall_ms = 0
         self.capture_size = 0
-        self.sampleIntervall_ms =1
+        self.setSampleInterval_ms =1
         self.captureTime_s = 1
         self.rawdata = []        
+        self.pData = []        
         self.unit  =[]
         self.functionValues = {}
         self.yoctoTask = None
@@ -130,6 +130,7 @@ class SensorDisplay(QMainWindow):
         
     def setUpGUI(self):    
         self.setWindowTitle("DataRecorder")
+        self.setWindowIcon(QIcon(":/stop.svg"))
         self.addMenuBar()
         
         self.layout = QVBoxLayout()
@@ -235,14 +236,15 @@ class SensorDisplay(QMainWindow):
         hbox.addWidget(self.yaxisScale)
         self.showGen1 = QCheckBox('Show generic1', self)
         self.showGen1.setChecked(True)
-        self.showGen1.setStyleSheet("background-color:red")
+        self.showGen1.setStyleSheet("background-color:white")
         self.showGen1.stateChanged.connect(self.updatePlots)
         hbox.addWidget(self.showGen1)
         self.showGen2 = QCheckBox('Show generic2', self)
         self.showGen2.setChecked(True)
-        self.showGen2.setStyleSheet("background-color:green")
+        self.showGen2.setStyleSheet("background-color:white")
         self.showGen2.stateChanged.connect(self.updatePlots)
         hbox.addWidget(self.showGen2) 
+        
         layout.addLayout(hbox)
 
         
@@ -301,7 +303,7 @@ class SensorDisplay(QMainWindow):
         layout.addLayout(hbox)
         
         hbox =QHBoxLayout()
-        self.sampleIntervall_ms = 200
+        self.setSampleInterval_ms = 200
         self.captureTime_s = 1
         onlyInt0_1000 = QIntValidator( 1, 999, self)
         
@@ -338,11 +340,11 @@ class SensorDisplay(QMainWindow):
         layout.addLayout(hbox)
                
         frame1 = QFrame()
-        frame1.setStyleSheet("QFrame {background-color: rgb(200, 255, 255);"
+        frame1.setStyleSheet("QFrame {background-color: rgb(255, 255, 255);"
                                 "border-width: 1;"
                                 "border-radius: 3;"
                                 "border-style: solid;"
-                                "border-color: rgb(10, 10, 10)}"
+                                "border-color: rgb(255, 0, 0)}"
                                 )
         frame1.setFrameShape(QFrame.StyledPanel)
         frame1.setLineWidth(3)
@@ -353,9 +355,7 @@ class SensorDisplay(QMainWindow):
         
         label = QLabel("generic1")
         gLayout.addWidget(label, 0, 0)
-        
-        self.gen1Icon = QIcon(":/redLed.svg")
-         
+                
         label = QLabel("Messwert")
         gLayout.addWidget(label, 0, 2)
         self._actVal = QLabel("%.2f" % 0)
@@ -390,11 +390,11 @@ class SensorDisplay(QMainWindow):
         layout.addWidget(frame1)
         
         frame2 = QFrame()
-        frame2.setStyleSheet("QFrame {background-color: rgb(255, 255, 200);"
+        frame2.setStyleSheet("QFrame {background-color: rgb(255,255,255);"
                                 "border-width: 1;"
                                 "border-radius: 3;"
                                 "border-style: solid;"
-                                "border-color: rgb(10, 10, 10)}"
+                                "border-color: rgb(0,255,0)}"
                                 )
         frame2.setFrameShape(QFrame.StyledPanel)
         frame2.setLineWidth(3)
@@ -407,7 +407,7 @@ class SensorDisplay(QMainWindow):
         gLayout.addWidget(label, 0, 0)
         
         self.conState = QIcon(":redLed.svg")
-        gLayout.addWidget(self.conState, 0, 1)
+        #gLayout.addWidget(self.conState, 0, 1)
         
         label = QLabel("Messwert")
         gLayout.addWidget(label, 0, 2)
@@ -464,11 +464,8 @@ class SensorDisplay(QMainWindow):
         layout.addLayout(hbox)
  
         res.setLayout(layout)
-<<<<<<< HEAD
-=======
         self.QFilename.textChanged.connect(self.recorderFileNameChanged)
         self.QPlotname.textChanged.connect(self.plotNameChanged)
->>>>>>> 5cb43c6829634cca58ea0c0adbb5038c36a0a74b
         self.sIntVal_edit.textChanged.connect(self.onTimingChanged)
         self.captime_edit.textChanged.connect(self.onTimingChanged)
         self.sampleUnit.currentIndexChanged.connect(self.onTimingChanged)
@@ -563,15 +560,17 @@ class SensorDisplay(QMainWindow):
                 self.yoctoTask.capture_stop()
                 self.yoctoTask = None
            else:
-                print("Data %d %s appended." % (len(self.rawdata), data))
-                if len(self.rawdata)%20 ==0:
-                    self.setNewData()
-                    self.updatePlots()
+                print("Data %d/%d %s appended." % (len(self.rawdata), self.capture_size, data))
                 self.rawdata.append(data)
                 cData = [data[0], data[1]]
                 cData.extend( self.r2p( data[2], data[3]))
                 cData.extend( self.r2p(data[4], data[5]))
+                self.pData.append(cData)
                 self.csvFile.writerow(data)
+                if len(self.rawdata)%20 ==0:
+                    self.setNewData()
+                    self.updatePlots()
+
        
     def file_open(self):
         local_dir = (os.path.dirname(self.filename)
@@ -637,6 +636,17 @@ class SensorDisplay(QMainWindow):
         # for relay functions, create a toggle button
         self.updatedConected(True)
                
+    @pyqtSlot(dict)
+    def removal(self, device):
+        # log removal
+        print('Device disconnected:', device, self.currThread())
+        # mark all reported values as disconnected
+        for functionId in device['functions']:
+            hardwareId = device['serial'] + '.' + functionId
+            if hardwareId in self.functionValues:
+                self.functionValues[hardwareId].setText(hardwareId + ": disconnected")
+        self.updatedConected({})
+
     @pyqtSlot(str, str)
     def newValue(self, value1, value2, value3):
         print(value1, value2, value3)
@@ -648,43 +658,37 @@ class SensorDisplay(QMainWindow):
         # # then update it for each reported value
         # self.functionValues[hardwareId].setText(hardwareId + ": " + value)
 
-    @pyqtSlot(dict)
-    def removal(self, device):
-        # log removal
-        print('Device disconnected:', device, self.currThread())
-        # mark all reported values as disconnected
-        for functionId in device['functions']:
-            hardwareId = device['serial'] + '.' + functionId
-            if hardwareId in self.functionValues:
-                self.functionValues[hardwareId].setText(hardwareId + ": disconnected")
-        self.updatedConected(False)
 
     def updateConected(self, newState):
+        print("Update connected to %s" % newstate)
         self.connected = newState
         if newState:
-            self.gen1Icon = QIcon(":greenLed.svg")
+            self.showGen1.setStyleSheet("background-color:green")
+            self.showGen2.setStyleSheet("background-color:red")
         else:
-            self.gen1Icon = QIcon(":redLed.svg")
+            self.showGen1.setStyleSheet("background-color:white")
+            self.showGen2.setStyleSheet("background-color:white")
             
 
               
     def doStart(self):
-        now = datetime.now()
-        nowS = now.strftime("%Y%m%d_%H%M%S.csv")
-        self.QFilename.setText(nowS)
-        self.conf = configuration(self.yoctoTask)
-        self.r2p = self.conf.getR2PFunction()
-        self.p2r = self.conf.getP2RFunction()
-        self.filename = nowS
-        self.rFile = open(nowS, "w")
-        self.csvFile= csv.writer(self.rFile, lineterminator="\n")
-        self.storeFName = nowS
-        print("Set time to %s" %nowS)
-        self.yoctoTask.capture_start()
-        self.doRecord = True
-        self.btn["Start"].hide()
-        self.btn["Stop"].show()
-        print("Start record")
+        self.set_capture_size()
+        if self.yoctoTask.capture_start():
+            now = datetime.now()
+            nowS = now.strftime("%Y%m%d_%H%M%S.csv")
+            print("Set time to %s" %nowS)
+            self.QFilename.setText(nowS)
+            self.conf = configuration(self.yoctoTask)
+            self.r2p = self.conf.getR2PFunction()
+            self.p2r = self.conf.getP2RFunction()
+            self.filename = nowS
+            self.rFile = open(nowS, "w")
+            self.csvFile= csv.writer(self.rFile, lineterminator="\n")
+            self.storeFName = nowS
+            self.doRecord = True
+            self.btn["Start"].hide()
+            self.btn["Stop"].show()
+            print("Start record")
         
     def doStop(self):
         self.doRecord = False
@@ -722,44 +726,17 @@ class SensorDisplay(QMainWindow):
         self.message.showMessage(text, time)
     
     def onTimingChanged(self):
-<<<<<<< HEAD
-        print("Call onSampleIntvalChanged %s" % ( self.sampleUnit.currentIndex()))
-        if self.sampleUnit.currentIndex()==0:
-            self.sampleIntervall_ms =1000
-        else:
-            self.sampleIntervall_ms =1
-        sInt =  1 if self.sIntVal_edit.text() == None else self.sIntVal_edit.text()
-        print("Sample Int str \"%s\"" % sInt)
-        self.sampleIntervall_ms *= int(sInt)
-        self.yoctoTask.setSampleInterval_ms(self.sampleIntervall_ms)
-        print("Sample intervall is %d ms" % self.sampleIntervall_ms)
-        print("Call onSampleIntvalChanged %s" % (self.sampcapDur.currentIndex() ))
-        if self.sampcapDur.currentIndex()==0:
-            print("s")
-            self.captureTime_s = 1
-        elif self.sampcapDur.currentIndex()==1:
-            print("min")
-            self.captureTime_s = 60
-        else:
-            print("h")
-            self.captureTime_s = 3600
-        capTime = 1 if self.captime_edit.text() == None else self.captime_edit.text()
-        print("Set capture time to \"%s\"" % (capTime))
-        self.captureTime_s *= int(capTime)
-        print("Capture time is %d s" % self.captureTime_s)
-        self.set_capture_size()
-=======
         if not self.doRecord:
             print("Call onSampleIntvalChanged %s" % ( self.sampleUnit.currentIndex()))
             if self.sampleUnit.currentIndex()==0:
-                self.sampleIntervall_ms =1000
+                self.setSampleInterval_ms =1000
             else:
-                self.sampleIntervall_ms =1
+                self.setSampleInterval_ms =1
             sInt =  1 if self.sIntVal_edit.text() == None else self.sIntVal_edit.text()
             print("Sample Int str \"%s\"" % sInt)
-            self.sampleIntervall_ms *= int(sInt)
-            self.yoctoTask.setSampleInterval_ms(self.sampleIntervall_ms)
-            print("Sample intervall is %d ms" % self.sampleIntervall_ms)
+            self.setSampleInterval_ms *= int(sInt)
+            self.yoctoTask.setSampleInterval_ms(self.setSampleInterval_ms)
+            print("Sample intervall is %d ms" % self.setSampleInterval_ms)
             print("Call onSampleIntvalChanged %s" % (self.sampcapDur.currentIndex() ))
             if self.sampcapDur.currentIndex()==0:
                 print("s")
@@ -771,20 +748,19 @@ class SensorDisplay(QMainWindow):
                 print("h")
                 self.captureTime_s = 3600
             capTime = 1 if self.captime_edit.text() == None else self.captime_edit.text()
-            print("Set capture time to \"%s\"" % (capTime))
+            print("Set capture time to \"%s\"" % (capTime, ))
             self.captureTime_s *= int(capTime)
-            print("Capture time is %d s" % self.captureTime_s)
             self.set_capture_size()
+            print("Capture time is %d s/Size %d" % (self.captureTime_s, self.capture_size))
         else:
             print("Sample in progress: Can not update timing")
->>>>>>> 5cb43c6829634cca58ea0c0adbb5038c36a0a74b
 
     def set_capture_size(self):
-        self.capture_size =  int(ceil(self.captureTime_s*1000/self.sampleIntervall_ms))
+        self.capture_size =  int(ceil(self.captureTime_s*1000/self.setSampleInterval_ms))
         self.showMsg("Capture size %d" % self.capture_size)   
         if self.yoctoTask is not None:
             self.yoctoTask.set_capture_size(self.capture_size)
-        print("Capture size is now %d: captureTime %d s, sampleInterval %d ms" % (self.capture_size, self.captureTime_s, self.sampleIntervall_ms))
+        print("Capture size is now %d: captureTime %d s, sampleInterval %d ms" % (self.capture_size, self.captureTime_s, self.setSampleInterval_ms))
        
     def tabChanged(self, index):
         self.setNewData()
@@ -792,17 +768,17 @@ class SensorDisplay(QMainWindow):
         print("Tab changed %d" %(index))
     
     @property
-    def rawdataSize(self):
-        return  len(self.rawdata)
+    def pDataSize(self):
+        return  len(self.pData)
 
     def setNewData(self):
-        print("Set new data of size %d/%d" %( self.rawdataSize, len(self.emData)))
-        if len(self.rawdata) > 0 :
-            self.data = np.zeros([ self.rawdataSize, 3])
-            for i in range(self.rawdataSize):
-                self.data[i][0] = float(self.rawdata[i][1])
-                self.data[i][1] = float(self.rawdata[i][2])
-                self.data[i][2] = float(self.rawdata[i][4])
+        print("Set new data of size pdata %d/%d" %(self.pDataSize, len(self.emData)))
+        if len(self.pData) > 0 :
+            self.data = np.zeros([ self.pDataSize, 3])
+            for i in range(self.pDataSize):
+                self.data[i][0] = float(self.pData[i][1])
+                self.data[i][1] = float(self.pData[i][2])
+                self.data[i][2] = float(self.pData[i][4])
         if self.emData is not None:
             self.emdata = np.zeros([ len(self.emData), 3])
             for i in range(len(self.emData)):
@@ -828,9 +804,9 @@ class SensorDisplay(QMainWindow):
             self.progressBar.setValue(int(progress))
             self.recorderGraph.clear()
             if self.showGen1.checkState():            
-                self.recorderGraph.plot(x, y1, name="genericSensor1", pen=pg.mkPen("red"))
+                self.recorderGraph.plot(x, y1, name="generic1", pen=pg.mkPen("red"))
             if self.showGen1.checkState():            
-                self.recorderGraph.plot(x,y2, name="genericSensor2", pen=pg.mkPen("green"))
+                self.recorderGraph.plot(x,y2, name="generic2", pen=pg.mkPen("green"))
             self.recorderGraph.setTitle(self.storeFName.split("/")[-1])
             self.recorderGraph.addLegend()
 
@@ -845,9 +821,9 @@ class SensorDisplay(QMainWindow):
             self.emulatorGraph.clear()
             self.emulatorGraph.addLegend()
             if self.showeGen1.checkState():
-                p1 = self.emulatorGraph.plot(x,y1, name="genericSensor1", pen=pg.mkPen("red"))
+                p1 = self.emulatorGraph.plot(x,y1, name="generic1", pen=pg.mkPen("red"))
             if self.showeGen2.checkState():
-                p2 = self.emulatorGraph.plot(x,y2, name="genericSensor2",pen=pg.mkPen("green"))
+                p2 = self.emulatorGraph.plot(x,y2, name="generic2",pen=pg.mkPen("green"))
             self.emulatorGraph.setTitle(self.emFile.split("/")[-1])
      
 
