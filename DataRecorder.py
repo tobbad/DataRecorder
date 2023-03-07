@@ -110,7 +110,6 @@ class SensorDisplay(QMainWindow):
         self.dirty = False
         self.emFile = ""
         self.filename = "./"
-        self.data = None
         self.emdata=None
         self.btn = {}
         self.doRecord = False
@@ -118,14 +117,14 @@ class SensorDisplay(QMainWindow):
         self.setSampleInterval_ms =1
         self.captureTime_s = 1
         self.rawdata = []        
-        self.pData = []        
+        self.pData = None
         self.unit  =[]
         self.functionValues = {}
         self.yoctoTask = None
         self.emData = []
         self.setUpGUI()
         self.plotname = ""
-        self.connected = newState = False
+        self.connected = False
         
         
     def setUpGUI(self):    
@@ -143,7 +142,7 @@ class SensorDisplay(QMainWindow):
         # Add tab widget for Recorder an Emulator
         tabWidget.addTab(self.Recorder(), "Recorder")
         #tabWidget.addTab(self.Icons(), "Icons")
-        tabWidget.addTab(self.Emulator(), "Proberecorder")
+        tabWidget.addTab(self.Emulator(), "Emulatot")
         tabWidget.currentChanged.connect(self.tabChanged)
         
         widget = QWidget()
@@ -234,16 +233,16 @@ class SensorDisplay(QMainWindow):
         self.yaxisScale.addItems(["variabel","fixed", ])
         self.yaxisScale.currentIndexChanged.connect(self.fixedUpdate)
         hbox.addWidget(self.yaxisScale)
-        self.showGen1 = QCheckBox('Show generic1', self)
-        self.showGen1.setChecked(True)
-        self.showGen1.setStyleSheet("background-color:white")
-        self.showGen1.stateChanged.connect(self.updatePlots)
-        hbox.addWidget(self.showGen1)
-        self.showGen2 = QCheckBox('Show generic2', self)
-        self.showGen2.setChecked(True)
-        self.showGen2.setStyleSheet("background-color:white")
-        self.showGen2.stateChanged.connect(self.updatePlots)
-        hbox.addWidget(self.showGen2) 
+        self.showGen1CB = QCheckBox('generic1', self)
+        self.showGen1CB.setChecked(True)
+        self.showGen1CB.setStyleSheet("background-color:white")
+        self.showGen1CB.stateChanged.connect(self.updatePlots)
+        hbox.addWidget(self.showGen1CB)
+        self.showGen2CB = QCheckBox('generic2', self)
+        self.showGen2CB.setChecked(True)
+        self.showGen2CB.setStyleSheet("background-color:white")
+        self.showGen2CB.stateChanged.connect(self.updatePlots)
+        hbox.addWidget(self.showGen2CB) 
         
         layout.addLayout(hbox)
 
@@ -305,7 +304,7 @@ class SensorDisplay(QMainWindow):
         hbox =QHBoxLayout()
         self.setSampleInterval_ms = 200
         self.captureTime_s = 1
-        onlyInt0_1000 = QIntValidator( 1, 999, self)
+        onlyInt0_1000 = QIntValidator( 1, 1000, self)
         
         siLabel = QLabel("Sample interval")
         
@@ -339,108 +338,106 @@ class SensorDisplay(QMainWindow):
         hbox.addWidget(self.progressBar)
         layout.addLayout(hbox)
                
-        frame1 = QFrame()
-        frame1.setStyleSheet("QFrame {background-color: rgb(255, 255, 255);"
+        self.frame1 = QFrame()
+        self.frame1.setStyleSheet("QFrame {background-color: rgb(255, 255, 255);"
                                 "border-width: 1;"
                                 "border-radius: 3;"
                                 "border-style: solid;"
-                                "border-color: rgb(255, 0, 0)}"
+                                "border-color: rgb(0, 0, 0)}"
                                 )
-        frame1.setFrameShape(QFrame.StyledPanel)
-        frame1.setLineWidth(3)
-        #frame1.setStyleSheet("background-color: blue")
-        #frame1.setFrameStyle(QFrame.VLine|QFrame.Sunken)
-        
+        self.frame1.setFrameShape(QFrame.StyledPanel)
+        self.frame1.setLineWidth(3)
+       
         gLayout = QGridLayout()
         
-        label = QLabel("generic1")
-        gLayout.addWidget(label, 0, 0)
-                
+        self.gen1Label = QLabel("generic1")
+        gLayout.addWidget(self.gen1Label, 0, 0)
+               
         label = QLabel("Messwert")
         gLayout.addWidget(label, 0, 2)
-        self._actVal = QLabel("%.2f" % 0)
-        gLayout.addWidget(self._actVal, 0, 3)
+        self._actVal1 = QLabel("%.2f" % 0)
+        gLayout.addWidget(self._actVal1, 0, 3)
         label = QLabel("Min:")
         gLayout.addWidget(label, 0, 4)
-        self._actmin = QLabel("%.2f" % 0)
-        gLayout.addWidget(self._actmin, 0, 5)
+        self._actmin1 = QLabel("%.2f" % 0)
+        gLayout.addWidget(self._actmin1, 0, 5)
         label = QLabel("Max:")
         gLayout.addWidget(label, 0, 6)
-        self._actmax = QLabel("%.2f" %120)
-        gLayout.addWidget(self._actmax, 0, 7)
+        self._actmax1 = QLabel("%.2f" %120)
+        gLayout.addWidget(self._actmax1, 0, 7)
         self.pUnit = QLabel("°C")
         gLayout.addWidget(self.pUnit, 0, 8)
 
         
         label = QLabel("Rohwert")
         gLayout.addWidget(label, 1, 2)
-        self._actRawVal = QLabel("%.2f" % 0)
-        gLayout.addWidget(self._actRawVal, 1, 3)
+        self._actRawVal1 = QLabel("%.2f" % 0)
+        gLayout.addWidget(self._actRawVal1, 1, 3)
         label = QLabel("Min:")
         gLayout.addWidget(label, 1, 4)
-        self._actRawMin = QLabel("%.2f" %0)
-        gLayout.addWidget(self._actRawMin, 1, 5)
+        self._actRawMin1 = QLabel("%.2f" %0)
+        gLayout.addWidget(self._actRawMin1, 1, 5)
         label = QLabel("Max:")
         gLayout.addWidget(label, 1, 6)
-        self._actRawMax = QLabel("%.2f" %120)
-        gLayout.addWidget(self._actRawMax, 1, 7)
+        self._actRawMax1 = QLabel("%.2f" %120)
+        gLayout.addWidget(self._actRawMax1, 1, 7)
         self.rawUnit = QLabel("mA")
         gLayout.addWidget(self.rawUnit, 1, 8)
-        frame1.setLayout(gLayout)
-        layout.addWidget(frame1)
+        self.frame1.setLayout(gLayout)
+        layout.addWidget(self.frame1)
         
-        frame2 = QFrame()
-        frame2.setStyleSheet("QFrame {background-color: rgb(255,255,255);"
+        self.frame2 = QFrame()
+        self.frame2.setStyleSheet("QFrame {background-color: rgb(255, 255, 255);"
                                 "border-width: 1;"
                                 "border-radius: 3;"
                                 "border-style: solid;"
-                                "border-color: rgb(0,255,0)}"
+                                "border-color: rgb(0, 0, 0)}"
                                 )
-        frame2.setFrameShape(QFrame.StyledPanel)
-        frame2.setLineWidth(3)
+        self.frame2.setFrameShape(QFrame.StyledPanel)
+        self.frame2.setLineWidth(3)
         #frame1.setStyleSheet("background-color: blue")
         #frame1.setFrameStyle(QFrame.VLine|QFrame.Sunken)
         
         gLayout = QGridLayout()
         
-        label = QLabel("generic2")
-        gLayout.addWidget(label, 0, 0)
+        self.gen2Label = QLabel("generic1")
+        gLayout.addWidget(self.gen2Label, 0, 0)
         
         self.conState = QIcon(":redLed.svg")
         #gLayout.addWidget(self.conState, 0, 1)
         
         label = QLabel("Messwert")
         gLayout.addWidget(label, 0, 2)
-        self._actVal = QLabel("%.2f" % 0)
-        gLayout.addWidget(self._actVal, 0, 3)
+        self._actVal2 = QLabel("%.2f" % 0)
+        gLayout.addWidget(self._actVal2, 0, 3)
         label = QLabel("Min:")
         gLayout.addWidget(label, 0, 4)
-        self._actmin = QLabel("%.2f" % 0)
-        gLayout.addWidget(self._actmin, 0, 5)
+        self._actmin2 = QLabel("%.2f" % 0)
+        gLayout.addWidget(self._actmin2, 0, 5)
         label = QLabel("Max:")
         gLayout.addWidget(label, 0, 6)
-        self._actmax = QLabel("%.2f" %120)
-        gLayout.addWidget(self._actmax, 0, 7)
+        self._actmax2 = QLabel("%.2f" %120)
+        gLayout.addWidget(self._actmax2, 0, 7)
         self.pUnit = QLabel("°C")
         gLayout.addWidget(self.pUnit, 0, 8)
 
         
         label = QLabel("Rohwert")
         gLayout.addWidget(label, 1, 2)
-        self._actRawVal = QLabel("%.2f" % 0)
-        gLayout.addWidget(self._actRawVal, 1, 3)
+        self._actRawVal2 = QLabel("%.2f" % 0)
+        gLayout.addWidget(self._actRawVal2, 1, 3)
         label = QLabel("Min:")
         gLayout.addWidget(label, 1, 4)
-        self._actRawMin = QLabel("%.2f" %0)
-        gLayout.addWidget(self._actRawMin, 1, 5)
+        self._actRawMin2 = QLabel("%.2f" %0)
+        gLayout.addWidget(self._actRawMin2, 1, 5)
         label = QLabel("Max:")
         gLayout.addWidget(label, 1, 6)
-        self._actRawMax = QLabel("%.2f" %120)
-        gLayout.addWidget(self._actRawMax, 1, 7)
+        self._actRawMax2 = QLabel("%.2f" %120)
+        gLayout.addWidget(self._actRawMax2, 1, 7)
         self.rawUnit = QLabel("mA")
         gLayout.addWidget(self.rawUnit, 1, 8)
-        frame2.setLayout(gLayout)
-        layout.addWidget(frame2)
+        self.frame2.setLayout(gLayout)
+        layout.addWidget(self.frame2)
 
         
         
@@ -560,13 +557,18 @@ class SensorDisplay(QMainWindow):
                 self.yoctoTask.capture_stop()
                 self.yoctoTask = None
            else:
-                print("Data %d/%d %s appended." % (len(self.rawdata), self.capture_size, data))
                 self.rawdata.append(data)
-                cData = [data[0], data[1]]
-                cData.extend( self.r2p( data[2], data[3]))
-                cData.extend( self.r2p(data[4], data[5]))
-                self.pData.append(cData)
-                self.csvFile.writerow(data)
+                pData = [data[0], data[1]]
+                pData.extend( self.r2p( data[3], data[4]))
+                pData.extend( self.r2p(data[6], data[7]))
+                if len(self.pData) == 0:
+                    self.pData[data[2]] = []
+                    self.pData[data[5]] = []
+                    print("Set up generic 1/ %s/%s" %(data[2],data[5]))
+                self.pData[data[2]].append(([pData[0], pData[1], pData[2], pData[3] ]))
+                self.pData[data[5]].append(([pData[0], pData[1], pData[4], pData[5] ]))
+                self.csvFile.writerow(pData)
+                print("Data %d/%d %s appended." % (len(self.rawdata), self.capture_size, pData))
                 if len(self.rawdata)%20 ==0:
                     self.setNewData()
                     self.updatePlots()
@@ -606,7 +608,6 @@ class SensorDisplay(QMainWindow):
             self.emData[idx][1]  = float(line[2])
             self.emData[idx][2]  = float(line[4])
         print("Set emData to \n%s" %(self.emData))
-        #print(self.data)
         self.emFile = fname
         print("Set emulator file name to %s" %self.emFile)
         self.setNewData()
@@ -628,24 +629,17 @@ class SensorDisplay(QMainWindow):
     @pyqtSlot(dict)
     def arrival(self, device):
         # log arrival
-        print('Device connected: Dev:%s Thread %s', device, self.currThread())
-        for functionId in device['functions']:
-            hardwareId = device['serial'] + '.' + functionId
-            if hardwareId in self.functionValues:
-                print("ID " % (hardwareId))
+        print("Device connected: Dev:%s Thread ??" %( device))
+        self.sensor = device
         # for relay functions, create a toggle button
-        self.updatedConected(True)
+        self.updateConnected()
                
     @pyqtSlot(dict)
     def removal(self, device):
         # log removal
-        print('Device disconnected:', device, self.currThread())
-        # mark all reported values as disconnected
-        for functionId in device['functions']:
-            hardwareId = device['serial'] + '.' + functionId
-            if hardwareId in self.functionValues:
-                self.functionValues[hardwareId].setText(hardwareId + ": disconnected")
-        self.updatedConected({})
+        self.sensor = None
+        print('Device disconnected:', device)
+        self.updateConnected()
 
     @pyqtSlot(str, str)
     def newValue(self, value1, value2, value3):
@@ -658,17 +652,24 @@ class SensorDisplay(QMainWindow):
         # # then update it for each reported value
         # self.functionValues[hardwareId].setText(hardwareId + ": " + value)
 
-
-    def updateConected(self, newState):
-        print("Update connected to %s" % newstate)
-        self.connected = newState
-        if newState:
-            self.showGen1.setStyleSheet("background-color:green")
-            self.showGen2.setStyleSheet("background-color:red")
+    def updateConnected(self):
+        self.connected = self.sensor!=None
+        print("Update connected to %s" % self.connected)
+        if self.sensor is not None:
+            label = self.showGen1CB.text()
+            self.showGen1CB.setText(label)
+            label = self.showGen2CB.text()
+            self.showGen2CB.setText(label)
+            self.showGen1CB.setStyleSheet("background-color:green")
+            self.showGen2CB.setStyleSheet("background-color:red")
+            self.frame1.setStyleSheet("background-color:green")
+            self.frame2.setStyleSheet("background-color:red")
         else:
-            self.showGen1.setStyleSheet("background-color:white")
-            self.showGen2.setStyleSheet("background-color:white")
-            
+            self.showGen1CB.setStyleSheet("background-color:white")
+            self.showGen2CB.setStyleSheet("background-color:white")
+            self.frame1.setStyleSheet("background-color:white")
+            self.frame2.setStyleSheet("background-color:white")
+           
 
               
     def doStart(self):
@@ -684,11 +685,12 @@ class SensorDisplay(QMainWindow):
             self.filename = nowS
             self.rFile = open(nowS, "w")
             self.csvFile= csv.writer(self.rFile, lineterminator="\n")
-            self.storeFName = nowS
             self.doRecord = True
             self.btn["Start"].hide()
             self.btn["Stop"].show()
             print("Start record")
+            self.setNewData()
+            self.updatePlots()
         
     def doStop(self):
         self.doRecord = False
@@ -701,7 +703,7 @@ class SensorDisplay(QMainWindow):
         self.rawdata= []
      
     def doSave(self):
-         if self.data is None:
+         if self.pData is None:
              print("No data captured")
              return
          fmt =  ["CSV Files (*.csv)", "Excel Files (*.xslc)"]
@@ -769,16 +771,29 @@ class SensorDisplay(QMainWindow):
     
     @property
     def pDataSize(self):
-        return  len(self.pData)
+        if self.pData is not None:
+            return  len(self.pData['generic1'])
+        else:
+            return -1
 
     def setNewData(self):
-        print("Set new data of size pdata %d/%d" %(self.pDataSize, len(self.emData)))
+        if self.pData is None:
+            print("Set up pData")
+            self.pData ={}
+            self.pData['generic1'] = []
+            self.pData['generic2'] = []
+            self.data1 = np.zeros([ self.pDataSize, 2])
+            self.data2 = np.zeros([ self.pDataSize, 2])
+            return 
+        print("Set new data of size pData %d/%d" %(self.pDataSize, len(self.emData)))
         if len(self.pData) > 0 :
-            self.data = np.zeros([ self.pDataSize, 3])
+            self.data1 = np.zeros([ self.pDataSize, 2])
+            self.data2 = np.zeros([ self.pDataSize, 2])
             for i in range(self.pDataSize):
-                self.data[i][0] = float(self.pData[i][1])
-                self.data[i][1] = float(self.pData[i][2])
-                self.data[i][2] = float(self.pData[i][4])
+                self.data1[i][0] = float(self.pData["generic1"][i][1])
+                self.data1[i][1] = float(self.pData["generic1"][i][2])
+                self.data2[i][0] = float(self.pData["generic2"][i][1])
+                self.data2[i][1] = float(self.pData["generic2"][i][2])
         if self.emData is not None:
             self.emdata = np.zeros([ len(self.emData), 3])
             for i in range(len(self.emData)):
@@ -787,27 +802,32 @@ class SensorDisplay(QMainWindow):
                 self.emdata[i][2] = float(self.emData[i][2])
             
     def updatePlots(self):
-        print("Updat plots")
-        if self.data is not None:
-            x = self.data[:,0]
-            y1 = self.data[:,1]
-            y2 = self.data[:,1]
-            y1min = y1.min()
-            y2min = y2.min()
-            y1max = y1.max()
-            y2max = y2.max()
-            self._actVal.setText("%.2f" % y1[-1])
-            self._actmin.setText("%.2f" % y1min)
-            self._actmax.setText("%.2f" % y1max)
+        print("Updat plots with len pData size = %d" % (self.pDataSize))
+        if self.pData is not None and self.pDataSize >0:
+            x = self.data1[:,0]
+            
+            g1 = self.data1[:,1]
+            g2 = self.data2[:,1]
+            g1min = g1.min()
+            g1max = g1.max()
+            
+            g2min = g2.min()
+            g2max = g2.max()
+            self._actVal1.setText("%.2f" % g1[-1])
+            self._actmin1.setText("%.2f" % g1min)
+            self._actmax1.setText("%.2f" % g1max)
+            self._actVal2.setText("%.2f" % g2[-1])
+            self._actmin2.setText("%.2f" % g2min)
+            self._actmax2.setText("%.2f" % g2max)
             progress = 100.0*len(self.rawdata)/float(self.capture_size)
-            print("Progress %.1f of %d " % (progress, self.capture_size))
+            #print("Progress %.1f of %d " % (progress, self.capture_size))
             self.progressBar.setValue(int(progress))
             self.recorderGraph.clear()
-            if self.showGen1.checkState():            
-                self.recorderGraph.plot(x, y1, name="generic1", pen=pg.mkPen("red"))
-            if self.showGen1.checkState():            
-                self.recorderGraph.plot(x,y2, name="generic2", pen=pg.mkPen("green"))
-            self.recorderGraph.setTitle(self.storeFName.split("/")[-1])
+            if self.showGen1CB.checkState():            
+                self.recorderGraph.plot(x, g1, name="generic1", pen=pg.mkPen("green"))
+            if self.showGen2CB.checkState():            
+                self.recorderGraph.plot(x, g2, name="generic2", pen=pg.mkPen("red"))
+            self.recorderGraph.setTitle(self.filename.split("/")[-1])
             self.recorderGraph.addLegend()
 
         if self.emdata is not None:
