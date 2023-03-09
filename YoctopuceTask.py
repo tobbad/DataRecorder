@@ -113,7 +113,7 @@ class YoctopuceTask(QObject):
             pSensor = YGenericSensor.nextGenericSensor(pSensor)
         sen = {}
         for s in newSensorList:
-            sen[s.name] = s
+            sen[s.function] = s
         self.sensor = sen
         print("Registered %d Sensors %s" % (len(self.sensor), self.sensor))
         self.arrival.emit(self.sensor)
@@ -225,15 +225,18 @@ class sensor:
             print(self._name)
 
         self.type = self.sen.get_module().get_serialNumber()
+        print("Sensor f name is %s ;ModuleId is: %s"% (self.function, self.moduleId))
         self.functionType = self.sen.get_module().functionType(0)
-        print("Create %s Sensor" % (self.name))
 
     def __str__(self):
-        res = "type=%s " % (self.name)
-        return res
+        return self.function
+    
+    @property
+    def moduleId(self):
+        return self.type 
 
     @property
-    def name(self):
+    def function(self):
         return self._name
 
     def get_values(self):
