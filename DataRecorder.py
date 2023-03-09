@@ -558,6 +558,7 @@ class SensorDisplay(QMainWindow):
                 self.yoctoTask = None
            else:
                 self.rawdata.append(data)
+                print(data)
                 pData = [data[0], data[1]]
                 pData.extend( self.r2p( data[3], data[4]))
                 pData.extend( self.r2p(data[6], data[7]))
