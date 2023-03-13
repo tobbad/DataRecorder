@@ -19,9 +19,18 @@ from yocto_genericsensor import *
 
 
 class configuration:
+    
+    configuration_file = "configuration.xml"
+    
     def __init__(self, yocto):
         self.yocto = yocto
-        self.createNewConf("configuration.xml")
+        fname = "./%s" % (configuration.configuration_file)
+        if os.path.exists(fname):
+            print("Configuration file exists -> load")
+            self.load(fname)
+        else:
+            print("Configuration file does not exists -> Create")
+            self.createNewConf(fname)
 
     def createNewConf(self, name):
 
@@ -47,9 +56,9 @@ class configuration:
             },
         )
         child = ET.SubElement(root, "yoctopuc")
-        child = ET.SubElement(root, "source", {"host": "usb"})
+        schild = ET.SubElement(child, "source", {"host": "usb"})
         subChild = ET.SubElement(
-            root, "ymodule", {"id": "RX420MA1-123456", "type": "Yocto-4-20mA-Rx"}
+            schild, "ymodule", {"id": "RX420MA1-123456", "type": "Yocto-4-20mA-Rx"}
         )
         ET.SubElement(
             subChild,
@@ -58,7 +67,7 @@ class configuration:
                 "id": "genericSensor1",
                 "signalName": "refTemperatur",
                 "type": "input",
-                "rawMin": "2.0",
+                "rawMin": "4.0",
                 "rawMax": "20.0",
                 "min": "0",
                 "max": "120",
@@ -84,6 +93,32 @@ class configuration:
         with open(name, "wb") as f:
              f.write(bytes(xml_str, 'utf-8'))
         print("Wrote %s" % name)
+
+    def load(self, confFile):
+        print("Load %s"%confFile )
+        self.et = ET.parse(confFile).getroot()
+        self._yfunction = []
+        
+        for c in self.et:
+            print(c.tag, c. attrib)
+            if c.tag == "capturetime":
+                self._captureTime= {"time":int(c.attrib["time"]), "unit":c.attrib["unit"]}
+                #print("Set capture time to %s" % (self._captureTime))
+            if c.tag == "datarate":
+                self._dataRate= {"time":int(c.attrib["time"]), "unit":c.attrib["unit"]}
+                #print("Set capture rate to %s" % (self._dataRate))
+            if c.tag == "yfunction":
+                self._yfunction.append(c.attrib)
+                print("Yfunction added %s" % (c.attrib))
+        print("Capture data while %d %s with datarate of %d %s " %(self.captureTime["time"], self.captureTime["unit"], self.dataRate["time"], self.dataRate["unit"]))
+            
+    @property
+    def captureTime(self):
+        return self._captureTime
+
+    @property
+    def dataRate(self):
+        return self._dataRate
 
     def getR2PFunction(self):
         def convert(val, unit):
