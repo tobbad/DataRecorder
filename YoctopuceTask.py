@@ -62,10 +62,10 @@ class YoctopuceTask(QObject):
     @pyqtSlot()
     def initAPI(self):
         print('Yoctopuce task started', currThread())
-        errmsg = YRefParam()
+        self.yocto_err = YRefParam()
         YAPI.RegisterLogFunction(self.logfun)
         # Setup the API to use Yoctopuce devices on localhost
-        if YAPI.RegisterHub("usb", errmsg) != YAPI.SUCCESS:            
+        if YAPI.RegisterHub("usb", self.yocto_err) != YAPI.SUCCESS:            
             self.statusMsg.emit('Failed to init Yoctopuce API: ' +
                                 errmsg.value)
             return
@@ -172,7 +172,7 @@ class YoctopuceTask(QObject):
         if self.file is not None:
             self.file.close()
             self.file = None
-        self.freeAPI    
+        self.freeAPI()
         
     def setSampleInterval_ms(self, sampel_interval_ms):
         self.sampel_interval_ms = sampel_interval_ms
@@ -213,7 +213,7 @@ class sensor:
     def __init__(self, sensor):
         self.sen = sensor
         name = sensor.get_friendlyName()
-        self._name = str(self.sen).split("=")[1].split(".")[1]
+        self._name = str(self.sen).split("=")[1].split(".")[1].replace("Sensor","")
         self.type = self.sen.get_module().get_serialNumber()
         print("Sensor f name is %s ;ModuleId is: %s"% (self.function, self.moduleId))
         self.functionType = self.sen.get_module().functionType(0)
@@ -230,7 +230,7 @@ class sensor:
         return self._name
 
     def get_values(self):
-        res = [self.sen.function, self.sen.get_currentValue(), self.sen.get_unit()]
+        res = [self.function, self.sen.get_currentValue(), self.sen.get_unit()]
         return res
 
     def capture_stop(self):
