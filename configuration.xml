@@ -1,0 +1,14 @@
+<?xml version="1.0" ?>
+<configuration>
+	<targetfolder path="."/>
+	<capturetime time="24" unit="h"/>
+	<datarate time="1" unit="m"/>
+	<yoctopuc>
+		<source host="usb">
+			<ymodule id="RX420MA1-123456" type="Yocto-4-20mA-Rx">
+				<yfunction id="genericSensor1" signalName="refTemperatur" type="input" rawMin="4.0" rawMax="20.0" min="0" max="120" unit="C"/>
+				<yfunction id="genericSensor2" signalName="Temperatur" type="input" rawMin="4.0" rawMax="20.0" min="0" max="100" unit="°C"/>
+			</ymodule>
+		</source>
+	</yoctopuc>
+</configuration>

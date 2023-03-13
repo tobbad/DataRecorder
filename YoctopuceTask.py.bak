@@ -230,7 +230,7 @@ class sensor:
         return self._name
 
     def get_values(self):
-        res = [self.sen.function, self.sen.get_currentValue(), self.sen.get_unit()]
+        res = [self.sen.name, self.sen.get_currentValue(), self.sen.get_unit()]
         return res
 
     def capture_stop(self):
