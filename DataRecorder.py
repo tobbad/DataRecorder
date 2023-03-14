@@ -579,7 +579,6 @@ class SensorDisplay(QMainWindow):
                 self.pData[data[2]].append(([pData[0], pData[1], pData[2], pData[3] ]))
                 if len(data)>5:
                     self.pData[data[5]].append(([pData[0], pData[1], pData[4], pData[5] ]))
-                print(self.pData.keys())
                 self.csvFile.writerow(pData)
                 print("Data %d/%d %s appended." % (len(self.rawdata), self.capture_size, pData))
                 if len(self.rawdata)%20 ==0:
@@ -892,7 +891,7 @@ class SensorDisplay(QMainWindow):
                 self.recorderGraph.plot(x, g1, name="generic1", pen=pg.mkPen("green"))
             if self.showGen2CB.checkState():            
                 self.recorderGraph.plot(x, g2, name="generic2", pen=pg.mkPen("red"))
-            self.recorderGraph.setTitle(self.filename.split("/")[-1])
+                self.recorderGraph.setTitle(self.QPlotname.text())
 
             self.recorderGraph.addLegend()
 
@@ -908,6 +907,7 @@ class SensorDisplay(QMainWindow):
             self.emulatorGraph.addLegend()
             if self.showeGen1.checkState():
                 p1 = self.emulatorGraph.plot(x,y1, name="generic1", pen=pg.mkPen("red"))
+                self.emulatorGraph.setTitle()
             if self.showeGen2.checkState():
                 p2 = self.emulatorGraph.plot(x,y2, name="generic2",pen=pg.mkPen("green"))
             self.emulatorGraph.setTitle(self.emFile.split("/")[-1])
