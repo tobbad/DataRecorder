@@ -144,7 +144,7 @@ class SensorDisplay(QMainWindow):
         # Add tab widget for Recorder an Emulator
         tabWidget.addTab(self.Recorder(), "Recorder")
         #tabWidget.addTab(self.Icons(), "Icons")
-        tabWidget.addTab(self.Emulator(), "Emulatot")
+        tabWidget.addTab(self.Emulator(), "Emulator")
         tabWidget.currentChanged.connect(self.tabChanged)
         
         widget = QWidget()
@@ -219,7 +219,7 @@ class SensorDisplay(QMainWindow):
         layout = QVBoxLayout()
         self.recorderGraph = pg.PlotWidget()
         self.recorderGraph.setLabel('left', "<span style=\"color:white;font-size:10px\">Temperature (°C)</span>")
-        self.recorderGraph.setLabel('right', "<span style=\"color:white;font-size:10px\">Current (mA)</span>")
+        #self.recorderGraph.setLabel('right', "<span style=\"color:white;font-size:10px\">Current (mA)</span>")
         self.recorderGraph.setLabel('bottom', "<span style=\"color:white;font-size:10px\">Time (s)</span>")
         layout.addWidget(self.recorderGraph)
  
@@ -292,16 +292,21 @@ class SensorDisplay(QMainWindow):
         
         
         hbox =QHBoxLayout()
-        icons = [["Start", self.doStart], ["Stop", self.doStop], ["Clear", self.doClear], ["Save", self.doSave]]
-        for name, fn  in icons:
+        icons = [["Start", self.doStart, True], ["Stop", self.doStop, False], ["Clear", self.doClear, False], ["Save", self.doSave, False]]
+        for name, fn, show  in icons:
             self.btn[name] = QPushButton(name)
             icon = QIcon(":/%s.svg" % name.lower())
             self.btn[name].setIcon(icon)
             self.btn[name].clicked.connect(fn)
-            self.btn[name].show()
+            if show:
+                self.btn[name].show()
+            else:
+                self.btn[name].hide()
             hbox.addWidget(self.btn[name])
             print("Add %s button"% name)
         layout.addLayout(hbox)
+
+
         
         hbox =QHBoxLayout()
         self.setSampleInterval_ms = 200
@@ -386,6 +391,7 @@ class SensorDisplay(QMainWindow):
         self.rawUnit = QLabel("mA")
         gLayout.addWidget(self.rawUnit, 1, 8)
         self.frame1.setLayout(gLayout)
+        #self.frame1.hide()
         layout.addWidget(self.frame1)
         
         self.frame2 = QFrame()
@@ -439,6 +445,7 @@ class SensorDisplay(QMainWindow):
         self.rawUnit = QLabel("mA")
         gLayout.addWidget(self.rawUnit, 1, 8)
         self.frame2.setLayout(gLayout)
+        #self.frame2.hide()
         layout.addWidget(self.frame2)
 
         
@@ -562,13 +569,17 @@ class SensorDisplay(QMainWindow):
                 #print(data)
                 pData = [data[0], data[1]]
                 pData.extend( self.r2p( data[3], data[4]))
-                pData.extend( self.r2p(data[6], data[7]))
+                if len(data)>5:
+                    pData.extend( self.r2p(data[6], data[7]))
                 if len(self.pData) == 0:
                     self.pData[data[2]] = []
-                    self.pData[data[5]] = []
-                    print("Set up generic 1/ %s/%s" %(data[2],data[5]))
+                    if len(data)>5:
+                        self.pData[data[5]] = []
+                    
                 self.pData[data[2]].append(([pData[0], pData[1], pData[2], pData[3] ]))
-                self.pData[data[5]].append(([pData[0], pData[1], pData[4], pData[5] ]))
+                if len(data)>5:
+                    self.pData[data[5]].append(([pData[0], pData[1], pData[4], pData[5] ]))
+                print(self.pData.keys())
                 self.csvFile.writerow(pData)
                 print("Data %d/%d %s appended." % (len(self.rawdata), self.capture_size, pData))
                 if len(self.rawdata)%20 ==0:
@@ -699,10 +710,21 @@ class SensorDisplay(QMainWindow):
         self.doRecord = False
         print("Stop recording")
         self.rFile.close()
-        self.btn["Start"].show()
+        self.btn["Start"].hide()
+        self.btn["Stop"].hide()
+        self.btn["Clear"].show()
+        self.btn["Save"].show()
+
+
 
     def doClear(self):
         print("doClear")
+        self.recorderGraph.clear()
+        self.btn["Clear"].hide()
+        self.btn["Save"].hide()
+        self.btn["Start"].show()
+        self.progressBar.setValue(0)
+        self.pData = None
         self.rawdata= []
      
     def doSave(self):
@@ -797,13 +819,16 @@ class SensorDisplay(QMainWindow):
             self.data1 = np.zeros([ self.pDataSize, 3])
             self.data2 = np.zeros([ self.pDataSize, 3])
             for i in range(self.pDataSize):
-                #ªprint(self.rawdata[i])
                 self.data1[i][0] = float(self.pData["generic1"][i][1])
                 self.data1[i][1] = float(self.pData["generic1"][i][2])
-                self.unit[1] = self.rawdata[i][7]
+                self.data1[i][2] = float(self.rawdata[i][6])          
+                self.rawunit = self.rawdata[i][7]
+                self.punit = self.pData['generic2'][i][3]
+                
                 self.data2[i][0] = float(self.pData["generic2"][i][1])
                 self.data2[i][1] = float(self.pData["generic2"][i][2])
-                self.unit[0] = self.rawdata[i][3]
+                self.data2[i][2] = float(self.rawdata[i][3])
+                
         if self.emData is not None:
             self.emdata = np.zeros([ len(self.emData), 3])
             for i in range(len(self.emData)):
@@ -823,26 +848,41 @@ class SensorDisplay(QMainWindow):
             
             g1 = self.data1[:,1]
             g1Raw = self.data1[:,2]
+            
             g2 = self.data2[:,1]
             g2Raw = self.data2[:,2]
+            #print(g1Raw, g2Raw)
+            
             g1min = g1.min()
             g1max = g1.max()
             
             g2min = g2.min()
             g2max = g2.max()
+            
+            g1Rawmin = g1Raw.min()
+            g1Rawmax = g1Raw.max()
+             
             g2Rawmin = g2Raw.min()
             g2Rawmax = g2Raw.max()
+            
             self._actVal1.setText("%.2f" % g1[-1])
             self._actmin1.setText("%.2f" % g1min)
             self._actmax1.setText("%.2f" % g1max)
             
-            self._actRawVal1.setText("%.2f" % g1Raw[-1])
-            self._actRawMin1.setText("%.2f" % g2Rawmin)
-            self._actRawMax1.setText("%.2f" % g2Rawmax)
-            
-            self._actVal2.setText("%.2f" % g2Raw[-1])
+            self._actVal2.setText("%.2f" % g2[-1])
             self._actmin2.setText("%.2f" % g2min)
             self._actmax2.setText("%.2f" % g2max)
+            
+            self._actRawVal1.setText("%.2f" % g1Raw[-1])
+            self._actRawMin1.setText("%.2f" % g1Rawmin)
+            self._actRawMax1.setText("%.2f" % g1Rawmax)
+
+            self._actRawVal2.setText("%.2f" % g2Raw[-1])
+            self._actRawMin2.setText("%.2f" % g2Rawmin)
+            self._actRawMax2.setText("%.2f" % g2Rawmax)
+            
+            self.pUnit.setText(self.punit)
+            self.rawUnit.setText(self.rawunit)
 
             progress = 100.0*len(self.rawdata)/float(self.capture_size)
             print("Progress %.1f of %d " % (progress, self.capture_size))
@@ -873,9 +913,7 @@ class SensorDisplay(QMainWindow):
             self.emulatorGraph.setTitle(self.emFile.split("/")[-1])
         else:
             print("Skip as datasize is %d" % (self.pDataSize))
-     
-
-
+  
 
         
 

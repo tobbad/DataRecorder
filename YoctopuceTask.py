@@ -172,7 +172,7 @@ class YoctopuceTask(QObject):
         if self.file is not None:
             self.file.close()
             self.file = None
-        self.freeAPI()
+        #self.freeAPI()
         
     def setSampleInterval_ms(self, sampel_interval_ms):
         self.sampel_interval_ms = sampel_interval_ms
