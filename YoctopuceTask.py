@@ -145,13 +145,21 @@ class YoctopuceTask(QObject):
             return True
 
  
-    def new_data(self, value1, value2): 
-        now = datetime.datetime.now()
+    def new_data(self, fct, measure): 
+        #print("%s  %s" %(type(fct), type(measure)))
+        values =fct.get_signalValue()
+        units = fct.get_signalUnit()
+        s = measure.get_startTimeUTC()
+        start = datetime.datetime.fromtimestamp(s).strftime('%Y-%m-%dT%H:%M:%S.%f+01:00')
+        #↑print(values, units, start)
+        now = datetime.datetime.fromtimestamp(s)
         absTime = now.strftime("%Y-%m-%dT%H:%M:%S.%f+01:00")
         delta = (now - self.start).total_seconds()
         data = [absTime, delta]
-        for s in self.sensor.values():
-            data.extend(s.get_values())
+        data.extend(['generic2', fct.get_signalValue(), fct.get_signalUnit()])
+        data.extend(['generic1', fct.get_signalValue(), fct.get_signalUnit()])
+        #for s in self.sensor.values():
+        #    data.extend(s.get_values())
         self.updateSignal.emit(data)
         self._sampleCnt += 1
         self.capture_size -= 1
