@@ -162,8 +162,10 @@ class YoctopuceTask(QObject):
         #    data.extend(s.get_values())
         self.updateSignal.emit(data)
         self._sampleCnt += 1
+        self.logfun("Remaining cap %d" % self.capture_size)
         self.capture_size -= 1
         if self.capture_size == 0:
+            self.logfun("Finished cap %d samples" % self._sampleCnt)
             self.updateSignal.emit([None,None])
             print("Finished capture in yoctopuc")
             

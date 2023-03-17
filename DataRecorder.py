@@ -735,7 +735,7 @@ class SensorDisplay(QMainWindow):
          fname, ftype = QFileDialog.getSaveFileName(self, "Store captured data",
                  self.QFilename.text(), fmt[0])
          if fname is None:
-             fname = self.QFilename.text()
+             fname = "blabla.csv"
          print("doSave  all %s of size %d" % (fname, self.pDataSize))
          f = open( fname,"w", encoding="cp1252")
          csvf =csv.writer(f, lineterminator="\n")
@@ -818,6 +818,7 @@ class SensorDisplay(QMainWindow):
             self.data1 = np.zeros([ self.pDataSize, 3])
             self.data2 = np.zeros([ self.pDataSize, 3])
             for i in range(self.pDataSize):
+                print(self.rawdata[i])
                 self.data1[i][0] = float(self.pData["generic1"][i][1])
                 self.data1[i][1] = float(self.pData["generic1"][i][2])
                 self.data1[i][2] = float(self.rawdata[i][6])          
@@ -840,59 +841,53 @@ class SensorDisplay(QMainWindow):
             print("Skip plot as there is no data")
             return 
         if self.pDataSize >0:
+            self.recorderGraph.clear()
             print("Updat plots with len pData size = %d" % (self.pDataSize))
             x = self.data1[:,0]
+            g1 = self.data1[:1]
+            g1Raw = self.data1[:2]
+            g2 = self.data2[:1]
+            g2Raw = self.data2[:2]
             self.gen1Label.setText("generic1")
             self.gen2Label.setText("generic2")
-            
-            g1 = self.data1[:,1]
-            g1Raw = self.data1[:,2]
-            
-            g2 = self.data2[:,1]
-            g2Raw = self.data2[:,2]
-            #print(g1Raw, g2Raw)
-            
-            g1min = g1.min()
-            g1max = g1.max()
-            
-            g2min = g2.min()
-            g2max = g2.max()
-            
-            g1Rawmin = g1Raw.min()
-            g1Rawmax = g1Raw.max()
-             
-            g2Rawmin = g2Raw.min()
-            g2Rawmax = g2Raw.max()
-            
-            self._actVal1.setText("%.2f" % g1[-1])
-            self._actmin1.setText("%.2f" % g1min)
-            self._actmax1.setText("%.2f" % g1max)
-            
-            self._actVal2.setText("%.2f" % g2[-1])
-            self._actmin2.setText("%.2f" % g2min)
-            self._actmax2.setText("%.2f" % g2max)
-            
-            self._actRawVal1.setText("%.2f" % g1Raw[-1])
-            self._actRawMin1.setText("%.2f" % g1Rawmin)
-            self._actRawMax1.setText("%.2f" % g1Rawmax)
-
-            self._actRawVal2.setText("%.2f" % g2Raw[-1])
-            self._actRawMin2.setText("%.2f" % g2Rawmin)
-            self._actRawMax2.setText("%.2f" % g2Rawmax)
-            
             self.pUnit.setText(self.punit)
             self.rawUnit.setText(self.rawunit)
+            self.recorderGraph.setTitle(self.QPlotname.text())
+        
+            if self.showGen1CB.isChecked():
+                g1min = g1.min()
+                g1max = g1.max()
+                g1 = self.data1[:,1]
+                g1Rawmin = g1Raw.min()
+                g1Rawmax = g1Raw.max()
+                g1Raw = self.data1[:,2]
+                self._actVal1.setText("%.2f" % g1[-1])
+                self._actmin1.setText("%.2f" % g1min)
+                self._actmax1.setText("%.2f" % g1max)
+                self._actRawVal1.setText("%.2f" % g1Raw[-1])
+                self._actRawMin1.setText("%.2f" % g1Rawmin)
+                self._actRawMax1.setText("%.2f" % g1Rawmax)
+                self.recorderGraph.plot(x, g1, name="generic1", pen=pg.mkPen("green"))
+            
+            if self.showGen2CB.isChecked():
+                g2 = self.data2[:,1]
+                g2Raw = self.data2[:,2]
+                g2min = g2.min()
+                g2max = g2.max()
+                g2Rawmin = g2Raw.min()
+                g2Rawmax = g2Raw.max()
+                self._actVal2.setText("%.2f" % g2[-1])
+                self._actmin2.setText("%.2f" % g2min)
+                self._actmax2.setText("%.2f" % g2max)
+                self._actRawVal2.setText("%.2f" % g2Raw[-1])
+                self._actRawMin2.setText("%.2f" % g2Rawmin)
+                self._actRawMax2.setText("%.2f" % g2Rawmax)
+                self.recorderGraph.plot(x, g2, name="generic2", pen=pg.mkPen("red"))
+                
 
             progress = 100.0*len(self.rawdata)/float(self.capture_size)
             print("Progress %.1f of %d " % (progress, self.capture_size))
             self.progressBar.setValue(int(progress))
-            self.recorderGraph.clear()
-            if self.showGen1CB.checkState():            
-                self.recorderGraph.plot(x, g1, name="generic1", pen=pg.mkPen("green"))
-            if self.showGen2CB.checkState():            
-                self.recorderGraph.plot(x, g2, name="generic2", pen=pg.mkPen("red"))
-                self.recorderGraph.setTitle(self.QPlotname.text())
-
             self.recorderGraph.addLegend()
 
         if self.emdata is not None:
@@ -912,14 +907,7 @@ class SensorDisplay(QMainWindow):
                 p2 = self.emulatorGraph.plot(x,y2, name="generic2",pen=pg.mkPen("green"))
             self.emulatorGraph.setTitle(self.emFile.split("/")[-1])
         else:
-            print("Skip as datasize is %d" % (self.pDataSize))
-  
-
-        
-
-
-
-
+            print("Skip as emData size of %d" % (len(self.emData)))
 
 if __name__ == "__main__":
     # #print("Initalize class")
