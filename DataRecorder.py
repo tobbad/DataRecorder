@@ -46,7 +46,10 @@ from PyQt5.QtWidgets import (
     QGridLayout, 
     QFrame,
     QCheckBox,
-    QRadioButton
+    QRadioButton,
+    QDialogButtonBox,
+    QDialog,
+    QMessageBox,
 )
 from PyQt5.QtGui import (
     QIcon, 
@@ -76,7 +79,7 @@ def currThread():
 class VerticalLabel(QLabel):
 
     def __init__(self, *args):
-        QLabel.__init__(self, *args)
+        QLabel.__init__(self)
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -100,8 +103,36 @@ class VerticalLabel(QLabel):
         size = QtWidget.QLabel.sizeHint(self)
         return QSize(size.height(), size.width())
 
-#print("PYTHONPATH:", os.environ.get('PYTHONPATH'))
-#print("PATH:", os.environ.get('PATH'))
+class stopDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+        self._state = True
+        self.setWindowTitle("HELLO!")
+
+        QBtn = QDialogButtonBox.Yes | QDialogButtonBox.No
+
+        self.buttonBox = QDialogButtonBox(QBtn)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+
+        self.layout = QVBoxLayout()
+        self.layout.addWidget(self.buttonBox)
+        self.setLayout(self.layout)
+    
+    def accept(self):
+        print("Set to True")
+        self._stat= True
+         
+    def reject(self):
+        print("Set to False")
+        self._state= False
+    
+    @property
+    def state(self):
+        print("Dialog state %d" % self.state)
+        return self._state
+        
+        
 
 class SensorDisplay(QMainWindow):
     def __init__(self):
@@ -706,8 +737,13 @@ class SensorDisplay(QMainWindow):
             self.updatePlots()
         
     def doStop(self):
-        self.doRecord = False
+        dlg = stopDialog()
+        if dlg.exec():
+            print("Dialog exited")
+            self.doRecord = dlg.state
+        
         print("Stop recording")
+        self.yoctoTask.capture_stop()
         self.rFile.close()
         self.btn["Start"].hide()
         self.btn["Stop"].hide()
@@ -748,7 +784,13 @@ class SensorDisplay(QMainWindow):
          f.close()
         
     def help_about(self):
-        print("About")
+        dlg = QMessageBox(self)
+        dlg.setWindowTitle("Help about ...")
+        dlg.setText("Some info")
+        button = dlg.exec()
+        if button == QMessageBox:
+            print("About")
+        print("Ended about")
 
     @pyqtSlot(str)
     def showMsg(self, text, time = 5000):
