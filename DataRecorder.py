@@ -47,9 +47,15 @@ from PyQt5.QtWidgets import (
     QFrame,
     QCheckBox,
     QRadioButton,
+<<<<<<< HEAD
     QDialogButtonBox,
     QDialog,
     QMessageBox,
+=======
+    QDialogButtonBox, 
+    QDialog,
+    QMessageBox
+>>>>>>> 11fc332 (WIP)
 )
 from PyQt5.QtGui import (
     QIcon, 
@@ -76,32 +82,48 @@ sys.excepthook = except_hook
 def currThread():
     return '[thread-' + str(int(QThread.currentThreadId())) + ']'
 
-class VerticalLabel(QLabel):
+class StopRecordingDlg(QDialog):
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._state = True
 
+<<<<<<< HEAD
     def __init__(self, *args):
         QLabel.__init__(self)
+=======
+        self.setWindowTitle("StopRecording!")
+>>>>>>> 11fc332 (WIP)
 
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.translate(0, self.height())
-        painter.rotate(-90)
-        # calculate the size of the font
-        fm = QFontMetrics(painter.font())
-        xoffset = int(fm.boundingRect(self.text()).width()/2)
-        yoffset = int(fm.boundingRect(self.text()).height()/2)
-        x = int(self.width()/2) + yoffset
-        y = int(self.height()/2) - xoffset
-        # because we rotated the label, x affects the vertical placement, and y affects the horizontal
-        painter.drawText(y, x, self.text())
-        painter.end()
+        QBtn = {"Yes":QDialogButtonBox.Yes, "No": QDialogButtonBox.No}
+        print(QBtn.values())
+        btn = 0
+        for b in  QBtn.values():
+            btn |= b
         
-    def minimumSizeHint(self):
-        size = QLabel.minimumSizeHint(self)
-        return Size(size.height(), size.width())
+        self.buttonBox = QDialogButtonBox(btn)
+        self.buttonBox.clicked.connect(self.clicked)
 
-    def sizeHint(self):
-        size = QtWidget.QLabel.sizeHint(self)
-        return QSize(size.height(), size.width())
+        self.layout = QVBoxLayout()
+        self.layout.addWidget(self.buttonBox)
+        self.setLayout(self.layout)
+    
+    def clicked(self, btn):
+        print("(Button %s clicked) %s" % (btn.text(), btn))
+        if btn.text()=="&Yes":
+            print("Set stop to True")
+            self._state = True
+        elif btn.text() == "&No":
+            print("Set stop to False")
+            self._state = False
+        else:
+            print("Unknown btn text %s" % btn.text())
+        print("Stop Record %s" %("Yes" if self._state else "No"))
+        self.done(self._state)
+ 
+    def state(self):
+        print("Return _state %d" % self._state)
+        return self._state
 
 class stopDialog(QDialog):
     def __init__(self):
@@ -158,6 +180,7 @@ class SensorDisplay(QMainWindow):
         self.setUpGUI()
         self.plotname = ""
         self.connected = False
+        self.closeOk= False
        
         
     def setUpGUI(self):    
@@ -269,12 +292,12 @@ class SensorDisplay(QMainWindow):
         self.showGen1CB = QCheckBox('generic1', self)
         self.showGen1CB.setChecked(True)
         self.showGen1CB.setStyleSheet("background-color:white")
-        self.showGen1CB.stateChanged.connect(self.updatePlots)
+        self.showGen1CB.stateChanged.connect(self.updatecb)
         hbox.addWidget(self.showGen1CB)
         self.showGen2CB = QCheckBox('generic2', self)
         self.showGen2CB.setChecked(True)
         self.showGen2CB.setStyleSheet("background-color:white")
-        self.showGen2CB.stateChanged.connect(self.updatePlots)
+        self.showGen2CB.stateChanged.connect(self.updatecb)
         hbox.addWidget(self.showGen2CB) 
         
         layout.addLayout(hbox)
@@ -323,7 +346,7 @@ class SensorDisplay(QMainWindow):
         
         
         hbox =QHBoxLayout()
-        icons = [["Start", self.doStart, True], ["Stop", self.doStop, False], ["Clear", self.doClear, False], ["Save", self.doSave, False]]
+        icons = [["Start", self.doStart, True], ["Stop", self.stopBtn, False], ["Clear", self.doClear, False], ["Save", self.doSave, False]]
         for name, fn, show  in icons:
             self.btn[name] = QPushButton(name)
             icon = QIcon(":/%s.svg" % name.lower())
@@ -594,7 +617,6 @@ class SensorDisplay(QMainWindow):
                 self.setNewData()
                 self.updatePlots()
                 self.doStop()
-                self.yoctoTask.capture_stop()
            else:
                 self.rawdata.append(data)
                 #print(data)
@@ -747,10 +769,25 @@ class SensorDisplay(QMainWindow):
         self.rFile.close()
         self.btn["Start"].hide()
         self.btn["Stop"].hide()
-        self.btn["Clear"].show()
-        self.btn["Save"].show()
-
-
+        self.YoctopuceTask.capture_stop()
+    
+    def stopBtn(self):
+        # Ask for really Stop
+        dlg =  StopRecordingDlg(self)
+        res = dlg.exec_()
+        if dlg:
+            state = dlg.state()
+            print("Returned by dlg: %d " % state)
+            if state:
+                print("Stop recording")
+                self.YoctopuceTask.capture_stop()
+                self.rFile.close()
+                self.btn["Start"].hide()
+                self.btn["Stop"].hide()
+                self.btn["Clear"].show()
+                self.btn["Save"].show()
+            else:
+                print("Continue recording")
 
     def doClear(self):
         print("doClear")
@@ -784,6 +821,7 @@ class SensorDisplay(QMainWindow):
          f.close()
         
     def help_about(self):
+<<<<<<< HEAD
         dlg = QMessageBox(self)
         dlg.setWindowTitle("Help about ...")
         dlg.setText("Some info")
@@ -791,6 +829,16 @@ class SensorDisplay(QMainWindow):
         if button == QMessageBox:
             print("About")
         print("Ended about")
+=======
+        dlg = QMessageBox()
+        dlg.setWindowTitle("Datarecorder")
+        dlg.setText("This is a datalogger application")
+        button = dlg.exec_()
+        print(button)
+        if button == QMessageBox.Ok:
+            print("OK")
+        
+>>>>>>> 11fc332 (WIP)
 
     @pyqtSlot(str)
     def showMsg(self, text, time = 5000):
@@ -838,6 +886,17 @@ class SensorDisplay(QMainWindow):
         self.updatePlots()
         print("Tab changed %d" %(index))
     
+    def updatecb(self):
+        if self.showGen1CB.checkState():    
+            self.frame1.show()
+        else:
+            self.frame1.hide()
+        if self.showGen2CB.checkState():    
+            self.frame2.show()
+        else:
+            self.frame2.hide()
+        self.updatePlots()
+   
     @property
     def pDataSize(self):
         if self.pData is not None and len(self.pData['generic1'])>0:
@@ -881,10 +940,12 @@ class SensorDisplay(QMainWindow):
     def updatePlots(self):
         if (self.data1 is None) or (self.data2 is None):
             print("Skip plot as there is no data")
+
             return 
         if self.pDataSize >0:
             self.recorderGraph.clear()
             print("Updat plots with len pData size = %d" % (self.pDataSize))
+<<<<<<< HEAD
             x = self.data1[:,0]
             g1 = self.data1[:1]
             g1Raw = self.data1[:2]
@@ -930,6 +991,57 @@ class SensorDisplay(QMainWindow):
             progress = 100.0*len(self.rawdata)/float(self.capture_size)
             print("Progress %.1f of %d " % (progress, self.capture_size))
             self.progressBar.setValue(int(progress))
+=======
+            x = self.data1[:,0]          
+            self.pUnit.setText(self.punit)
+            self.rawUnit.setText(self.rawunit)
+            progress = 100.0*len(self.rawdata)/float(self.capture_size)
+            print("Progress %.1f of %d " % (progress, self.capture_size))
+            self.progressBar.setValue(int(progress))
+            self.recorderGraph.clear()
+            if self.showGen1CB.checkState():    
+                self.frame1.show()
+
+                self.gen1Label.setText("generic1")
+                g1 = self.data1[:,1]
+                g1Raw = self.data1[:,2]
+                g1min = g1.min()
+                g1max = g1.max()
+                g1Rawmin = g1Raw.min()
+                g1Rawmax = g1Raw.max()
+
+                self._actVal1.setText("%.2f" % g1[-1])
+                self._actmin1.setText("%.2f" % g1min)
+                self._actmax1.setText("%.2f" % g1max)
+                self._actRawVal1.setText("%.2f" % g1Raw[-1])
+                self._actRawMin1.setText("%.2f" % g1Rawmin)
+                self._actRawMax1.setText("%.2f" % g1Rawmax)
+                self.recorderGraph.plot(x, g1, name="generic1", pen=pg.mkPen("green"))
+
+            else:
+                self.frame1.hide()
+                    
+            if self.showGen2CB.checkState():   
+                self.frame2.show()
+                self.gen2Label.setText("generic2")
+                g2 = self.data2[:,1]
+                g2Raw = self.data2[:,2]
+                g2min = g2.min()
+                g2max = g2.max()
+                g2Rawmin = g2Raw.min()
+                g2Rawmax = g2Raw.max()
+                self._actVal2.setText("%.2f" % g2[-1])
+                self._actmin2.setText("%.2f" % g2min)
+                self._actmax2.setText("%.2f" % g2max)
+                self._actRawVal2.setText("%.2f" % g2Raw[-1])
+                self._actRawMin2.setText("%.2f" % g2Rawmin)
+                self._actRawMax2.setText("%.2f" % g2Rawmax)
+
+                self.recorderGraph.plot(x, g2, name="generic2", pen=pg.mkPen("red"))
+                self.recorderGraph.setTitle(self.QPlotname.text())
+            else:
+                self.frame2.hide()
+>>>>>>> 11fc332 (WIP)
             self.recorderGraph.addLegend()
 
         if self.emdata is not None:
