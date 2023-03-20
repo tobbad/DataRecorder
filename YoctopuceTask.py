@@ -198,26 +198,21 @@ class YoctopuceTask(QObject):
             print("Finished capture in yoctopuc")
 
     def fakeCB(self):
-        if self.onGoing = False:
+        if self.onGoing == True:
             self.onGoing = False
             self.new_data(None, ["generic2", None, None, "generic1", None, None])
 
 
     def new_data_superVisor(self, retrigger=True):
         # If this is called we have to take over regulary sending data to new_data
-        self.onGoing = False
-        print("new_data_superVisor fired %d  ?"% (self.onGoing))
+        print("new_data_superVisor fired onGoing: %d  ?"% (self.onGoing))
         if self.sampel_interval_ms != self.fb_sampel_interval_ms :
-            print("Reset fallback intervall to %d ms" % self.sampel_interval_ms)
-            self.fb_sampel_interval_ms = self.sampel_interval_ms
-            self.superVisorTimer.setInterval(self.sampel_interval_ms+20)
+            self.fb_sampel_interval_ms = self.sampel_interval_ms-10
+            print("Reset fallback intervall to %d ms" % self.fb_sampel_interval_ms)
+            self.superVisorTimer.setInterval(self.fb_sampel_interval_ms)
             self.superVisorTimer.timeout.connect(self.fakeCB)
             self.superVisorTimer.stop()
             self.superVisorTimer.start()
-
-        if self.onGoing == False:
-            print("Sensor disconnected: Generate data")
-
 
     @property
     def sampleCnt(self):
