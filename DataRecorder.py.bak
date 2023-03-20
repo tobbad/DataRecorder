@@ -974,7 +974,6 @@ class SensorDisplay(QMainWindow):
             progress = 100.0*len(self.rawdata)/float(self.capture_size)
             print("Progress %.1f of %d " % (progress, self.capture_size))
             self.progressBar.setValue(int(progress))
-            self.recorderGraph.clear()
             if self.showGen1CB.checkState():    
                 self.frame1.show()
 
