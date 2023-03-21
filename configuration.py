@@ -100,7 +100,7 @@ class configuration:
         self._yfunction = []
         
         for c in self.et:
-            print(c.tag, c. attrib)
+            print("\t", c.tag, c. attrib)
             if c.tag == "capturetime":
                 self._captureTime= {"time":int(c.attrib["time"]), "unit":c.attrib["unit"]}
                 #print("Set capture time to %s" % (self._captureTime))
@@ -110,7 +110,7 @@ class configuration:
             if c.tag == "yfunction":
                 self._yfunction.append(c.attrib)
                 print("Yfunction added %s" % (c.attrib))
-        print("Capture data while %d %s with datarate of %d %s " %(self.captureTime["time"], self.captureTime["unit"], self.dataRate["time"], self.dataRate["unit"]))
+        print("Configured Capture data while %d %s with datarate of %d %s " %(self.captureTime["time"], self.captureTime["unit"], self.dataRate["time"], self.dataRate["unit"]))
             
     @property
     def captureTime(self):

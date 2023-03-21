@@ -101,7 +101,6 @@ class StopRecordingDlg(QDialog):
         self.setLayout(self.layout)
     
     def clicked(self, btn):
-        print("(Button %s clicked) %s" % (btn.text(), btn))
         if btn.text()=="&Yes":
             print("Set stop to True")
             self._state = True
@@ -618,7 +617,7 @@ class SensorDisplay(QMainWindow):
                 pData.extend( self.r2p( data[3], data[4]))
                 if len(data)>5:
                     pData.extend( self.r2p(data[6], data[7]))
-                if len(self.pData) == 0:
+                if len(self.pData)== 0:
                     self.pData[data[2]] = []
                     if len(data)>5:
                         self.pData[data[5]] = []
@@ -627,8 +626,8 @@ class SensorDisplay(QMainWindow):
                 if len(data)>5:
                     self.pData[data[5]].append(([pData[0], pData[1], pData[4], pData[5] ]))
                 self.csvFile.writerow(pData)
-                print("Data %d/%d %s appended from %s." % (len(self.rawdata), self.capture_size, pData, self.yoctoTask))
-                if len(self.rawdata)%20 ==0:
+                print("Data %d/%d %s appended." % (len(self.rawdata), self.capture_size, pData))
+                if len(self.rawdata)%20 == 0:
                     self.setNewData()
                     self.updatePlots()
 
@@ -717,7 +716,7 @@ class SensorDisplay(QMainWindow):
 
     @pyqtSlot(str, str)
     def newValue(self, value1, value2, value3):
-        print(value1, value2, value3)
+        print('newValue function called')
         # if hardwareId not in self.functionValues:
         #     # create a new label when first value arrives
         #     newLabel = QLabel(self)
@@ -789,28 +788,26 @@ class SensorDisplay(QMainWindow):
         self.btn["Save"].show()
 
     def doStop(self):
-        print("Yoctopuc Task is %s" % self.yoctoTask)
         print("doStop")
 
         # Ask for really Stop
         dlg =  StopRecordingDlg(self)
         res = dlg.exec_()
-        print("Yoctopuc Task is %s" % self.yoctoTask)
         if dlg:
             state = dlg.state()
             print("Returned by dlg: %d " % state)
             if state:
-                print("Stop recording on %s" %(self.yoctoTask))
                 self.yoctoTask.capture_stop()
-                print("Yoctopuc Task is %s after stop" % self.yoctoTask)
+                print("Yoctopuc Task stop" )
 
                 self.rFile.close()
-                print("Show butons in stopBtn")
+                print("Show buttons in doStop")
                 self.btn["Start"].hide()
                 self.btn["Stop"].hide()
                 self.btn["Clear"].show()
                 self.btn["Save"].show()
                 self.yoctoTask.stopTask.emit()
+                self.doRecord = False
             else:
                 print("Continue recording")
 
@@ -825,7 +822,8 @@ class SensorDisplay(QMainWindow):
         self.progressBar.setValue(0)
         self.pData = None
         self.rawdata= []
-     
+        self.sensor = None
+
     def doSave(self):
          if self.pData is None:
              print("No data captured")
@@ -922,13 +920,13 @@ class SensorDisplay(QMainWindow):
 
     def setNewData(self):
         if self.pData is None:
-            print("Set up data1/2")
+            print("Set up new generiv data1/2")
             self.pData ={}
             self.pData['generic1'] = []
             self.pData['generic2'] = []
             self.data1 = np.zeros([ self.pDataSize, 3])
             self.data2 = np.zeros([ self.pDataSize, 3])
-            self.unit = ["",""] 
+            self.unit = ["", ""]
             return 
         if self.pDataSize > 0 :
             print("Set new data of size pData %d" %(self.pDataSize))

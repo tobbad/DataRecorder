@@ -56,6 +56,7 @@ class YoctopuceTask(QObject):
         self.start = now = datetime.datetime.now()
         self.reportFrequncy = "1s"
         self.sampel_interval_ms = 1000
+        self.oneShotTimer = None
         
 
 
@@ -124,6 +125,7 @@ class YoctopuceTask(QObject):
     def deviceRemoval(self, m: YModule):
         print("Removed %s" % m)
         self.sensor = {}
+        self.connected = False
         # pass the disconnect to the UI thread via the removal signal
         self.removal.emit({})
  
@@ -131,9 +133,11 @@ class YoctopuceTask(QObject):
         self.initAPI()
         print("Yoctopuc Start with sensors is %s / cnt= %d" %(self.sensor, len(self.sensor)))
         if len(self.sensor)==0:
+            self.connected = False
             return False
             print("No sensors connected")
         else:
+            self.connected = True
             print("Capture in Yoctopuc Task started (cnt = %d  with %d ms)" %(self.capture_size, self.sampel_interval_ms))
             if self.capture_size >0 and self.sampel_interval_ms>0:
                 for s in self.sensor.values():
@@ -141,26 +145,40 @@ class YoctopuceTask(QObject):
                     s.registerTimedReportCallback(self.new_data)
                     s.set_reportFrequency(self.reportFrequncy)
                 print("Capture started on %s" % (self.sensor))
-                self.start = now = datetime.datetime.now()
+                self.startTimedt =datetime.datetime
+                self.startTime = self.startTimedt.now()
                 self._sampleCnt = 0
             return True
 
  
-    def new_data(self, fct, measure): 
+    def new_data(self, fct, measure):
+        if self.oneShotTimer == None:
+            time = self.sampel_interval_ms+10
+            self.oneShotTimer = QTimer(self)
+            self.oneShotTimer.setInterval(time)
+            self.oneShotTimer.timeout.connect(self.new_data_fallback)
+            self.oneShotTimer.start()
+            print("Set up one shot timer with %d ms" % time)
         #print("%s  %s" %(type(fct), type(measure)))
-        values =fct.get_signalValue()
-        units = fct.get_signalUnit()
-        s = measure.get_startTimeUTC()
-        start = datetime.datetime.fromtimestamp(s).strftime('%Y-%m-%dT%H:%M:%S.%f+01:00')
-        #↑print(values, units, start)
-        now = datetime.datetime.fromtimestamp(s)
+        if measure is None:
+            self.connected = False
+            startime = self.startTimedt
+        else:
+            self.connected = True
+            startime = measure.get_startTimeUTC()
+        start = datetime.datetime.fromtimestamp(startime).strftime('%Y-%m-%dT%H:%M:%S.%f+01:00')
+        # ↑print(values, units, start)
+        now = datetime.datetime.fromtimestamp(startime)
         absTime = now.strftime("%Y-%m-%dT%H:%M:%S.%f+01:00")
         delta = (now - self.start).total_seconds()
         data = [absTime, delta]
-        data.extend(['generic2', fct.get_signalValue(), fct.get_signalUnit()])
-        data.extend(['generic1', fct.get_signalValue(), fct.get_signalUnit()])
-        #for s in self.sensor.values():
-        #    data.extend(s.get_values())
+        if fct is not None:
+            data.extend(['generic2', measure.get_averageValue(), fct.get_signalUnit()])
+            data.extend(['generic1', measure.get_averageValue(), fct.get_signalUnit()])
+        else:
+            data.extend(['generic2', None, None, None, None])
+            data.extend(['generic1', None, None, None, None])
+
         self.updateSignal.emit(data)
         self._sampleCnt += 1
         #self.logfun("Remaining cap %d" % self.capture_size)
@@ -169,7 +187,24 @@ class YoctopuceTask(QObject):
             self.logfun("Finished cap %d samples" % self._sampleCnt)
             self.updateSignal.emit([None,None])
             print("Finished capture in yoctopuc")
-            
+    def new_data_fallback(self, retrigger=True):
+        # If this is called we have to take over regulary sending data to new_data
+        print("new_data_fallback fired %d != %d ?"% (self.sampel_interval_ms, self.set_sampel_interval_ms))
+        if self.sampel_interval_ms != self.set_sampel_interval_ms :
+            def callback(self):
+                def fct(self):
+                    print("Callback call")
+                    self.new_data(None, None)
+
+                return fct
+
+            print("Set recall intervall to %d ms" % self.sampel_interval_ms)
+            self.sampel_interval_ms = self.set_sampel_interval_ms
+            self.oneShotTimer.setInterval(self.set_sampel_interval_ms)
+            self.oneShotTimer.timeout.connect(callback(self)(self))
+            self.oneShotTimer.stop()
+            self.oneShotTimer.start()
+
     @property
     def sampleCnt(self):
         print("Sample count %d" % self._sampleCnt)
@@ -179,14 +214,16 @@ class YoctopuceTask(QObject):
         print("Capture in Yoctopuc Task finished ")
         for s in self.sensor.values():
             s.capture_stop()
-        print("Capture finished")
+        print("Capture finished on sensors")
         if self.file is not None:
             self.file.close()
+            print("Removed file reference")
             self.file = None
         #self.freeAPI()
 
     def setSampleInterval_ms(self, sampel_interval_ms):
         self.sampel_interval_ms = sampel_interval_ms
+        self.set_sampel_interval_ms = sampel_interval_ms
         if self.sampel_interval_ms>0:
             if self.sampel_interval_ms > 1000:
                 self.reportFrequncy = "%ds" % (self.sampel_interval_ms/1000)
