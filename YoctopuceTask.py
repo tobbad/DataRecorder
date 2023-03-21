@@ -67,7 +67,7 @@ class YoctopuceTask(QObject):
         # Setup the API to use Yoctopuce devices on localhost
         if YAPI.RegisterHub("usb", self.yocto_err) != YAPI.SUCCESS:            
             self.statusMsg.emit('Failed to init Yoctopuce API: ' +
-                                errmsg.value)
+                                self.yocto_err.value)
             return
         YAPI.RegisterDeviceArrivalCallback(self.deviceArrival)
         YAPI.RegisterDeviceRemovalCallback(self.deviceRemoval)
@@ -128,7 +128,8 @@ class YoctopuceTask(QObject):
         self.removal.emit({})
  
     def capture_start(self):
-        print("sensors is %s %d" %(self.sensor, len(self.sensor)))
+        self.initAPI()
+        print("Yoctopuc Start with sensors is %s / cnt= %d" %(self.sensor, len(self.sensor)))
         if len(self.sensor)==0:
             return False
             print("No sensors connected")
@@ -162,7 +163,7 @@ class YoctopuceTask(QObject):
         #    data.extend(s.get_values())
         self.updateSignal.emit(data)
         self._sampleCnt += 1
-        self.logfun("Remaining cap %d" % self.capture_size)
+        #self.logfun("Remaining cap %d" % self.capture_size)
         self.capture_size -= 1
         if self.capture_size == 0:
             self.logfun("Finished cap %d samples" % self._sampleCnt)
@@ -183,7 +184,7 @@ class YoctopuceTask(QObject):
             self.file.close()
             self.file = None
         #self.freeAPI()
-        
+
     def setSampleInterval_ms(self, sampel_interval_ms):
         self.sampel_interval_ms = sampel_interval_ms
         if self.sampel_interval_ms>0:
