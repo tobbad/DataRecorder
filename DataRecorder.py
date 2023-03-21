@@ -958,6 +958,7 @@ class SensorDisplay(QMainWindow):
             print("Skip plot as there is no data")
             return 
         if self.pDataSize >0:
+            x = self.data1[:, 0]
             self.recorderGraph.clear()
             if self.showGen1CB.isChecked():
                 g1 = self.data1[:, 1]
