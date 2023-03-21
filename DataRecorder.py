@@ -959,45 +959,15 @@ class SensorDisplay(QMainWindow):
             return 
         if self.pDataSize >0:
             self.recorderGraph.clear()
-            g1 = self.data1[:,1]
-            g1Raw = self.data1[:,2]
-            g2 = self.data2[:,1]
-            g2Raw = self.data2[:,2]
-            g1min = g1.min()
-            g1max = g1.max()
-            
-            g2min = g2.min()
-            g2max = g2.max()
-            g2Rawmin = g2Raw.min()
-            g2Rawmax = g2Raw.max()
-            self._actVal1.setText("%.2f" % g1[-1])
-            self._actmin1.setText("%.2f" % g1min)
-            self._actmax1.setText("%.2f" % g1max)
-            
-            self._actRawVal1.setText("%.2f" % g1Raw[-1])
-            self._actRawMin1.setText("%.2f" % g2Rawmin)
-            self._actRawMax1.setText("%.2f" % g2Rawmax)
-            
-            self._actVal2.setText("%.2f" % g2Raw[-1])
-            self._actmin2.setText("%.2f" % g2min)
-            self._actmax2.setText("%.2f" % g2max)
-
-            progress = 100.0*len(self.rawdata)/float(self.capture_size)
-            print("Progress %.1f of %d " % (progress, self.capture_size))
-            self.progressBar.setValue(int(progress))
-            self.recorderGraph.clear()
-            if self.showGen1CB.checkState():            
-            self.pUnit.setText(self.punit)
-            self.rawUnit.setText(self.rawunit)
-            self.recorderGraph.setTitle(self.QPlotname.text())
-        
             if self.showGen1CB.isChecked():
+                g1 = self.data1[:, 1]
+                g1Raw = self.data1[:, 2]
                 g1min = g1.min()
                 g1max = g1.max()
-                g1 = self.data1[:,1]
+                g1 = self.data1[:, 1]
                 g1Rawmin = g1Raw.min()
                 g1Rawmax = g1Raw.max()
-                g1Raw = self.data1[:,2]
+                g1Raw = self.data1[:, 2]
                 self._actVal1.setText("%.2f" % g1[-1])
                 self._actmin1.setText("%.2f" % g1min)
                 self._actmax1.setText("%.2f" % g1max)
@@ -1007,10 +977,10 @@ class SensorDisplay(QMainWindow):
                 self.recorderGraph.plot(x, g1, name="generic1", pen=pg.mkPen("green"))
             else:
                 self.frame1.hide()
-            
+
             if self.showGen2CB.isChecked():
-                g2 = self.data2[:,1]
-                g2Raw = self.data2[:,2]
+                g2 = self.data2[:, 1]
+                g2Raw = self.data2[:, 2]
                 g2min = g2.min()
                 g2max = g2.max()
                 g2Rawmin = g2Raw.min()
@@ -1021,11 +991,20 @@ class SensorDisplay(QMainWindow):
                 self._actRawVal2.setText("%.2f" % g2Raw[-1])
                 self._actRawMin2.setText("%.2f" % g2Rawmin)
                 self._actRawMax2.setText("%.2f" % g2Rawmax)
-                
+
                 self.recorderGraph.plot(x, g2, name="generic2", pen=pg.mkPen("red"))
             else:
                 self.frame2.hide()
-                
+
+
+                progress = 100.0*len(self.rawdata)/float(self.capture_size)
+                print("Progress %.1f of %d " % (progress, self.capture_size))
+                self.progressBar.setValue(int(progress))
+                self.recorderGraph.clear()
+                self.pUnit.setText(self.punit)
+                self.rawUnit.setText(self.rawunit)
+                self.recorderGraph.setTitle(self.QPlotname.text())
+
             self.pUnit.setText(self.punit)
             self.rawUnit.setText(self.rawunit)
             progress = 100.0*len(self.rawdata)/float(self.capture_size)
