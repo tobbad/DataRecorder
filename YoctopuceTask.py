@@ -165,21 +165,25 @@ class YoctopuceTask(QObject):
             self.superVisorTimer.start()
             print("Set up one shot timer with %d ms" % self.fb_sampel_interval_ms)
         #print("%s  %s" %(type(fct), type(measure)))
+        now = datetime.datetime
+
         newdata = None
         if isinstance(measure, list):
             newdata = measure
             print("Y Fake %s" % newdata)
-        if newdata is None:
-            startime = measure.get_startTimeUTC()
-        else:
-            startime = self.startTime
 
-        start = startime
-        # ↑print(values, units, start)
-        now = datetime.datetime
+        if newdata is not None:
+            measureTime = measure.get_startTimeUTC()
+            print("measureTime : %s", measureTime)
+        else:
+            measureTime = now
+            print("measureTime con %s" % measureTime)
+
+        print("measureTime type %s" % type(measureTime))
         absTime = now.now().strftime("%Y-%m-%dT%H:%M:%S.%f+01:00")
         self.lastTime = now.now()
-        delta = (now.now() - self.startTime).total_seconds()
+        print("Now is %s" %self.lastTime)
+        delta = (self.startTimedt.now().total_seconds() - measureTime).total_seconds()
         data = [absTime, delta]
         if fct is not None:
             data.extend(['generic2', measure.get_averageValue(), fct.get_signalUnit()])
@@ -199,6 +203,7 @@ class YoctopuceTask(QObject):
 
     def fakeCB(self):
         if self.onGoing == True:
+            print("Set onGoing to False")
             self.onGoing = False
             self.new_data(None, ["generic2", None, None, "generic1", None, None])
 
