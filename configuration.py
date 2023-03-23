@@ -122,17 +122,24 @@ class configuration:
 
     def getR2PFunction(self):
         def convert(val, unit):
-            if val>0:
-                res = [(val-4.0)/16.0*100, "°C"]
+            if val != None:
+                if val>0:
+                    res = [(val-4.0)/16.0*100, "°C"]
+                else:
+                    res = [val, unit]
+                return res
             else:
-                res = [val, unit]      
-            return res
+                return [None, None]
         return convert
         
     def getP2RFunction(self):
         def convert(val, unit):
-            res = [[float(val)/100.0*16.0+4.0, "°C"], [val, unit]]
-            return res
+            if val != None:
+                res = [[float(val)/100.0*16.0+4.0, "°C"], [val, unit]]
+                return res
+            else:
+                return [None, None]
+
         return convert
         
     

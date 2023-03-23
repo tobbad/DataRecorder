@@ -10,6 +10,7 @@ import csv
 import threading
 from datetime import *
 from time import *
+import copy
 sys.path.append(os.sep.join(["C:","Users","tobias.badertscher","AppData","Local","miniconda3","Lib","site-packages"]))
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, QObject, QThread, QTimer
 from configuration import configuration
@@ -56,9 +57,12 @@ class YoctopuceTask(QObject):
         self.start = now = datetime.datetime.now()
         self.reportFrequncy = "1s"
         self.sampel_interval_ms = 1000
-        self.oneShotTimer = None
-        
-
+        self.superVisorTimer = None
+        self.timeout_add = 10
+        self.takeOver = False
+        self.lastTime = 0
+        self.connected = False
+        self.onGoing = False
 
     @pyqtSlot()
     def initAPI(self):
@@ -117,6 +121,7 @@ class YoctopuceTask(QObject):
             sen[s.function] = s
         self.sensor = sen
         print("Registered %d Sensors %s" % (len(self.sensor), self.sensor))
+        self.connected = True
         self.arrival.emit(self.sensor)
         if len(self.sensor) == 0:
             print("No sensors detected")
@@ -151,59 +156,69 @@ class YoctopuceTask(QObject):
             return True
 
  
-    def new_data(self, fct, measure):
-        if self.oneShotTimer == None:
-            time = self.sampel_interval_ms+10
-            self.oneShotTimer = QTimer(self)
-            self.oneShotTimer.setInterval(time)
-            self.oneShotTimer.timeout.connect(self.new_data_fallback)
-            self.oneShotTimer.start()
-            print("Set up one shot timer with %d ms" % time)
+    def new_data(self, fct, measure=None):
+        if self.superVisorTimer == None:
+            self.fb_sampel_interval_ms = self.sampel_interval_ms+self.timeout_add
+            self.superVisorTimer = QTimer(self)
+            self.superVisorTimer.setInterval(self.fb_sampel_interval_ms)
+            self.superVisorTimer.timeout.connect(self.new_data_superVisor)
+            self.superVisorTimer.start()
+            print("Set up one shot timer with %d ms" % self.fb_sampel_interval_ms)
         #print("%s  %s" %(type(fct), type(measure)))
-        if measure is None:
-            self.connected = False
-            startime = self.startTimedt
-        else:
-            self.connected = True
+        newdata = None
+        if isinstance(measure, list):
+            newdata = measure
+            print("Y Fake %s" % newdata)
+        if newdata is None:
             startime = measure.get_startTimeUTC()
-        start = datetime.datetime.fromtimestamp(startime).strftime('%Y-%m-%dT%H:%M:%S.%f+01:00')
+        else:
+            startime = self.startTime
+
+        start = startime
         # ↑print(values, units, start)
-        now = datetime.datetime.fromtimestamp(startime)
-        absTime = now.strftime("%Y-%m-%dT%H:%M:%S.%f+01:00")
-        delta = (now - self.start).total_seconds()
+        now = datetime.datetime
+        absTime = now.now().strftime("%Y-%m-%dT%H:%M:%S.%f+01:00")
+        self.lastTime = now.now()
+        delta = (now.now() - self.startTime).total_seconds()
         data = [absTime, delta]
         if fct is not None:
             data.extend(['generic2', measure.get_averageValue(), fct.get_signalUnit()])
             data.extend(['generic1', measure.get_averageValue(), fct.get_signalUnit()])
         else:
-            data.extend(['generic2', None, None, None, None])
-            data.extend(['generic1', None, None, None, None])
+            data.extend(newdata)
 
         self.updateSignal.emit(data)
         self._sampleCnt += 1
+        self.onGoing = True
+
         #self.logfun("Remaining cap %d" % self.capture_size)
         self.capture_size -= 1
         if self.capture_size == 0:
             self.logfun("Finished cap %d samples" % self._sampleCnt)
             self.updateSignal.emit([None,None])
             print("Finished capture in yoctopuc")
-    def new_data_fallback(self, retrigger=True):
+
+    def fakeCB(self):
+        if self.onGoing = False:
+            self.onGoing = False
+            self.new_data(None, ["generic2", None, None, "generic1", None, None])
+
+
+    def new_data_superVisor(self, retrigger=True):
         # If this is called we have to take over regulary sending data to new_data
-        print("new_data_fallback fired %d != %d ?"% (self.sampel_interval_ms, self.set_sampel_interval_ms))
-        if self.sampel_interval_ms != self.set_sampel_interval_ms :
-            def callback(self):
-                def fct(self):
-                    print("Callback call")
-                    self.new_data(None, None)
+        self.onGoing = False
+        print("new_data_superVisor fired %d  ?"% (self.onGoing))
+        if self.sampel_interval_ms != self.fb_sampel_interval_ms :
+            print("Reset fallback intervall to %d ms" % self.sampel_interval_ms)
+            self.fb_sampel_interval_ms = self.sampel_interval_ms
+            self.superVisorTimer.setInterval(self.sampel_interval_ms+20)
+            self.superVisorTimer.timeout.connect(self.fakeCB)
+            self.superVisorTimer.stop()
+            self.superVisorTimer.start()
 
-                return fct
+        if self.onGoing == False:
+            print("Sensor disconnected: Generate data")
 
-            print("Set recall intervall to %d ms" % self.sampel_interval_ms)
-            self.sampel_interval_ms = self.set_sampel_interval_ms
-            self.oneShotTimer.setInterval(self.set_sampel_interval_ms)
-            self.oneShotTimer.timeout.connect(callback(self)(self))
-            self.oneShotTimer.stop()
-            self.oneShotTimer.start()
 
     @property
     def sampleCnt(self):
@@ -219,11 +234,12 @@ class YoctopuceTask(QObject):
             self.file.close()
             print("Removed file reference")
             self.file = None
+        self.superVisorTimer = None
         #self.freeAPI()
 
     def setSampleInterval_ms(self, sampel_interval_ms):
         self.sampel_interval_ms = sampel_interval_ms
-        self.set_sampel_interval_ms = sampel_interval_ms
+        self.fb_sampel_interval_ms = copy.copy(sampel_interval_ms)
         if self.sampel_interval_ms>0:
             if self.sampel_interval_ms > 1000:
                 self.reportFrequncy = "%ds" % (self.sampel_interval_ms/1000)

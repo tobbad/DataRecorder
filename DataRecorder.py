@@ -604,7 +604,6 @@ class SensorDisplay(QMainWindow):
                 self.stopCapture()
            else:
                 self.rawdata.append(data)
-                #print(data)
                 pData = [data[0], data[1]]
                 pData.extend( self.r2p( data[3], data[4]))
                 if len(data)>5:
