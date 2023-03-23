@@ -175,6 +175,7 @@ class SensorDisplay(QMainWindow):
         self.closeOk = False
         self.sensor = None
         self.YoctopuceTask= None
+        self.capture()
 
     def setUpGUI(self):    
         self.setWindowTitle("DataRecorder")
@@ -238,26 +239,14 @@ class SensorDisplay(QMainWindow):
 
     def fixedUpdate(self):
         if self.xaxisScale.currentIndex() == 1:
-            self.minLabel.show()
-            self.minTime.show()
-            self.maxLabel.show()
-            self.maxTime.show()
+            self.frameXMinMax.show()
         elif self.xaxisScale.currentIndex()==0:
-            self.minLabel.hide()
-            self.minTime.hide()
-            self.maxLabel.hide()
-            self.maxTime.hide()
+            self.frameXMinMax.hide()
         if self.yaxisScale.currentIndex() == 1:
-            self.minyLabel.show()
-            self.miny.show()
-            self.maxyLabel.show()
-            self.maxy.show()
+            self.frameYMinMax.show()
         elif self.xaxisScale.currentIndex()==0:
-            self.minyLabel.hide()
-            self.miny.hide()
-            self.maxyLabel.hide()
-            self.maxy.hide()
-             
+            self.frameYMinMax.hide()
+
 
     def Recorder(self):
         print("Recorder")
@@ -297,7 +286,9 @@ class SensorDisplay(QMainWindow):
 
         
         onlyUInt = QIntValidator( 1, 65535, self)
+        self.frameXMinMax = QFrame()
         hbox =QHBoxLayout()
+
         self.minLabel =QLabel("Showed minimal time")
         hbox.addWidget(self.minLabel)
         self.minTime = QLineEdit()
@@ -313,8 +304,10 @@ class SensorDisplay(QMainWindow):
         self.maxTime.setText("0")
         self.maxTime.setValidator(onlyUInt)
         hbox.addWidget(self.maxTime)
-        layout.addLayout(hbox)
-        
+        self.frameXMinMax.setLayout(hbox)
+        layout.addWidget(self.frameXMinMax)
+
+        self.frameYMinMax = QFrame()
         hbox =QHBoxLayout()
         self.minyLabel =QLabel("Showed minimal Y Axis")
         hbox.addWidget(self.minyLabel)
@@ -331,9 +324,8 @@ class SensorDisplay(QMainWindow):
         self.maxy.setText("0")
         self.maxy.setValidator(onlyUInt)
         hbox.addWidget(self.maxy)
- 
-        
-        layout.addLayout(hbox)
+        self.frameYMinMax.setLayout(hbox)
+        layout.addWidget(self.frameYMinMax)
         
         self.fixedUpdate()
         
@@ -689,7 +681,7 @@ class SensorDisplay(QMainWindow):
     def arrival(self, device):
         if self.sensor is None:
             # log arrival
-            print("Device connected in Datarecorder: ")
+            print("Device connected in Datarecorder")
             self.sensor = device
             print("Show buttons in arrival")
             self.btn["Start"].show()
@@ -1042,7 +1034,6 @@ if __name__ == "__main__":
     # print(defaultLocale)
     app = QApplication(sys.argv)
     window = SensorDisplay()
-    window.capture()
     window.show()
     sys.exit(app.exec())
         
