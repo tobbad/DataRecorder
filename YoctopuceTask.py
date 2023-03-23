@@ -190,7 +190,6 @@ class YoctopuceTask(QObject):
         self.updateSignal.emit(data)
         self._sampleCnt += 1
         self.onGoing = True
-
         #self.logfun("Remaining cap %d" % self.capture_size)
         self.capture_size -= 1
         if self.capture_size == 0:

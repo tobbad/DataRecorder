@@ -784,6 +784,7 @@ class SensorDisplay(QMainWindow):
         # Ask for really Stop
         dlg =  StopRecordingDlg(self)
         res = dlg.exec_()
+        print("Yoctopuc Task is %s" % self.yoctoTask)
         if dlg:
             state = dlg.state()
             print("Returned by dlg: %d " % state)
