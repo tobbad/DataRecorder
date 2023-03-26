@@ -164,6 +164,8 @@ class SensorDisplay(QMainWindow):
         self.rawdata = []
         self.pData = None
         self.unit  =[]
+        self.rawunit = None
+        self.punit = None
         self.functionValues = {}
         self.yoctoTask = None
         self.data1 = None
@@ -912,7 +914,7 @@ class SensorDisplay(QMainWindow):
 
     def setNewData(self):
         if self.pData is None:
-            print("Set up new generiv data1/2")
+            print("Set up new generic data1/2")
             self.pData ={}
             self.pData['generic1'] = []
             self.pData['generic2'] = []
@@ -926,15 +928,36 @@ class SensorDisplay(QMainWindow):
             self.data2 = np.zeros([ self.pDataSize, 3])
             for i in range(self.pDataSize):
                #print(self.rawdata[i])
-                self.data1[i][0] = float(self.pData["generic1"][i][1])
-                self.data1[i][1] = float(self.pData["generic1"][i][2])
-                self.data1[i][2] = float(self.rawdata[i][6])          
-                self.rawunit = self.rawdata[i][7]
-                self.punit = self.pData['generic2'][i][3]
+                if self.pData["generic1"][i][1] is None:
+                    self.data1[i][0] =- 1
+                else:
+                    self.data1[i][0] = float(self.pData["generic1"][i][1])
+                if self.pData["generic1"][i][2] is None:
+                    self.data1[i][1] = -1
+                else:
+                    self.data1[i][1] = float(self.pData["generic1"][i][2])
+                if self.rawdata[i][6] is None:
+                    self.data1[i][2] =-1
+                else:
+                    self.data1[i][2] = float(self.rawdata[i][6])
+                if self.rawunit is None:
+                    self.rawunit = self.rawdata[i][7]
+
+                if self.punit is None:
+                    self.punit = self.pData['generic2'][i][3]
                 
-                self.data2[i][0] = float(self.pData["generic2"][i][1])
-                self.data2[i][1] = float(self.pData["generic2"][i][2])
-                self.data2[i][2] = float(self.rawdata[i][3])
+                if self.pData["generic2"][i][1] is None:
+                    self.data1[i][0] =- 1
+                else:
+                    self.data1[i][0] = float(self.pData["generic2"][i][1])
+                if self.pData["generic2"][i][2] is None:
+                    self.data1[i][1] = -1
+                else:
+                    self.data1[i][1] = float(self.pData["generic2"][i][2])
+                if self.rawdata[i][3] is None:
+                    self.data2[i][2] = -1
+                else:
+                    self.data2[i][2] = float(self.rawdata[i][3])
                 
         if self.emData is not None:
             self.emdata = np.zeros([ len(self.emData), 3])

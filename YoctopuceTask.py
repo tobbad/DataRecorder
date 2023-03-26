@@ -54,7 +54,6 @@ class YoctopuceTask(QObject):
         self._sampleCnt = 0
         self.file = None
         self.initAPI()
-        self.start = now = datetime.datetime.now()
         self.reportFrequncy = "1s"
         self.sampel_interval_ms = 1000
         self.superVisorTimer = None
@@ -62,7 +61,6 @@ class YoctopuceTask(QObject):
         self.takeOver = False
         self.lastTime = 0
         self.connected = False
-        self.onGoing = False
 
     @pyqtSlot()
     def initAPI(self):
@@ -121,6 +119,9 @@ class YoctopuceTask(QObject):
             sen[s.function] = s
         self.sensor = sen
         print("Registered %d Sensors %s" % (len(self.sensor), self.sensor))
+        if not self.connected:
+            print("Reset up capture")
+            self.SetUpCapture()
         self.connected = True
         self.arrival.emit(self.sensor)
         if len(self.sensor) == 0:
@@ -136,26 +137,29 @@ class YoctopuceTask(QObject):
  
     def capture_start(self):
         self.initAPI()
-        print("Yoctopuc Start with sensors is %s / cnt= %d" %(self.sensor, len(self.sensor)))
         if len(self.sensor)==0:
             self.connected = False
             return False
             print("No sensors connected")
         else:
-            self.connected = True
-            print("Capture in Yoctopuc Task started (cnt = %d  with %d ms)" %(self.capture_size, self.sampel_interval_ms))
-            if self.capture_size >0 and self.sampel_interval_ms>0:
-                for s in self.sensor.values():
-                    print("Register cb on %s with samples cnt %d" % (s, self.capture_size))
-                    s.registerTimedReportCallback(self.new_data)
-                    s.set_reportFrequency(self.reportFrequncy)
-                print("Capture started on %s" % (self.sensor))
-                self.startTimedt =datetime.datetime
+            if self.connected:
+                self.SetUpCapture()
+                self.startTimedt = datetime.datetime.now()
                 self.startTime = self.startTimedt.now()
+                print("Capture started on %s with time %s" % (self.sensor, self.startTime))
                 self._sampleCnt = 0
-            return True
+            else:
+                print("Not connected:Can not start")
+        return True
+    def SetUpCapture(self):
+        print("Capture in Yoctopuc Task started (cnt = %d  with %d ms)" % (self.capture_size, self.sampel_interval_ms))
+        if self.capture_size > 0 and self.sampel_interval_ms > 0:
+            for s in self.sensor.values():
+                print("Register cb on %s with samples cnt %d" % (s, self.capture_size))
+                s.registerTimedReportCallback(self.new_data)
+                s.set_reportFrequency(self.reportFrequncy)
+            print("Yoctopuc Capture started on %s" % (self.sensor))
 
- 
     def new_data(self, fct, measure=None):
         if self.superVisorTimer == None:
             self.fb_sampel_interval_ms = self.sampel_interval_ms+self.timeout_add
@@ -163,37 +167,35 @@ class YoctopuceTask(QObject):
             self.superVisorTimer.setInterval(self.fb_sampel_interval_ms)
             self.superVisorTimer.timeout.connect(self.new_data_superVisor)
             self.superVisorTimer.start()
-            print("Set up one shot timer with %d ms" % self.fb_sampel_interval_ms)
+            print("Initial timer to %d ms" % self.fb_sampel_interval_ms)
         #print("%s  %s" %(type(fct), type(measure)))
         now = datetime.datetime
 
         newdata = None
         if isinstance(measure, list):
             newdata = measure
+            measureTime = now.now()
             print("Y Fake %s" % newdata)
-
-        if newdata is not None:
-            measureTime = measure.get_startTimeUTC()
-            print("measureTime : %s", measureTime)
         else:
-            measureTime = now
-            print("measureTime con %s" % measureTime)
+            measureTime = datetime.datetime.fromtimestamp(measure.get_startTimeUTC())
+        delta = measureTime - self.startTime
+        print("connected state in new_data is %s/rel Time %s" % (self.connected, delta))
 
-        print("measureTime type %s" % type(measureTime))
+        #print("measureTime %s, start: %s/%s" % (measureTime.now(), self.startTimedt, measureTime.now()))
         absTime = now.now().strftime("%Y-%m-%dT%H:%M:%S.%f+01:00")
         self.lastTime = now.now()
-        print("Now is %s" %self.lastTime)
-        delta = (self.startTimedt.now().total_seconds() - measureTime).total_seconds()
+        #print("Now is %s" %self.lastTime)
+        delta = (measureTime - self.startTime).total_seconds()
         data = [absTime, delta]
         if fct is not None:
             data.extend(['generic2', measure.get_averageValue(), fct.get_signalUnit()])
             data.extend(['generic1', measure.get_averageValue(), fct.get_signalUnit()])
         else:
-            data.extend(newdata)
+            data.extend([newdata[0], None, None, newdata[1], None, None])
 
         self.updateSignal.emit(data)
         self._sampleCnt += 1
-        self.onGoing = True
+        print("New data on connected state to %s/rel Time %s" % (self.connected, delta))
         #self.logfun("Remaining cap %d" % self.capture_size)
         self.capture_size -= 1
         if self.capture_size == 0:
@@ -202,19 +204,24 @@ class YoctopuceTask(QObject):
             print("Finished capture in yoctopuc")
 
     def fakeCB(self):
-        if self.onGoing == True:
-            print("Set onGoing to False")
-            self.onGoing = False
-            self.new_data(None, ["generic2", None, None, "generic1", None, None])
+        if self.connected == False:
+            measureTime = datetime.datetime.now()
+            delta = (measureTime - self.startTime).total_seconds()
+            print("Connected False: Send fake data  delta %s" % (delta))
+            if not self.connected:
+                self.new_data(None, ['generic2','generic1'])
 
 
     def new_data_superVisor(self, retrigger=True):
         # If this is called we have to take over regulary sending data to new_data
-        print("new_data_superVisor fired onGoing: %d  ?"% (self.onGoing))
+        measureTime = datetime.datetime.now()
+        delta = (measureTime - self.startTime).total_seconds()
+        print("new_data_superVisor fired connected: %d RTime = %s ?"% (self.connected,delta ))
         if self.sampel_interval_ms != self.fb_sampel_interval_ms :
-            self.fb_sampel_interval_ms = self.sampel_interval_ms-10
-            print("Reset fallback intervall to %d ms" % self.fb_sampel_interval_ms)
-            self.superVisorTimer.setInterval(self.fb_sampel_interval_ms)
+            self.fb_sampel_interval_ms = self.fb_sampel_interval_ms
+            self.fb_sampel_interval_ms = self.sampel_interval_ms
+            print("Reset fallback intervall to %d ms -> connect to fakeCB"  % self.sampel_interval_ms)
+            self.superVisorTimer.setInterval(self.sampel_interval_ms)
             self.superVisorTimer.timeout.connect(self.fakeCB)
             self.superVisorTimer.stop()
             self.superVisorTimer.start()
@@ -233,7 +240,8 @@ class YoctopuceTask(QObject):
             self.file.close()
             print("Removed file reference")
             self.file = None
-        self.superVisorTimer = None
+        self.superVisorTimer.stop()
+        del self.superVisorTimer
         #self.freeAPI()
 
     def setSampleInterval_ms(self, sampel_interval_ms):
