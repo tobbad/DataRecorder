@@ -165,6 +165,7 @@ class SensorDisplay(QMainWindow):
         self.pData = None
         self.unit  =[]
         self.rawunit = None
+        print(self.rawunit)
         self.punit = None
         self.functionValues = {}
         self.yoctoTask = None
@@ -614,18 +615,16 @@ class SensorDisplay(QMainWindow):
                     self.pData[data[2]] = []
                     if len(data)>5:
                         self.pData[data[5]] = []
-
+                print("Col 2: %s, Col 5:%s size = %d"% (data[2],data[5], len(pData)))
                 self.pData[data[2]].append(([pData[0], pData[1], pData[2], pData[3] ]))
                 if len(data)>5:
                     self.pData[data[5]].append(([pData[0], pData[1], pData[4], pData[5] ]))
                 self.csvFile.writerow(pData)
-                print("Data %d/%d %s appended." % (len(self.rawdata), self.capture_size, pData))
+                print("Data %d/%d (size=%d) %s appended." % (len(self.rawdata), self.capture_size, len(pData), pData))
                 if len(self.rawdata)%20 == 0:
                     self.setNewData()
                     self.updatePlots()
 
-
-       
     def file_open(self):
         local_dir = (os.path.dirname(self.filename)
                if self.filename is not None else ".")
@@ -636,7 +635,7 @@ class SensorDisplay(QMainWindow):
         if files:
             self.emulatorFile = files[0]
             self.load_file(self.emulatorFile)
-        
+
     def load_file(self, fname):
         f = open(fname, encoding="cp1252")
         csvf =csv.reader(f, lineterminator="\n")
@@ -664,7 +663,7 @@ class SensorDisplay(QMainWindow):
         print("Set emulator file name to %s" %self.emFile)
         self.setNewData()
         self.updatePlots()
- 
+
     def capture(self):
          # Start Yoctopuce I/O task in a separate thread
          self.yoctoThread = QThread()
@@ -677,7 +676,8 @@ class SensorDisplay(QMainWindow):
          self.yoctoTask.moveToThread(self.yoctoThread)
          self.yoctoTask.updateSignal.connect(self.append_data)
          self.yoctoTask.startTask.emit()
-         
+
+
     @pyqtSlot(dict)
     def arrival(self, device):
         if self.sensor is None:
@@ -737,7 +737,7 @@ class SensorDisplay(QMainWindow):
             self.frame2.setStyleSheet("background-color:white")
 
 
-              
+
     def doStart(self):
         print("doStart")
         self.doRecord = True
@@ -766,7 +766,7 @@ class SensorDisplay(QMainWindow):
             self.setNewData()
             self.updatePlots()
 
-        
+
     def stopCapture(self):
         print("Stop recording")
         self.doRecord = False
@@ -823,7 +823,7 @@ class SensorDisplay(QMainWindow):
              print("No data captured")
              return
          fmt =  ["CSV Files (*.csv)", "Excel Files (*.xslc)"]
-         
+
          fname, ftype = QFileDialog.getSaveFileName(self, "Store captured data",
                  self.QFilename.text(), fmt[0])
          if fname is None:
@@ -838,7 +838,7 @@ class SensorDisplay(QMainWindow):
              csvf.writerow(data)
          self.dirty = False
          f.close()
-        
+
     def help_about(self):
         dlg = QMessageBox()
         dlg.setWindowTitle("Datarecorder")
@@ -847,12 +847,12 @@ class SensorDisplay(QMainWindow):
         print(button)
         if button == QMessageBox.Ok:
             print("OK")
-        
+
 
     @pyqtSlot(str)
     def showMsg(self, text, time = 5000):
         self.message.showMessage(text, time)
-    
+
     def onTimingChanged(self):
         if not self.doRecord:
             print("Call onSampleIntvalChanged %s" % ( self.sampleUnit.currentIndex()))
@@ -893,18 +893,18 @@ class SensorDisplay(QMainWindow):
         self.setNewData()
         self.updatePlots()
         print("Tab changed %d" %(index))
-    
+
     def updatecb(self):
-        if self.showGen1CB.checkState():    
+        if self.showGen1CB.checkState():
             self.frame1.show()
         else:
             self.frame1.hide()
-        if self.showGen2CB.checkState():    
+        if self.showGen2CB.checkState():
             self.frame2.show()
         else:
             self.frame2.hide()
         self.updatePlots()
-   
+
     @property
     def pDataSize(self):
         if self.pData is not None and len(self.pData['generic1'])>0:
@@ -921,55 +921,43 @@ class SensorDisplay(QMainWindow):
             self.data1 = np.zeros([ self.pDataSize, 3])
             self.data2 = np.zeros([ self.pDataSize, 3])
             self.unit = ["", ""]
-            return 
+            return
         if self.pDataSize > 0 :
             print("Set new data of size pData %d" %(self.pDataSize))
             self.data1 = np.zeros([ self.pDataSize, 3])
             self.data2 = np.zeros([ self.pDataSize, 3])
             for i in range(self.pDataSize):
-               #print(self.rawdata[i])
+                #print(self.rawdata[i])
                 if self.pData["generic1"][i][1] is None:
-                    self.data1[i][0] =- 1
+                    self.data1[i][1] = -1
+                    self.data1[i][2] = -1
+                    self.data1[i][3] = -1
                 else:
                     self.data1[i][0] = float(self.pData["generic1"][i][1])
-                if self.pData["generic1"][i][2] is None:
-                    self.data1[i][1] = -1
-                else:
                     self.data1[i][1] = float(self.pData["generic1"][i][2])
-                if self.rawdata[i][6] is None:
-                    self.data1[i][2] =-1
-                else:
                     self.data1[i][2] = float(self.rawdata[i][6])
-                if self.rawunit is None:
                     self.rawunit = self.rawdata[i][7]
-
-                if self.punit is None:
                     self.punit = self.pData['generic2'][i][3]
-                
                 if self.pData["generic2"][i][1] is None:
-                    self.data1[i][0] =- 1
-                else:
-                    self.data1[i][0] = float(self.pData["generic2"][i][1])
-                if self.pData["generic2"][i][2] is None:
-                    self.data1[i][1] = -1
-                else:
-                    self.data1[i][1] = float(self.pData["generic2"][i][2])
-                if self.rawdata[i][3] is None:
+                    self.data2[i][1] = -1
                     self.data2[i][2] = -1
+                    self.data2[i][3] = -1
                 else:
+                    self.data2[i][0] = float(self.pData["generic2"][i][1])
+                    self.data2[i][1] = float(self.pData["generic2"][i][2])
                     self.data2[i][2] = float(self.rawdata[i][3])
-                
+
         if self.emData is not None:
             self.emdata = np.zeros([ len(self.emData), 3])
             for i in range(len(self.emData)):
                 self.emdata[i][0] = float(self.emData[i][0])
                 self.emdata[i][1] = float(self.emData[i][1])
                 self.emdata[i][2] = float(self.emData[i][2])
-            
+
     def updatePlots(self):
         if (self.data1 is None) or (self.data2 is None):
             print("Skip plot as there is no data")
-            return 
+            return
         if self.pDataSize >0:
             x = self.data1[:, 0]
             self.recorderGraph.clear()
@@ -1011,19 +999,12 @@ class SensorDisplay(QMainWindow):
                 self.frame2.hide()
 
 
-                progress = 100.0*len(self.rawdata)/float(self.capture_size)
-                print("Progress %.1f of %d " % (progress, self.capture_size))
-                self.progressBar.setValue(int(progress))
-                self.recorderGraph.clear()
-                self.pUnit.setText(self.punit)
-                self.rawUnit.setText(self.rawunit)
-                self.recorderGraph.setTitle(self.QPlotname.text())
-
             self.pUnit.setText(self.punit)
             self.rawUnit.setText(self.rawunit)
             progress = 100.0*len(self.rawdata)/float(self.capture_size)
             print("Progress %.1f of %d " % (progress, self.capture_size))
             self.progressBar.setValue(int(progress))
+            self.recorderGraph.setTitle(self.QPlotname.text())
             self.recorderGraph.addLegend()
 
         if self.emdata is not None:

@@ -6,6 +6,7 @@ Handles the configuration of the programm
 
 @author: tobias.badertscher
 """
+import math
 import sys, os
 
 addPath = os.path.join("..", "yoctolib_python", "Sources")
@@ -124,7 +125,12 @@ class configuration:
         def convert(val, unit):
             if val != None:
                 if val>0:
-                    res = [(val-4.0)/16.0*100, "°C"]
+                    if unit=="mA":
+                        res = [(val-4.0)/16.0*100, "°C"]
+                    else:
+                        raise ValueError("Unknown conversion to %s" % unit)
+                elif math.isclose(val, -1):
+                    res = [-1, "mA"]
                 else:
                     res = [val, unit]
                 return res
@@ -137,6 +143,8 @@ class configuration:
             if val != None:
                 res = [[float(val)/100.0*16.0+4.0, "°C"], [val, unit]]
                 return res
+            elif math.isclose(val, -1):
+                res = [-1, "mA"]
             else:
                 return [None, None]
 
