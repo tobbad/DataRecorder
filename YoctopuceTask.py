@@ -104,7 +104,7 @@ class YoctopuceTask(QObject):
         print("Device arrival SerNr %s %s, " % (serialNumber, m))
         if self.conf == None:
             self.conf = configuration(self)
-            
+
         pSensor = YGenericSensor.FirstGenericSensor()
         print("Sensor %s" %pSensor )
         if len(self.sensor)>3:
@@ -118,8 +118,9 @@ class YoctopuceTask(QObject):
         for s in newSensorList:
             sen[s.function] = s
         self.sensor = sen
+        self.connected = True
         print("Registered %d Sensors %s" % (len(self.sensor), self.sensor))
-        if not self.connected:
+        if self.connected:
             print("Reset up capture")
             self.SetUpCapture()
         self.connected = True
@@ -172,10 +173,12 @@ class YoctopuceTask(QObject):
         now = datetime.datetime
 
         newdata = None
+        self.doCapture = True
         if isinstance(measure, list):
             newdata = measure
             measureTime = now.now()
             print("Y Fake %s" % newdata)
+            self.doCapture = False
         else:
             measureTime = datetime.datetime.fromtimestamp(measure.get_startTimeUTC())
         delta = measureTime - self.startTime
