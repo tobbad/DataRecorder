@@ -450,12 +450,9 @@ class SensorDisplay(QMainWindow):
         
         gLayout = QGridLayout()
         
-        self.gen2Label = QLabel("generic1")
+        self.gen2Label = QLabel("generic2")
         gLayout.addWidget(self.gen2Label, 0, 0)
-        
-        self.conState = QIcon(":redLed.svg")
         #gLayout.addWidget(self.conState, 0, 1)
-        
         label = QLabel("Messwert")
         gLayout.addWidget(label, 0, 2)
         self._actVal2 = QLabel("%.2f" % 0)
@@ -936,7 +933,7 @@ class SensorDisplay(QMainWindow):
                     self.data1[i][1] = float(self.pData["generic1"][i][2])
                     self.data1[i][2] = float(self.rawdata[i][6])
                     self.rawunit = self.rawdata[i][7]
-                    self.punit = self.pData['generic2'][i][3]
+                    self.punit = self.pData['generic1'][i][3]
                 if self.pData["generic2"][i][1] is None:
                     self.data2[i][1] = -1
                     self.data2[i][2] = -1
@@ -981,7 +978,7 @@ class SensorDisplay(QMainWindow):
                 self.frame1.hide()
 
             if self.showGen2CB.isChecked():
-                self.gen1Label.setText("generic2")
+                self.gen2Label.setText("generic2")
                 g2 = self.data2[:, 1]
                 g2Raw = self.data2[:, 2]
                 g2min = g2.min()

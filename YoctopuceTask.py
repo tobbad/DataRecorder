@@ -188,18 +188,15 @@ class YoctopuceTask(QObject):
         delta = (measureTime - self.startTime).total_seconds()
         data = [absTime, delta]
         if fct is not None:
-            gen1 = measure.get_averageValue()
-            gen1u = measure.get_signalUnit()
-            gen2 = measure.get_averageValue()
-            gen2u = "mA"#measure.get_signalUnit()
-            data.extend(['generic2', gen2, gen2u])
-            data.extend(['generic1', gen1, gen2u])
+            d1 = self.sensor["generic1"].get_values()
+            d2 = self.sensor["generic2"].get_values()
+            data.extend(d2)
+            data.extend(d1)
         else:
             data.extend([newdata[0], None, None, newdata[1], None, None])
-
         self.updateSignal.emit(data)
         self._sampleCnt += 1
-        print("New data on connected state to %s/rel Time %s" % (self.connected, delta))
+        #print("New data on connected state to %s/rel Time %s" % (self.connected, delta))
         #self.logfun("Remaining cap %d" % self.capture_size)
         self.capture_size -= 1
         if self.capture_size == 0:
