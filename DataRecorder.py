@@ -615,7 +615,6 @@ class SensorDisplay(QMainWindow):
                     self.pData[data[2]] = []
                     if len(data)>5:
                         self.pData[data[5]] = []
-                print("Col 2: %s, Col 5:%s size = %d"% (data[2],data[5], len(pData)))
                 self.pData[data[2]].append(([pData[0], pData[1], pData[2], pData[3] ]))
                 if len(data)>5:
                     self.pData[data[5]].append(([pData[0], pData[1], pData[4], pData[5] ]))
@@ -962,6 +961,7 @@ class SensorDisplay(QMainWindow):
             x = self.data1[:, 0]
             self.recorderGraph.clear()
             if self.showGen1CB.isChecked():
+                self.gen1Label.setText("generic1")
                 g1 = self.data1[:, 1]
                 g1Raw = self.data1[:, 2]
                 g1min = g1.min()
@@ -981,6 +981,7 @@ class SensorDisplay(QMainWindow):
                 self.frame1.hide()
 
             if self.showGen2CB.isChecked():
+                self.gen1Label.setText("generic2")
                 g2 = self.data2[:, 1]
                 g2Raw = self.data2[:, 2]
                 g2min = g2.min()

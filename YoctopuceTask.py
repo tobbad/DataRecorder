@@ -188,8 +188,12 @@ class YoctopuceTask(QObject):
         delta = (measureTime - self.startTime).total_seconds()
         data = [absTime, delta]
         if fct is not None:
-            data.extend(['generic2', measure.get_averageValue(), fct.get_signalUnit()])
-            data.extend(['generic1', measure.get_averageValue(), fct.get_signalUnit()])
+            gen1 = measure.get_averageValue()
+            gen1u = measure.get_signalUnit()
+            gen2 = measure.get_averageValue()
+            gen2u = "mA"#measure.get_signalUnit()
+            data.extend(['generic2', gen2, gen2u])
+            data.extend(['generic1', gen1, gen2u])
         else:
             data.extend([newdata[0], None, None, newdata[1], None, None])
 
@@ -286,7 +290,7 @@ class sensor:
         name = sensor.get_friendlyName()
         self._name = str(self.sen).split("=")[1].split(".")[1].replace("Sensor","")
         self.type = self.sen.get_module().get_serialNumber()
-        print("Sensor f name is %s ;ModuleId is: %s"% (self.function, self.moduleId))
+        print("Sensor functionname is %s ;ModuleId is: %s"% (self.function, self.moduleId))
         self.functionType = self.sen.get_module().functionType(0)
 
     def __str__(self):
@@ -299,6 +303,9 @@ class sensor:
     @property
     def function(self):
         return self._name
+
+    def fullfunName(self):
+        return str(self.sen).split("=")[1].split(".")[1]
 
     def get_values(self):
         res = [self.function, self.sen.get_currentValue(), self.sen.get_unit()]
