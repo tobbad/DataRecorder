@@ -165,13 +165,15 @@ class SensorDisplay(QMainWindow):
         self.pData = None
         self.unit  =[]
         self.rawunit = None
-        print(self.rawunit)
         self.punit = None
         self.functionValues = {}
         self.yoctoTask = None
         self.data1 = None
         self.data2 = None
         self.emData = []
+        self.doRestart = False
+        self.onGoing = True
+        self.btnState = {"Start":False, "Clear":False, "Stop":False, "Save":False}
         self.setUpGUI()
         self.plotname = ""
         self.connected = False
@@ -340,6 +342,7 @@ class SensorDisplay(QMainWindow):
             icon = QIcon(":/%s.svg" % name.lower())
             self.btn[name].setIcon(icon)
             self.btn[name].clicked.connect(fn)
+            self.btnState[name] = show
             if show:
                 self.btn[name].show()
             else:
@@ -450,12 +453,9 @@ class SensorDisplay(QMainWindow):
         
         gLayout = QGridLayout()
         
-        self.gen2Label = QLabel("generic1")
+        self.gen2Label = QLabel("generic2")
         gLayout.addWidget(self.gen2Label, 0, 0)
-        
-        self.conState = QIcon(":redLed.svg")
         #gLayout.addWidget(self.conState, 0, 1)
-        
         label = QLabel("Messwert")
         gLayout.addWidget(label, 0, 2)
         self._actVal2 = QLabel("%.2f" % 0)
@@ -608,6 +608,12 @@ class SensorDisplay(QMainWindow):
            else:
                 self.rawdata.append(data)
                 pData = [data[0], data[1]]
+                self.onGoing = self.onGoing and (data[3] != None)
+                self.doRestart &= data[3] != None
+                print("doRestart %s, onGoing %s"% (self.doRestart, self.onGoing))
+                if self.doRestart and self.sensor!=None:
+                    print("do restart")
+                    self.sensor = None
                 pData.extend( self.r2p( data[3], data[4]))
                 if len(data)>5:
                     pData.extend( self.r2p(data[6], data[7]))
@@ -615,7 +621,6 @@ class SensorDisplay(QMainWindow):
                     self.pData[data[2]] = []
                     if len(data)>5:
                         self.pData[data[5]] = []
-                print("Col 2: %s, Col 5:%s size = %d"% (data[2],data[5], len(pData)))
                 self.pData[data[2]].append(([pData[0], pData[1], pData[2], pData[3] ]))
                 if len(data)>5:
                     self.pData[data[5]].append(([pData[0], pData[1], pData[4], pData[5] ]))
@@ -682,26 +687,63 @@ class SensorDisplay(QMainWindow):
     def arrival(self, device):
         if self.sensor is None:
             # log arrival
-            print("Device connected in Datarecorder")
+            self.connected = True
+            print("Device connected in Datarecorder (doRestart %s, connected %s, onGoing %s)" % (self.doRestart, self.connected,self.onGoing))
             self.sensor = device
-            print("Show buttons in arrival")
-            self.btn["Start"].show()
-            self.btn["Stop"].hide()
-            self.btn["Clear"].hide()
-            self.btn["Save"].hide()
-            self.updateConnected()
+            if not self.onGoing:
+                self.onGoing = True
+                self.doRestart = True
+                print("Show old buttons")
+            else:
+                print("Show buttons in arrival")
+                self.btnState["Start"] = True
+                self.btnState["Stop"] = False
+                self.btnState["Clear"] = False
+                self.btnState["Save"] = False
+
+            if  self.btnState["Start"]:
+                 self.btn["Start"].show()
+            else:
+                self.btn["Start"].hide()
+            if  self.btnState["Stop"]:
+                 self.btn["Stop"].show()
+            else:
+                self.btn["Stop"].hide()
+
+            if self.btnState["Save"]:
+                self.btn["Save"].show()
+            else:
+                self.btn["Save"].hide()
             print("Registered Sensors")
         else:
             print("%d Sensors are already connected" %len(self.sensor))
+        self.updateConnected()
 
     @pyqtSlot(dict)
     def removal(self, device):
         # log removal
-        print("Show buttons in removal")
-        self.btn["Start"].hide()
-        self.btn["Stop"].hide()
-        self.btn["Clear"].hide()
-        self.btn["Save"].hide()
+        if not self.onGoing:
+            self.btnState["Start"] = True
+            self.btnState["Stop"] = False
+            self.btnState["Clear"] = False
+            self.btnState["Save"] = False
+        else:
+            print("Detected onGoing")
+
+        if self.btnState["Start"]:
+            self.btn["Start"].show()
+        else:
+            self.btn["Start"].hide()
+        if self.btnState["Stop"]:
+            self.btn["Stop"].show()
+        else:
+            self.btn["Stop"].hide()
+
+        if self.btnState["Save"]:
+            self.btn["Save"].show()
+        else:
+            self.btn["Save"].hide()
+
         self.sensor = None
 
         print('Device disconnected:', device)
@@ -744,6 +786,10 @@ class SensorDisplay(QMainWindow):
         self.onTimingChanged()
         self.yoctoTask.startTask.emit()
         print("Show buttons in doStart/Task is %s" % (self.yoctoTask))
+        self.btnState["Start"] = False
+        self.btnState["Stop"] = True
+        self.btnState["Clear"] = False
+        self.btnState["Save"] = False
         self.btn["Start"].hide()
         self.btn["Stop"].show()
         self.btn["Clear"].hide()
@@ -751,6 +797,8 @@ class SensorDisplay(QMainWindow):
         if self.yoctoTask is None:
             print("No sensor connected")
         if self.yoctoTask.capture_start():
+            self.doRestart = False
+            self.onGoing = True
             now = datetime.now()
             nowS = now.strftime("%Y%m%d_%H%M%S.csv")
             print("Set time to %s" %nowS)
@@ -775,6 +823,11 @@ class SensorDisplay(QMainWindow):
         print("Show buttons in stopCapture")
 
         self.rFile.close()
+        self.btnState["Start"] = False
+        self.btnState["Stop"] = False
+        self.btnState["Clear"] = True
+        self.btnState["Save"] = True
+
         self.btn["Start"].hide()
         self.btn["Stop"].hide()
         self.btn["Clear"].show()
@@ -796,6 +849,11 @@ class SensorDisplay(QMainWindow):
 
                 self.rFile.close()
                 print("Show buttons in doStop")
+                self.btnState["Start"] = False
+                self.btnState["Stop"] = False
+                self.btnState["Clear"] = True
+                self.btnState["Save"] = True
+
                 self.btn["Start"].hide()
                 self.btn["Stop"].hide()
                 self.btn["Clear"].show()
@@ -809,6 +867,11 @@ class SensorDisplay(QMainWindow):
         print("doClear")
         self.recorderGraph.clear()
         print("Show butons in doClear")
+        self.btnState["Start"] = True
+        self.btnState["Stop"] = False
+        self.btnState["Clear"] = False
+        self.btnState["Save"] = False
+
         self.btn["Stop"].hide()
         self.btn["Clear"].hide()
         self.btn["Save"].hide()
@@ -927,21 +990,21 @@ class SensorDisplay(QMainWindow):
             self.data1 = np.zeros([ self.pDataSize, 3])
             self.data2 = np.zeros([ self.pDataSize, 3])
             for i in range(self.pDataSize):
-                #print(self.rawdata[i])
-                if self.pData["generic1"][i][1] is None:
+                print(self.pData["generic1"][i])
+                if self.pData["generic1"][i][2] is None:
+                    self.data1[i][0] = float(self.pData["generic1"][i][1])
                     self.data1[i][1] = -1
                     self.data1[i][2] = -1
-                    self.data1[i][3] = -1
                 else:
                     self.data1[i][0] = float(self.pData["generic1"][i][1])
                     self.data1[i][1] = float(self.pData["generic1"][i][2])
                     self.data1[i][2] = float(self.rawdata[i][6])
                     self.rawunit = self.rawdata[i][7]
-                    self.punit = self.pData['generic2'][i][3]
-                if self.pData["generic2"][i][1] is None:
+                    self.punit = self.pData['generic1'][i][3]
+                if self.pData["generic2"][i][2] is None:
+                    self.data2[i][0] = -1
                     self.data2[i][1] = -1
                     self.data2[i][2] = -1
-                    self.data2[i][3] = -1
                 else:
                     self.data2[i][0] = float(self.pData["generic2"][i][1])
                     self.data2[i][1] = float(self.pData["generic2"][i][2])
@@ -962,7 +1025,10 @@ class SensorDisplay(QMainWindow):
             x = self.data1[:, 0]
             self.recorderGraph.clear()
             if self.showGen1CB.isChecked():
+                self.gen1Label.setText("generic1")
                 g1 = self.data1[:, 1]
+                g1Pure = g1[g1!=-1]
+                print(g1Pure)
                 g1Raw = self.data1[:, 2]
                 g1min = g1.min()
                 g1max = g1.max()
@@ -981,6 +1047,7 @@ class SensorDisplay(QMainWindow):
                 self.frame1.hide()
 
             if self.showGen2CB.isChecked():
+                self.gen2Label.setText("generic2")
                 g2 = self.data2[:, 1]
                 g2Raw = self.data2[:, 2]
                 g2min = g2.min()

@@ -101,10 +101,10 @@ class YoctopuceTask(QObject):
     def deviceArrival(self, m: YModule):
         newSensorList = []
         serialNumber = m.get_serialNumber()
-        print("Device arrival SerNr %s %s, " % (serialNumber, m))
+        print("Y: Device arrival SerNr %s %s, " % (serialNumber, m))
         if self.conf == None:
             self.conf = configuration(self)
-            
+
         pSensor = YGenericSensor.FirstGenericSensor()
         print("Sensor %s" %pSensor )
         if len(self.sensor)>3:
@@ -118,8 +118,9 @@ class YoctopuceTask(QObject):
         for s in newSensorList:
             sen[s.function] = s
         self.sensor = sen
+        self.connected = True
         print("Registered %d Sensors %s" % (len(self.sensor), self.sensor))
-        if not self.connected:
+        if self.connected:
             print("Reset up capture")
             self.SetUpCapture()
         self.connected = True
@@ -175,7 +176,6 @@ class YoctopuceTask(QObject):
         if isinstance(measure, list):
             newdata = measure
             measureTime = now.now()
-            print("Y Fake %s" % newdata)
         else:
             measureTime = datetime.datetime.fromtimestamp(measure.get_startTimeUTC())
         delta = measureTime - self.startTime
@@ -188,14 +188,15 @@ class YoctopuceTask(QObject):
         delta = (measureTime - self.startTime).total_seconds()
         data = [absTime, delta]
         if fct is not None:
-            data.extend(['generic2', measure.get_averageValue(), fct.get_signalUnit()])
-            data.extend(['generic1', measure.get_averageValue(), fct.get_signalUnit()])
+            d1 = self.sensor["generic1"].get_values()
+            d2 = self.sensor["generic2"].get_values()
+            data.extend(d2)
+            data.extend(d1)
         else:
             data.extend([newdata[0], None, None, newdata[1], None, None])
-
         self.updateSignal.emit(data)
         self._sampleCnt += 1
-        print("New data on connected state to %s/rel Time %s" % (self.connected, delta))
+        #print("New data on connected state to %s/rel Time %s" % (self.connected, delta))
         #self.logfun("Remaining cap %d" % self.capture_size)
         self.capture_size -= 1
         if self.capture_size == 0:
@@ -286,7 +287,7 @@ class sensor:
         name = sensor.get_friendlyName()
         self._name = str(self.sen).split("=")[1].split(".")[1].replace("Sensor","")
         self.type = self.sen.get_module().get_serialNumber()
-        print("Sensor f name is %s ;ModuleId is: %s"% (self.function, self.moduleId))
+        print("Sensor functionname is %s ;ModuleId is: %s"% (self.function, self.moduleId))
         self.functionType = self.sen.get_module().functionType(0)
 
     def __str__(self):
@@ -299,6 +300,9 @@ class sensor:
     @property
     def function(self):
         return self._name
+
+    def fullfunName(self):
+        return str(self.sen).split("=")[1].split(".")[1]
 
     def get_values(self):
         res = [self.function, self.sen.get_currentValue(), self.sen.get_unit()]
