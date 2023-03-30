@@ -101,7 +101,7 @@ class YoctopuceTask(QObject):
     def deviceArrival(self, m: YModule):
         newSensorList = []
         serialNumber = m.get_serialNumber()
-        print("Device arrival SerNr %s %s, " % (serialNumber, m))
+        print("Y: Device arrival SerNr %s %s, " % (serialNumber, m))
         if self.conf == None:
             self.conf = configuration(self)
 
@@ -177,8 +177,6 @@ class YoctopuceTask(QObject):
         if isinstance(measure, list):
             newdata = measure
             measureTime = now.now()
-            print("Y Fake %s" % newdata)
-            self.doCapture = False
         else:
             measureTime = datetime.datetime.fromtimestamp(measure.get_startTimeUTC())
         delta = measureTime - self.startTime

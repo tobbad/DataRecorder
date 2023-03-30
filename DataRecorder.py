@@ -171,7 +171,8 @@ class SensorDisplay(QMainWindow):
         self.data1 = None
         self.data2 = None
         self.emData = []
-        self.doCapture = False
+        self.doRestart = False
+        self.onGoing = True
         self.btnState = {"Start":False, "Clear":False, "Stop":False, "Save":False}
         self.setUpGUI()
         self.plotname = ""
@@ -608,11 +609,12 @@ class SensorDisplay(QMainWindow):
            else:
                 self.rawdata.append(data)
                 pData = [data[0], data[1]]
-                self.doCapture = data[3] != None
-                if not self.doCapture:
-                    print("Disconnected")
-                else:
-                    print("Connected")
+                self.onGoing = self.onGoing and (data[3] != None)
+                self.doRestart &= data[3] != None
+                print("doRestart %s, onGoing %s"% (self.doRestart, self.onGoing))
+                if self.doRestart and self.sensor!=None:
+                    print("do restart")
+                    self.sensor = None
                 pData.extend( self.r2p( data[3], data[4]))
                 if len(data)>5:
                     pData.extend( self.r2p(data[6], data[7]))
@@ -686,16 +688,19 @@ class SensorDisplay(QMainWindow):
     def arrival(self, device):
         if self.sensor is None:
             # log arrival
-            print("Device connected in Datarecorder")
+            self.connected = True
+            print("Device connected in Datarecorder (doRestart %s, connected %s, onGoing %s)" % (self.doRestart, self.connected,self.onGoing))
             self.sensor = device
-            if not self.doCapture:
+            if not self.onGoing:
+                self.onGoing = True
+                self.doRestart = True
+                print("Show old buttons")
+            else:
                 print("Show buttons in arrival")
                 self.btnState["Start"] = True
                 self.btnState["Stop"] = False
                 self.btnState["Clear"] = False
                 self.btnState["Save"] = False
-            else:
-                print("Show old buttons")
 
             if  self.btnState["Start"]:
                  self.btn["Start"].show()
@@ -718,13 +723,13 @@ class SensorDisplay(QMainWindow):
     @pyqtSlot(dict)
     def removal(self, device):
         # log removal
-        if not self.doCapture:
+        if not self.onGoing:
             self.btnState["Start"] = True
             self.btnState["Stop"] = False
             self.btnState["Clear"] = False
             self.btnState["Save"] = False
         else:
-            print("Detected disconnect in capture state")
+            print("Detected onGoing")
 
         if self.btnState["Start"]:
             self.btn["Start"].show()
@@ -793,6 +798,8 @@ class SensorDisplay(QMainWindow):
         if self.yoctoTask is None:
             print("No sensor connected")
         if self.yoctoTask.capture_start():
+            self.doRestart = False
+            self.onGoing = True
             now = datetime.now()
             nowS = now.strftime("%Y%m%d_%H%M%S.csv")
             print("Set time to %s" %nowS)
@@ -1021,6 +1028,8 @@ class SensorDisplay(QMainWindow):
             if self.showGen1CB.isChecked():
                 self.gen1Label.setText("generic1")
                 g1 = self.data1[:, 1]
+                g1Pure = g1[g1!=-1]
+                print(g1Pure)
                 g1Raw = self.data1[:, 2]
                 g1min = g1.min()
                 g1max = g1.max()

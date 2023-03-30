@@ -6,3 +6,6 @@
 20230227_114230.csv
 __pycache__/qrc_resources.cpython-39.pyc
 __pycache__/YoctopuceTask.cpython-39.pyc
+*.bak
+*.pyc
+*.pyc
