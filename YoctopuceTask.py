@@ -11,6 +11,7 @@ import threading
 from datetime import *
 from time import *
 import copy
+import numpy as np
 sys.path.append(os.sep.join(["C:","Users","tobias.badertscher","AppData","Local","miniconda3","Lib","site-packages"]))
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, QObject, QThread, QTimer
 from configuration import configuration
@@ -121,7 +122,7 @@ class YoctopuceTask(QObject):
         self.connected = True
         print("Registered %d Sensors %s" % (len(self.sensor), self.sensor))
         if self.connected:
-            print("Reset up capture")
+            print("Y: device Arrival, setUpCapture")
             self.SetUpCapture()
         self.connected = True
         self.arrival.emit(self.sensor)
@@ -180,7 +181,7 @@ class YoctopuceTask(QObject):
         else:
             measureTime = datetime.datetime.fromtimestamp(measure.get_startTimeUTC())
         delta = measureTime - self.startTime
-        print("connected state in new_data is %s/rel Time %s" % (self.connected, delta))
+        #print("connected state in new_data is %s/rel Time %s" % (self.connected, delta))
 
         #print("measureTime %s, start: %s/%s" % (measureTime.now(), self.startTimedt, measureTime.now()))
         absTime = now.now().strftime("%Y-%m-%dT%H:%M:%S.%f+01:00")
@@ -194,7 +195,7 @@ class YoctopuceTask(QObject):
             data.extend(d2)
             data.extend(d1)
         else:
-            data.extend([newdata[0], None, None, newdata[1], None, None])
+            data.extend([newdata[0],np.nan, np.nan, newdata[1], np.nan, np.nan])
         self.updateSignal.emit(data)
         self._sampleCnt += 1
         #print("New data on connected state to %s/rel Time %s" % (self.connected, delta))
@@ -209,7 +210,7 @@ class YoctopuceTask(QObject):
         if self.connected == False:
             measureTime = datetime.datetime.now()
             delta = (measureTime - self.startTime).total_seconds()
-            print("Connected False: Send fake data  delta %s" % (delta))
+            print("\tConnected False: Send fake data  delta %s" % (delta))
             if not self.connected:
                 self.new_data(None, ['generic2','generic1'])
 
@@ -218,7 +219,7 @@ class YoctopuceTask(QObject):
         # If this is called we have to take over regulary sending data to new_data
         measureTime = datetime.datetime.now()
         delta = (measureTime - self.startTime).total_seconds()
-        print("new_data_superVisor fired connected: %d RTime = %s ?"% (self.connected,delta ))
+        #print("new_data_superVisor fired connected: %d RTime = %s ?"% (self.connected,delta ))
         if self.sampel_interval_ms != self.fb_sampel_interval_ms :
             self.fb_sampel_interval_ms = self.fb_sampel_interval_ms
             self.fb_sampel_interval_ms = self.sampel_interval_ms

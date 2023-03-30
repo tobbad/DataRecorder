@@ -7,7 +7,7 @@ Created on Mon Feb  6 09:47:21 2023
 import sys, os
 import optparse
 import csv
-from math import ceil
+from math import ceil, isnan
 import numpy as np
 from datetime import *
 import numpy as np
@@ -65,6 +65,7 @@ from PyQt5.QtGui import (
 
 from PyQt5.QtCore import *
 import pyqtgraph as pg
+#import matplotlib as pg # Maybe matplot lib can handle NaN?
 #import mkl
 import qrc_resources
 wd = os.sep.join(["C:","Users","tobias.badertscher","source", "repos", "python", "DataRecorder"])
@@ -171,12 +172,10 @@ class SensorDisplay(QMainWindow):
         self.data1 = None
         self.data2 = None
         self.emData = []
-        self.doRestart = False
         self.onGoing = True
         self.btnState = {"Start":False, "Clear":False, "Stop":False, "Save":False}
         self.setUpGUI()
         self.plotname = ""
-        self.connected = False
         self.closeOk = False
         self.sensor = None
         self.YoctopuceTask= None
@@ -609,11 +608,10 @@ class SensorDisplay(QMainWindow):
            else:
                 self.rawdata.append(data)
                 pData = [data[0], data[1]]
-                self.onGoing = self.onGoing and (data[3] != None)
-                self.doRestart &= data[3] != None
-                print("doRestart %s, onGoing %s"% (self.doRestart, self.onGoing))
-                if self.doRestart and self.sensor!=None:
-                    print("do restart")
+                self.onGoing = self.onGoing and (not (isnan(data[3])))
+                #print("onGoing %s; data %f is nan: %s" % (self.onGoing, data[3], isnan(data[3]) ) )
+                if not self.onGoing:
+                    print("Detected connection loss")
                     self.sensor = None
                 pData.extend( self.r2p( data[3], data[4]))
                 if len(data)>5:
@@ -683,17 +681,19 @@ class SensorDisplay(QMainWindow):
          self.yoctoTask.updateSignal.connect(self.append_data)
          self.yoctoTask.startTask.emit()
 
+    @property
+    def connected(self):
+        return self.sensor != None
+
 
     @pyqtSlot(dict)
     def arrival(self, device):
         if self.sensor is None:
             # log arrival
-            self.connected = True
-            print("Device connected in Datarecorder (doRestart %s, connected %s, onGoing %s)" % (self.doRestart, self.connected,self.onGoing))
+            print("Device connected in Datarecorder (connected %s, onGoing %s)" % ( self.connected,self.onGoing))
             self.sensor = device
             if not self.onGoing:
                 self.onGoing = True
-                self.doRestart = True
                 print("Show old buttons")
             else:
                 print("Show buttons in arrival")
@@ -729,7 +729,7 @@ class SensorDisplay(QMainWindow):
             self.btnState["Clear"] = False
             self.btnState["Save"] = False
         else:
-            print("Detected onGoing")
+            print("Detected onGoing in removal")
 
         if self.btnState["Start"]:
             self.btn["Start"].show()
@@ -762,9 +762,8 @@ class SensorDisplay(QMainWindow):
         # self.functionValues[hardwareId].setText(hardwareId + ": " + value)
 
     def updateConnected(self):
-        connected = self.sensor!=None
-        print("Update connected to %s" % connected)
-        if connected:
+        print("Update connected to %s" % self.connected)
+        if self.connected:
             label = self.showGen1CB.text()
             self.showGen1CB.setText(label)
             label = self.showGen2CB.text()
@@ -798,7 +797,6 @@ class SensorDisplay(QMainWindow):
         if self.yoctoTask is None:
             print("No sensor connected")
         if self.yoctoTask.capture_start():
-            self.doRestart = False
             self.onGoing = True
             now = datetime.now()
             nowS = now.strftime("%Y%m%d_%H%M%S.csv")
@@ -991,32 +989,21 @@ class SensorDisplay(QMainWindow):
             self.data1 = np.zeros([ self.pDataSize, 3])
             self.data2 = np.zeros([ self.pDataSize, 3])
             for i in range(self.pDataSize):
-                print(self.pData["generic1"][i])
-                if self.pData["generic1"][i][2] is None:
-                    self.data1[i][0] = float(self.pData["generic1"][i][1])
-                    self.data1[i][1] = -1
-                    self.data1[i][2] = -1
-                else:
-                    self.data1[i][0] = float(self.pData["generic1"][i][1])
-                    self.data1[i][1] = float(self.pData["generic1"][i][2])
-                    self.data1[i][2] = float(self.rawdata[i][6])
-                    self.rawunit = self.rawdata[i][7]
-                    self.punit = self.pData['generic1'][i][3]
-                if self.pData["generic2"][i][2] is None:
-                    self.data2[i][0] = -1
-                    self.data2[i][1] = -1
-                    self.data2[i][2] = -1
-                else:
-                    self.data2[i][0] = float(self.pData["generic2"][i][1])
-                    self.data2[i][1] = float(self.pData["generic2"][i][2])
-                    self.data2[i][2] = float(self.rawdata[i][3])
-
+                self.data1[i][0] = float(self.pData["generic1"][i][1])
+                self.data1[i][1] = float(self.pData["generic1"][i][2])
+                self.data1[i][2] = float(self.rawdata[i][6])
+                self.data2[i][0] = float(self.pData["generic2"][i][1])
+                self.data2[i][1] = float(self.pData["generic2"][i][2])
+                self.data2[i][2] = float(self.rawdata[i][3])
+                self.rawunit = self.rawdata[i][7]
+                self.punit =  self.pData['generic1'][i][3]
         if self.emData is not None:
             self.emdata = np.zeros([ len(self.emData), 3])
             for i in range(len(self.emData)):
                 self.emdata[i][0] = float(self.emData[i][0])
                 self.emdata[i][1] = float(self.emData[i][1])
                 self.emdata[i][2] = float(self.emData[i][2])
+
 
     def updatePlots(self):
         if (self.data1 is None) or (self.data2 is None):
@@ -1028,16 +1015,15 @@ class SensorDisplay(QMainWindow):
             if self.showGen1CB.isChecked():
                 self.gen1Label.setText("generic1")
                 g1 = self.data1[:, 1]
-                g1Pure = g1[g1!=-1]
-                print(g1Pure)
+                g1Pure = g1[np.logical_not( np.isnan(g1))]
                 g1Raw = self.data1[:, 2]
-                g1min = g1.min()
-                g1max = g1.max()
-                g1 = self.data1[:, 1]
-                g1Rawmin = g1Raw.min()
-                g1Rawmax = g1Raw.max()
+                g1RawPure = g1Raw[np.logical_not( np.isnan(g1Raw))]
+                g1min = g1RawPure.min()
+                g1max = g1Pure.max()
+                g1Rawmin = g1RawPure.min()
+                g1Rawmax = g1RawPure.max()
                 g1Raw = self.data1[:, 2]
-                self._actVal1.setText("%.2f" % g1[-1])
+                self._actVal1.setText("%.2f" % g1Pure[-1])
                 self._actmin1.setText("%.2f" % g1min)
                 self._actmax1.setText("%.2f" % g1max)
                 self._actRawVal1.setText("%.2f" % g1Raw[-1])
@@ -1050,11 +1036,14 @@ class SensorDisplay(QMainWindow):
             if self.showGen2CB.isChecked():
                 self.gen2Label.setText("generic2")
                 g2 = self.data2[:, 1]
+                g2Pure = g2[np.logical_not( np.isnan(g2))]
                 g2Raw = self.data2[:, 2]
-                g2min = g2.min()
-                g2max = g2.max()
-                g2Rawmin = g2Raw.min()
-                g2Rawmax = g2Raw.max()
+                g2RawPure = g2Raw[np.logical_not( np.isnan(g2Raw))]
+
+                g2min = g2Pure.min()
+                g2max = g2Pure.max()
+                g2Rawmin = g2RawPure.min()
+                g2Rawmax = g2RawPure.max()
                 self._actVal2.setText("%.2f" % g2[-1])
                 self._actmin2.setText("%.2f" % g2min)
                 self._actmax2.setText("%.2f" % g2max)

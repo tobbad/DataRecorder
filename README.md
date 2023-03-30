@@ -2,7 +2,7 @@
 
 ## Definitionen
 - **Rohdate**: So, wie ein Signal am Sensor Eingang empfangen wird (**mA** oder **V**).
-- **Messdate**: Daten mit physikalischen Einheiten (z.B. °C)
+- **Messdate**: Daten mit physikalischen Einheiten (z.B. **°C**)
 
 ## Einleitung
 Das Ziel dieses Projekts ist es einen Messdaten-Recorder mit einer Strommessung im 4-20 **mA** Bereich zu entwickeln. Die Rohdatenerfassung  soll nach der Projektspezifikation über 24 **h** lang mit einem (konfigurierbarem) Erfassungsintervall von 1 **s** bis mehreren **min** erfolgen. Als Erfassungshardware wird der Yocto-4-20mA-Rx [9] von der Schweizer Firma Yoctopuc [8] verwendet. Die Rohdaten werden über eine konfigurierbare lineare Funktion in physikalische Messwerte umgerechnet. Die Messwerte sollen neben der Darstellung im graphischen User Interface (GUI) auch auf der Harddisk als CSV File abgespeichert werden. Im GUI werden die Messwerte (und Min/Max/Einheit) graphisch dargestellt.
