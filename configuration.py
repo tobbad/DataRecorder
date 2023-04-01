@@ -98,9 +98,9 @@ class configuration:
     def load(self, confFile):
         print("Load %s"%confFile )
         self.et = ET.parse(confFile).getroot()
-        self._yfunction = []
+        self._yfunction ={}
         
-        for c in self.et:
+        for c in self.et.iter():
             print("\t", c.tag, c. attrib)
             if c.tag == "capturetime":
                 self._captureTime= {"time":int(c.attrib["time"]), "unit":c.attrib["unit"]}
@@ -108,9 +108,21 @@ class configuration:
             if c.tag == "datarate":
                 self._dataRate= {"time":int(c.attrib["time"]), "unit":c.attrib["unit"]}
                 #print("Set capture rate to %s" % (self._dataRate))
+            if c.tag == "source":
+                self._source = c.attrib["host"]
             if c.tag == "yfunction":
-                self._yfunction.append(c.attrib)
-                print("Yfunction added %s" % (c.attrib))
+                print(c.attrib)
+                self._yfunction[c.attrib["id"].replace("Sensor","")] = {"signalName":c.attrib["signalName"],
+                                                "type": c.attrib["type"],
+                                                "rawMin": float(c.attrib["rawMin"]),
+                                                "rawMax": float(c.attrib["rawMax"]),
+                                                "min":  float(c.attrib["min"]),
+                                                "max":  float(c.attrib["max"]),
+                                                "unit": str(c.attrib["unit"])
+                                                }
+
+        print("Yfunction added %s" % (self._yfunction))
+        print("source added %s" % (self._source))
         print("Configured Capture data while %d %s with datarate of %d %s " %(self.captureTime["time"], self.captureTime["unit"], self.dataRate["time"], self.dataRate["unit"]))
             
     @property
@@ -121,12 +133,14 @@ class configuration:
     def dataRate(self):
         return self._dataRate
 
+    @property
     def getR2PFunction(self):
-        def convert(val, unit):
+        def convert1(val, unit):
             if val != None:
-                if val>0:
-                    if unit=="mA":
-                        res = [(val-4.0)/16.0*100, "°C"]
+                if val > 0:
+                    if unit == "mA":
+                        res = [(val - self._yfunction["generic1"]["rawMin"]) / (self._yfunction["generic1"]["rawMax"]-self._yfunction["generic1"]["rawMin"])
+                        * (self._yfunction["generic1"]["max"]-self._yfunction["generic1"]["min"]), self._yfunction["generic1"]["unit"]]
                     else:
                         raise ValueError("Unknown conversion to %s" % unit)
                 elif math.isclose(val, -1):
@@ -136,8 +150,31 @@ class configuration:
                 return res
             else:
                 return [None, None]
-        return convert
-        
+
+            return convert1
+        def convert2(val, unit):
+            if val != None:
+                if val > 0:
+                    if unit == "mA":
+                        res = [(val - self._yfunction["generic2"]["rawMin"]) / (
+                                    self._yfunction["generic2"]["rawMax"] - self._yfunction["generic2"]["rawMin"])
+                               * (self._yfunction["generic2"]["max"] - self._yfunction["generic2"]["min"]),
+                               self._yfunction["generic2"]["unit"]]
+                    else:
+                        raise ValueError("Unknown conversion to %s" % unit)
+                elif math.isclose(val, -1):
+                    res = [-1, "mA"]
+                else:
+                    res = [val, unit]
+                return res
+            else:
+                return [None, None]
+
+            return convert2
+        res = {"generic1": convert1,
+               "generic2": convert2 }
+        return res
+
     def getP2RFunction(self):
         def convert(val, unit):
             if val != None:
