@@ -610,12 +610,13 @@ class SensorDisplay(QMainWindow):
                 pData = [data[0], data[1]]
                 self.onGoing = self.onGoing and (not (isnan(data[3])))
                 #print("onGoing %s; data %f is nan: %s" % (self.onGoing, data[3], isnan(data[3]) ) )
+                print(data[3],data[3])
                 if not self.onGoing:
                     print("Detected connection loss")
                     self.sensor = None
-                pData.extend( self.r2p( data[3], data[4]))
+                pData.extend( self.r2p[data[2]]( data[3], data[4]))
                 if len(data)>5:
-                    pData.extend( self.r2p(data[6], data[7]))
+                    pData.extend( self.r2p[data[5]](data[6], data[7]) )
                 if len(self.pData)== 0:
                     self.pData[data[2]] = []
                     if len(data)>5:
@@ -803,7 +804,7 @@ class SensorDisplay(QMainWindow):
             print("Set time to %s" %nowS)
             self.QFilename.setText(nowS)
             self.conf = configuration(self.yoctoTask)
-            self.r2p = self.conf.getR2PFunction()
+            self.r2p = self.conf.getR2PFunction
             self.p2r = self.conf.getP2RFunction()
             self.filename = nowS
             self.rFile = open(nowS, "w")

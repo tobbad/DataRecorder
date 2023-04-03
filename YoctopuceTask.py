@@ -14,7 +14,6 @@ import copy
 import numpy as np
 sys.path.append(os.sep.join(["C:","Users","tobias.badertscher","AppData","Local","miniconda3","Lib","site-packages"]))
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, QObject, QThread, QTimer
-from configuration import configuration
 
 # add ../../Sources to the PYTHONPATH
 sys.path.append(os.path.join("..", "yoctolib_python", "Sources"))
@@ -50,7 +49,6 @@ class YoctopuceTask(QObject):
         self.timer = QTimer()
         self.timer.timeout.connect(self.handleEvents)
         self.timer.start(50)
-        self.conf = None
         self.checkDevices = 0
         self._sampleCnt = 0
         self.file = None
@@ -103,9 +101,6 @@ class YoctopuceTask(QObject):
         newSensorList = []
         serialNumber = m.get_serialNumber()
         print("Y: Device arrival SerNr %s %s, " % (serialNumber, m))
-        if self.conf == None:
-            self.conf = configuration(self)
-
         pSensor = YGenericSensor.FirstGenericSensor()
         print("Sensor %s" %pSensor )
         if len(self.sensor)>3:
