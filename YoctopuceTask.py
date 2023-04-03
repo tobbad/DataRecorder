@@ -186,7 +186,11 @@ class YoctopuceTask(QObject):
         data = [absTime, delta]
         if fct is not None:
             d1 = self.sensor["generic1"].get_values()
+            if d1.isclose(-29999.0):
+                d1 = np.nan
             d2 = self.sensor["generic2"].get_values()
+            if d2.isclose(-29999.0):
+                d2 = np.nan
             data.extend(d2)
             data.extend(d1)
         else:
