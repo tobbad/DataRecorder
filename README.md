@@ -13,7 +13,7 @@ Das Programm soll eine konfigurierbare Anzahl Messsensoren als Empfänger unters
 
 ## Architektur 
 
-###Übersicht
+### Übersicht
 Eingangspunkt für die Anwendung ist das Graphische User Interface (GUI), implementiert in der Klasse *SensorDisplay* (in 'DataRecorder.py'). Die Datenerfassung ist in der Klasse *YoctopuceTask* ('YocotopucTask.py') gekapselt und zur Speicherung der persistenten Konfiguration wird eine *configuration* Klasse in 'configuration.py' verwendet. 
 
 Das Graphische User Interface (GUI) besteht aus zwei Tabs (Rekorder und Emulator) und einer Menubar. In der Menubar kann man - nach dem Vollausbau der Anwendung - über einen Dateibrowser Emulatordaten laden, die im Emulatortab graphisch dargestellt werden. 
