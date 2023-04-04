@@ -351,26 +351,27 @@ class SensorDisplay(QMainWindow):
             print("Add %s button"% name)
         layout.addLayout(hbox)
 
-
-        
         hbox =QHBoxLayout()
+        self.intervalFrame = QFrame()
+        hboxs =QHBoxLayout()
         self.setSampleInterval_ms = 200
         self.captureTime_s = 1
         onlyInt0_1000 = QIntValidator( 1, 1000, self)
-        
         siLabel = QLabel("Sample interval")
-        
         self.sIntVal_edit = QLineEdit()
         self.sIntVal_edit.setAlignment(Qt.AlignRight| Qt.AlignVCenter)
         self.sIntVal_edit.setText("1")
         self.sIntVal_edit.setValidator(onlyInt0_1000)
         siLabel.setBuddy(self.sIntVal_edit)
-        hbox.addWidget(siLabel)
-        hbox.addWidget(self.sIntVal_edit)
-        
+        hboxs.addWidget(siLabel)
+        hboxs.addWidget(self.sIntVal_edit)
         self.sampleUnit = QComboBox()
         self.sampleUnit.addItems(["s","ms"])
-        hbox.addWidget(self.sampleUnit)
+        hboxs.addWidget(self.sampleUnit)
+        self.intervalFrame.setLayout(hboxs)
+        hbox.addWidget(self.intervalFrame)
+        self.intervalFrame.show()
+
         duration = QLabel("Capture Time")
         self.captime_edit = QLineEdit()
         self.captime_edit.setText("1")
@@ -379,7 +380,6 @@ class SensorDisplay(QMainWindow):
         self.captime_edit.setValidator(onlyInt0_1000)
         duration.setBuddy(self.captime_edit)
         hbox.addWidget(duration)
-        
         hbox.addWidget(self.captime_edit)
         self.sampcapDur = QComboBox()
         self.sampcapDur.addItems(["s", "m", "h"])
@@ -389,7 +389,8 @@ class SensorDisplay(QMainWindow):
         self.progressBar.resize(300,100)
         hbox.addWidget(self.progressBar)
         layout.addLayout(hbox)
-               
+
+
         self.frame1 = QFrame()
         self.frame1.setStyleSheet("QFrame {background-color: rgb(255, 255, 255);"
                                 "border-width: 1;"
@@ -608,9 +609,9 @@ class SensorDisplay(QMainWindow):
            else:
                 self.rawdata.append(data)
                 pData = [data[0], data[1]]
-                self.onGoing = self.onGoing and (not (isnan(data[3])))
+                self.onGoing = self.onGoing and (not (isnan(data[3])) or (not isnan(data[6])))
                 #print("onGoing %s; data %f is nan: %s" % (self.onGoing, data[3], isnan(data[3]) ) )
-                print(data[3],data[3])
+                #print(data[3], data[6])
                 if not self.onGoing:
                     print("Detected connection loss")
                     self.sensor = None
@@ -799,6 +800,7 @@ class SensorDisplay(QMainWindow):
             print("No sensor connected")
         if self.yoctoTask.capture_start():
             self.onGoing = True
+            self.intervalFrame.hide()
             now = datetime.now()
             nowS = now.strftime("%Y%m%d_%H%M%S.csv")
             print("Set time to %s" %nowS)
@@ -860,6 +862,7 @@ class SensorDisplay(QMainWindow):
                 self.btn["Save"].show()
                 self.yoctoTask.stopTask.emit()
                 self.doRecord = False
+                self.intervalFrame.show()
             else:
                 print("Continue recording")
 
@@ -997,7 +1000,7 @@ class SensorDisplay(QMainWindow):
                 self.data2[i][1] = float(self.pData["generic2"][i][2])
                 self.data2[i][2] = float(self.rawdata[i][3])
                 self.rawunit = self.rawdata[i][7]
-                self.punit =  self.pData['generic1'][i][3]
+                self.punit = self.pData['generic1'][i][3]
         if self.emData is not None:
             self.emdata = np.zeros([ len(self.emData), 3])
             for i in range(len(self.emData)):
@@ -1019,11 +1022,16 @@ class SensorDisplay(QMainWindow):
                 g1Pure = g1[np.logical_not( np.isnan(g1))]
                 g1Raw = self.data1[:, 2]
                 g1RawPure = g1Raw[np.logical_not( np.isnan(g1Raw))]
-                g1min = g1RawPure.min()
-                g1max = g1Pure.max()
-                g1Rawmin = g1RawPure.min()
-                g1Rawmax = g1RawPure.max()
-                g1Raw = self.data1[:, 2]
+                if len(g1RawPure) == 0:
+                    g1min = 0
+                    g1max = 0
+                    g1Rawmin = 0
+                    g1awmax = 0
+                else:
+                    g1min = g1Pure.min()
+                    g1max = g1Pure.max()
+                    g1Rawmin = g1RawPure.min()
+                    g1Rawmax = g1RawPure.max()
                 self._actVal1.setText("%.2f" % g1Pure[-1])
                 self._actmin1.setText("%.2f" % g1min)
                 self._actmax1.setText("%.2f" % g1max)
@@ -1040,11 +1048,16 @@ class SensorDisplay(QMainWindow):
                 g2Pure = g2[np.logical_not( np.isnan(g2))]
                 g2Raw = self.data2[:, 2]
                 g2RawPure = g2Raw[np.logical_not( np.isnan(g2Raw))]
-
-                g2min = g2Pure.min()
-                g2max = g2Pure.max()
-                g2Rawmin = g2RawPure.min()
-                g2Rawmax = g2RawPure.max()
+                if len(g2RawPure) == 0:
+                    g2min = 0
+                    g2max = 0
+                    g2Rawmin = 0
+                    g2Rawmax = 0
+                else:
+                    g2min = g2Pure.min()
+                    g2max = g2Pure.max()
+                    g2Rawmin = g2RawPure.min()
+                    g2Rawmax = g2RawPure.max()
                 self._actVal2.setText("%.2f" % g2[-1])
                 self._actmin2.setText("%.2f" % g2min)
                 self._actmax2.setText("%.2f" % g2max)
@@ -1055,8 +1068,6 @@ class SensorDisplay(QMainWindow):
                 self.recorderGraph.plot(x, g2, name="generic2", pen=pg.mkPen("red"))
             else:
                 self.frame2.hide()
-
-
             self.pUnit.setText(self.punit)
             self.rawUnit.setText(self.rawunit)
             progress = 100.0*len(self.rawdata)/float(self.capture_size)

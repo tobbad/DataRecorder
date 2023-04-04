@@ -7,6 +7,7 @@ Created on Sun Jan 22 18:51:51 2023
 """
 import os, sys
 import csv
+import math
 import threading
 from datetime import *
 from time import *
@@ -186,11 +187,11 @@ class YoctopuceTask(QObject):
         data = [absTime, delta]
         if fct is not None:
             d1 = self.sensor["generic1"].get_values()
-            if d1.isclose(-29999.0):
-                d1 = np.nan
+            if math.isclose(d1[1], -29999.0):
+                d1 = [d1[0], np.nan, d1[2]]
             d2 = self.sensor["generic2"].get_values()
-            if d2.isclose(-29999.0):
-                d2 = np.nan
+            if math.isclose(d2[1], -29999.):
+                d2 = [d2[0], np.nan, d2[2]]
             data.extend(d2)
             data.extend(d1)
         else:
