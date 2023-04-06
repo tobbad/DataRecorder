@@ -642,34 +642,6 @@ class SensorDisplay(QMainWindow):
             self.emulatorFile = files[0]
             self.load_file(self.emulatorFile)
 
-    def load_file(self, fname):
-        f = open(fname, encoding="cp1252")
-        csvf =csv.reader(f, lineterminator="\n")
-        datal=[]
-        self.emUnit = []
-        for idx, line in enumerate(csvf):
-            time = line[0]
-            relTime= float(line[1])
-            val1 = float(line[2])
-            self.emUnit.append(line[3])
-            val2 = float(line[4])
-            self.emUnit.append(line[5])
-            datal.append([time, relTime, val1, self.emUnit[0], val2, self.emUnit[1]])
-        f.close()
-        self.emData = np.zeros([idx+1,3])
-        print("Create numpy array of length %d" % (idx))
-        self.emUnit= []
-        print("Load file %s :"% (fname))
-        for idx, line in enumerate(datal):
-            self.emData[idx][0]  = float(line[1])
-            self.emData[idx][1]  = float(line[2])
-            self.emData[idx][2]  = float(line[4])
-        print("Set emData to \n%s" %(self.emData))
-        self.emFile = fname
-        print("Set emulator file name to %s" %self.emFile)
-        self.setNewData()
-        self.updatePlots()
-
     def capture(self):
          # Start Yoctopuce I/O task in a separate thread
          self.yoctoThread = QThread()
@@ -884,9 +856,42 @@ class SensorDisplay(QMainWindow):
         self.rawdata= []
         self.sensor = None
 
+    def load_file(self, fname):
+        f = open(fname, encoding="cp1252")
+        csvf =csv.reader(f, lineterminator="\n")
+        datal=[]
+        self.emUnit = []
+        for idx, line in enumerate(csvf):
+            if line[idx].startswith("#"):
+                print("Skip line %s  " % line[idx] )
+            else:
+                print(line)
+                time = line[0]
+                relTime= float(line[1])
+                val1 = float(line[2])
+                self.emUnit.append(line[3])
+                val2 = float(line[4])
+                self.emUnit.append(line[5])
+                datal.append([time, relTime, val1, self.emUnit[0], val2, self.emUnit[1]])
+        f.close()
+        self.emData = np.zeros([idx+1,3])
+        print("Create numpy array of length %d" % (idx))
+        self.pData= {"generic2":[], "generic1":[]}
+        print("Load file %s :"% (fname))
+        for idx, line in enumerate(datal):
+            self.pData[idx][0]  = float(line[1])
+            self.pData[idx][1]  = float(line[2])
+            self.pData[idx][2]  = float(line[4])
+        print("Set emData to \n%s" %(self.emData))
+        self.emFile = fname
+        print("Set emulator file name to %s" %self.emFile)
+        self.setNewData()
+        self.updatePlots()
+
+
     def doSave(self):
          if self.pData is None:
-             print("No data captured")
+             print("No data yet captured")
              return
          fmt =  ["CSV Files (*.csv)", "Excel Files (*.xslc)"]
 
@@ -903,8 +908,9 @@ class SensorDisplay(QMainWindow):
              data.append("# Sensor %s Unit %s "   % (k, v[0][3]))
          csvf.writerow(data)
          for i in range(self.pDataSize):
-             data = [self.rawdata[i][0], self.pData['generic1'][i][0], self.pData['generic1'][i][1], self.pData['generic1'][i][2]]
-             data.extend([ self.pData['generic2'][i][1],  self.pData['generic2'][i][2] ])
+             print(self.rawdata[i])
+             data = [self.rawdata[i][0], "generic2",self.pData['generic2'][i][2], self.pData['generic2'][i][3]]
+             data.extend(["generic1", self.pData['generic1'][i][2],  self.pData['generic1'][i][3] ])
              print(data)
              csvf.writerow(data)
          self.dirty = False
