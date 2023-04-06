@@ -897,6 +897,11 @@ class SensorDisplay(QMainWindow):
          print("doSave  all %s of size %d" % (fname, self.pDataSize))
          f = open( fname,"w", encoding="cp1252")
          csvf =csv.writer(f, lineterminator="\n")
+         data = []
+         print(self.pData)
+         for k,v  in self.pData.items():
+             data.append("# Sensor %s Unit %s "   % (k, v[0][3]))
+         csvf.writerow(data)
          for i in range(self.pDataSize):
              data = [self.rawdata[i][0], self.pData['generic1'][i][0], self.pData['generic1'][i][1], self.pData['generic1'][i][2]]
              data.extend([ self.pData['generic2'][i][1],  self.pData['generic2'][i][2] ])
