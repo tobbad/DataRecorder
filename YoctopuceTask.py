@@ -188,10 +188,10 @@ class YoctopuceTask(QObject):
         if fct is not None:
             d1 = self.sensor["generic1"].get_values()
             if math.isclose(d1[1], -29999.0):
-                d1 = [d1[0], np.nan, d1[2]]
+                d1 = [d1[0], np.nan, "mA"]
             d2 = self.sensor["generic2"].get_values()
             if math.isclose(d2[1], -29999.):
-                d2 = [d2[0], np.nan, d2[2]]
+                d2 = [d2[0], np.nan, "mA"]
             data.extend(d2)
             data.extend(d1)
         else:
@@ -307,7 +307,8 @@ class sensor:
         return str(self.sen).split("=")[1].split(".")[1]
 
     def get_values(self):
-        res = [self.function, self.sen.get_currentValue(), self.sen.get_unit()]
+        val = self.sen.get_currentValue()
+        res = [self.function, val, self.sen.get_unit()]
         return res
 
     def capture_stop(self):

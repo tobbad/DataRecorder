@@ -14,6 +14,7 @@ sys.path.append(addPath)
 # print(sys.path)
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
+import numpy as np
 from yocto_api import *
 from yocto_genericsensor import *
 #from YoctopuceTask import YoctopuceTask
@@ -195,25 +196,27 @@ class configuration:
     @property
     def getR2PFunction(self):
         def convert1(val, unit):
-            if val != None:
+            if np.isnan(val):
+                res = [np.nan, "mA"]
+            else:
                 if val > 0:
                     if unit == "mA":
-                        res = [(val - self._yfunction["generic1"]["rawMin"]) / (self._yfunction["generic1"]["rawMax"]-self._yfunction["generic1"]["rawMin"])
-                        * (self._yfunction["generic1"]["max"]-self._yfunction["generic1"]["min"]), self._yfunction["generic1"]["unit"]]
+                        res = [(val - self._yfunction["generic1"]["rawMin"]) / (
+                            self._yfunction["generic1"]["rawMax"]-self._yfunction["generic1"]["rawMin"])
+                        * (self._yfunction["generic1"]["max"]-self._yfunction["generic1"]["min"]),
+                        self._yfunction["generic1"]["unit"]]
                     else:
                         raise ValueError("Unknown conversion to %s" % unit)
-                elif math.isclose(val, -1):
-                    res = [-1, "mA"]
                 else:
                     res = [val, unit]
-                return res
-            else:
-                return [None, None]
+            return res
 
             return convert1
         def convert2(val, unit):
             if val != None:
-                if val > 0:
+                if  np.isnan(val):
+                    res = [np.nan, "mA"]
+                else:
                     if unit == "mA":
                         res = [(val - self._yfunction["generic2"]["rawMin"]) / (
                                     self._yfunction["generic2"]["rawMax"] - self._yfunction["generic2"]["rawMin"])
@@ -221,14 +224,8 @@ class configuration:
                                self._yfunction["generic2"]["unit"]]
                     else:
                         raise ValueError("Unknown conversion to %s" % unit)
-                elif math.isclose(val, -1):
-                    res = [-1, "mA"]
-                else:
-                    res = [val, unit]
                 return res
-            else:
-                return [None, None]
-
+            
             return convert2
         res = {"generic1": convert1,
                "generic2": convert2 }

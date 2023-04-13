@@ -814,6 +814,18 @@ class SensorDisplay(QMainWindow):
             self.filename = nowS
             self.rFile = open(nowS, "w")
             self.csvFile= csv.writer(self.rFile, lineterminator="\n")
+            res = self.r2p["generic2"](23, "mA")
+            header = "# generic2 %s" % (res[1]) 
+            self.csvFile.writerow([header])
+            print(res)
+            print("Write Header 2 %s" % header)
+            res = self.r2p["generic1"](23, "mA")
+            print(res)
+            header = "# generic1 %s" % (res[1]) 
+            print("Write Header 1 %s" % header)
+            self.csvFile.writerow([header])
+
+            
             self.doRecord = True
             print("Start record on %s" %self.yoctoTask.startTask)
             self.setNewData()
@@ -896,10 +908,11 @@ class SensorDisplay(QMainWindow):
         datal=[]
         self.emUnit = []
         for idx, line in enumerate(csvf):
-            if line[idx].startswith("#"):
+            print("%d : %s" % (idx, line))
+
+            if line[0].startswith("#"):
                 print("Skip line %s  " % line[idx] )
             else:
-                print(line)
                 time = line[0]
                 relTime= float(line[1])
                 val1 = float(line[2])
@@ -913,9 +926,8 @@ class SensorDisplay(QMainWindow):
         self.pData= {"generic2":[], "generic1":[]}
         print("Load file %s :"% (fname))
         for idx, line in enumerate(datal):
-            self.pData[idx][0]  = float(line[1])
-            self.pData[idx][1]  = float(line[2])
-            self.pData[idx][2]  = float(line[4])
+            print("2nD %d : %s" % (idx, line))
+            self.pData["generic2"].append([ float(line[1]), float(line[2]) ])
         print("Set emData to \n%s" %(self.emData))
         self.emFile = fname
         print("Set emulator file name to %s" %self.emFile)
