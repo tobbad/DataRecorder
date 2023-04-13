@@ -44,15 +44,15 @@ class configuration:
             root,
             "capturetime",
             {
-                "time": "24",
-                "unit": "h",
+                "time": "288",
+                "unit": "s",
             },
         )
         child = ET.SubElement(
             root,
             "datarate",
             {
-                "time": "1",
+                "time": "200",
                 "unit": "m",
             },
         )
@@ -124,7 +124,66 @@ class configuration:
         print("Yfunction added %s" % (self._yfunction))
         print("source added %s" % (self._source))
         print("Configured Capture data while %d %s with datarate of %d %s " %(self.captureTime["time"], self.captureTime["unit"], self.dataRate["time"], self.dataRate["unit"]))
-            
+          
+    def save(self):
+
+        # ElementTree.Comment("Bla bla")
+        root = ET.Element("configuration")
+
+        child = ET.SubElement(root, "targetfolder", {"path": "."})
+        child = ET.SubElement(
+            root,
+            "capturetime",
+            {
+                "time": "%s" % self._captureTime["time"],
+                "unit": "%s" % self._captureTime["unit"],
+            },
+        )
+        child = ET.SubElement(
+            root,
+            "datarate",
+            {
+                "time": "%s" % self.dataRate["time"],
+                "unit": "%s" % self.dataRate["unit"]
+            },
+        )
+        child = ET.SubElement(root, "yoctopuc")
+        schild = ET.SubElement(child, "source", {"host": "usb"})
+        subChild = ET.SubElement(
+            schild, "ymodule", {"id": "RX420MA1-123456", "type": "Yocto-4-20mA-Rx"}
+        )
+        ET.SubElement(
+            subChild,
+            "yfunction",
+            {
+                "id": "genericSensor1",
+                "signalName": "refTemperatur",
+                "type": "input",
+                "rawMin": "4.0",
+                "rawMax": "20.0",
+                "min": "0",
+                "max": "120",
+                "unit": "C",
+            },
+        )
+        ET.SubElement(
+            subChild,
+            "yfunction",
+            {
+                "id": "genericSensor2",
+                "signalName": "Temperatur",
+                "type": "input",
+                "rawMin": "4.0",
+                "rawMax": "20.0",
+                "min": "0",
+                "max": "100",
+                "unit": "°C",
+            },
+        )
+        print("Configuration saved")
+        
+        
+    
     @property
     def captureTime(self):
         return self._captureTime
