@@ -2,7 +2,7 @@
 <configuration>
 	<targetfolder path="."/>
 	<capturetime time="24" unit="h"/>
-	<datarate time="1" unit="m"/>
+	<datarate time="1" unit="s"/>
 	<yoctopuc>
 		<source host="usb">
 			<ymodule id="RX420MA1-123456" type="Yocto-4-20mA-Rx">

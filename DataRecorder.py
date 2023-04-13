@@ -173,7 +173,10 @@ class SensorDisplay(QMainWindow):
         self.data2 = None
         self.emData = []
         self.onGoing = True
+        self.nanFile = None
+        self.csvNaNFile = None
         self.btnState = {"Start":False, "Clear":False, "Stop":False, "Save":False}
+        self.conf = None
         self.setUpGUI()
         self.plotname = ""
         self.closeOk = False
@@ -366,7 +369,8 @@ class SensorDisplay(QMainWindow):
         hboxs.addWidget(siLabel)
         hboxs.addWidget(self.sIntVal_edit)
         self.sampleUnit = QComboBox()
-        self.sampleUnit.addItems(["s","ms"])
+        self.sampleUnit.addItems(["ms","s"])
+        self.sampleUnit.setCurrentIndex(0)
         hboxs.addWidget(self.sampleUnit)
         self.intervalFrame.setLayout(hboxs)
         hbox.addWidget(self.intervalFrame)
@@ -382,6 +386,7 @@ class SensorDisplay(QMainWindow):
         hbox.addWidget(duration)
         hbox.addWidget(self.captime_edit)
         self.sampcapDur = QComboBox()
+
         self.sampcapDur.addItems(["s", "m", "h"])
         hbox.addWidget(self.sampcapDur)
         self.progressBar = QProgressBar(minimum=0, maximum=100, objectName="bar")
@@ -625,6 +630,9 @@ class SensorDisplay(QMainWindow):
                 self.pData[data[2]].append(([pData[0], pData[1], pData[2], pData[3] ]))
                 if len(data)>5:
                     self.pData[data[5]].append(([pData[0], pData[1], pData[4], pData[5] ]))
+                if self.csvNaNFile is not None:
+                    print(pData, self.csvNaNFile)
+                    #self.csvNaNFile.writerows(pData)
                 self.csvFile.writerow(pData)
                 print("Data %d/%d (size=%d) %s appended." % (len(self.rawdata), self.capture_size, len(pData), pData))
                 if len(self.rawdata)%20 == 0:
@@ -664,7 +672,24 @@ class SensorDisplay(QMainWindow):
     def arrival(self, device):
         if self.sensor is None:
             # log arrival
+            
             print("Device connected in Datarecorder (connected %s, onGoing %s)" % ( self.connected,self.onGoing))
+            self.conf = configuration(self.yoctoTask)
+            print("Set Datarate %s, Sampleinterval %s" %(self.conf.captureTime, self.conf.dataRate))
+            print("Set sampleinterval to %d" %self.conf.dataRate["time"])
+            self.sIntVal_edit.setText("%d" % self.conf.dataRate["time"])
+            sunit = { "ms":0,"s":1}
+            idx = sunit[self.conf.dataRate["unit"]]
+            print("Set unit sample index to %d" %idx)
+            print("Set cap time to  to %d" %self.conf.captureTime["time"])
+            self.sampleUnit.setCurrentIndex(idx)
+            cunit = {"s":0, "m":1, "h":2}
+            self.captime_edit.setText("%d" % self.conf.captureTime["time"])
+            idx = cunit[self.conf.captureTime["unit"]]
+            self.sampcapDur.setCurrentIndex(idx)
+            print("Set cap unit  idx to  %d" %idx)
+
+            
             self.sensor = device
             if not self.onGoing:
                 self.onGoing = True
@@ -675,7 +700,10 @@ class SensorDisplay(QMainWindow):
                 self.btnState["Stop"] = False
                 self.btnState["Clear"] = False
                 self.btnState["Save"] = False
-
+                if self.nanFile is not None:
+                    self.nanFile.close()
+                self.nanFile = None
+                self.csvNaNFile = None
             if  self.btnState["Start"]:
                  self.btn["Start"].show()
             else:
@@ -704,7 +732,11 @@ class SensorDisplay(QMainWindow):
             self.btnState["Save"] = False
         else:
             print("Detected onGoing in removal")
-
+            now = datetime.now()
+            nowSNaN = now.strftime("%Y%m%d_%H%M%S_NaN.csv")
+            print("Set NaN file to %s" %nowSNaN)
+            self.nanFile = open(nowSNaN, "w")
+            self.csvNaNFile = csv.writer(self.nanFile, lineterminator="\n")
         if self.btnState["Start"]:
             self.btn["Start"].show()
         else:
@@ -777,7 +809,6 @@ class SensorDisplay(QMainWindow):
             nowS = now.strftime("%Y%m%d_%H%M%S.csv")
             print("Set time to %s" %nowS)
             self.QFilename.setText(nowS)
-            self.conf = configuration(self.yoctoTask)
             self.r2p = self.conf.getR2PFunction
             self.p2r = self.conf.getP2RFunction()
             self.filename = nowS
@@ -795,7 +826,8 @@ class SensorDisplay(QMainWindow):
 
         self.yoctoTask.capture_stop()
         print("Show buttons in stopCapture")
-
+        if self.nanFile is not None:
+            self.nanFile.close()
         self.rFile.close()
         self.btnState["Start"] = False
         self.btnState["Stop"] = False
@@ -820,7 +852,9 @@ class SensorDisplay(QMainWindow):
             if state:
                 self.yoctoTask.capture_stop()
                 print("Yoctopuc Task stop" )
-
+                self.capture_size = self.pDataSize
+                if self.nanFile is not None:
+                    self.nanFile.close()
                 self.rFile.close()
                 print("Show buttons in doStop")
                 self.btnState["Start"] = False
@@ -903,14 +937,14 @@ class SensorDisplay(QMainWindow):
          f = open( fname,"w", encoding="cp1252")
          csvf =csv.writer(f, lineterminator="\n")
          data = []
-         print(self.pData)
+         #print(self.pData)
          for k,v  in self.pData.items():
              data.append("# Sensor %s Unit %s "   % (k, v[0][3]))
          csvf.writerow(data)
          for i in range(self.pDataSize):
              print(self.rawdata[i])
-             data = [self.rawdata[i][0], "generic2",self.pData['generic2'][i][2], self.pData['generic2'][i][3]]
-             data.extend(["generic1", self.pData['generic1'][i][2],  self.pData['generic1'][i][3] ])
+             data = [self.rawdata[i][0],self.pData['generic2'][i][2], self.pData['generic2'][i][3]]
+             data.extend([ self.pData['generic1'][i][2],  self.pData['generic1'][i][3] ])
              print(data)
              csvf.writerow(data)
          self.dirty = False
@@ -932,11 +966,11 @@ class SensorDisplay(QMainWindow):
 
     def onTimingChanged(self):
         if not self.doRecord:
-            print("Call onSampleIntvalChanged %s" % ( self.sampleUnit.currentIndex()))
-            if self.sampleUnit.currentIndex():
+            print("Call onTimingChanged %s" % ( self.sampleUnit.currentIndex()))
+            if self.sampleUnit.currentIndex()==0:
                 print("Sample interval 1")
                 self.setSampleInterval_ms =1
-            else:
+            elif self.sampleUnit.currentIndex()==0:
                 print("Sample interval 1000")
                 self.setSampleInterval_ms =1000
             sInt =  1 if self.sIntVal_edit.text() == None else self.sIntVal_edit.text()
@@ -945,7 +979,7 @@ class SensorDisplay(QMainWindow):
             if self.yoctoTask is not None:
                 self.yoctoTask.setSampleInterval_ms(self.setSampleInterval_ms)
             print("Sample intervall is %d ms" % self.setSampleInterval_ms)
-            print("Call onSampleIntvalChanged %s" % (self.sampcapDur.currentIndex() ))
+            print("Call samp duratio idx %s" % (self.sampcapDur.currentIndex() ))
             if self.sampcapDur.currentIndex()==0:
                 print("s")
                 self.captureTime_s = 1
@@ -962,6 +996,9 @@ class SensorDisplay(QMainWindow):
             if self.yoctoTask is not None:
                 self.yoctoTask.set_capture_size(self.capture_size)
             print("Capture time is %d s/Size %d" % (self.captureTime_s, self.capture_size))
+            if self.conf is not None:
+                print("Do not save")
+                #self.conf.save()
         else:
             print("Sample in progress: Can not update timing")
 
@@ -1027,26 +1064,29 @@ class SensorDisplay(QMainWindow):
         if self.pDataSize >0:
             x = self.data1[:, 0]
             self.recorderGraph.clear()
+                
             if self.showGen1CB.isChecked():
                 self.gen1Label.setText("generic1")
                 g1 = self.data1[:, 1]
                 g1Pure = g1[np.logical_not( np.isnan(g1))]
                 g1Raw = self.data1[:, 2]
                 g1RawPure = g1Raw[np.logical_not( np.isnan(g1Raw))]
+                g1RawLast = 0
+
                 if len(g1RawPure) == 0:
                     g1min = 0
                     g1max = 0
                     g1Rawmin = 0
-                    g1awmax = 0
+                    g1Rawmax = 0
                 else:
                     g1min = g1Pure.min()
                     g1max = g1Pure.max()
                     g1Rawmin = g1RawPure.min()
                     g1Rawmax = g1RawPure.max()
-                self._actVal1.setText("%.2f" % g1Pure[-1])
+                self._actVal1.setText("%.2f" % g1[-1])
                 self._actmin1.setText("%.2f" % g1min)
                 self._actmax1.setText("%.2f" % g1max)
-                self._actRawVal1.setText("%.2f" % g1Raw[-1])
+                self._actRawVal1.setText("%.2f" % g1RawLast)
                 self._actRawMin1.setText("%.2f" % g1Rawmin)
                 self._actRawMax1.setText("%.2f" % g1Rawmax)
                 self.recorderGraph.plot(x, g1, name="generic1", pen=pg.mkPen("green"))
