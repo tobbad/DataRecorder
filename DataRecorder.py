@@ -177,6 +177,7 @@ class SensorDisplay(QMainWindow):
         self.csvNaNFile = None
         self.btnState = {"Start":False, "Clear":False, "Stop":False, "Save":False}
         self.conf = None
+        self._doSave = False
         self.setUpGUI()
         self.plotname = ""
         self.closeOk = False
@@ -341,6 +342,9 @@ class SensorDisplay(QMainWindow):
         hbox =QHBoxLayout()
         icons = [["Start", self.doStart, False], ["Stop", self.doStop, False], ["Clear", self.doClear, False], ["Save", self.doSave, False]]
         for name, fn, show  in icons:
+            print("name is %s" % name)
+            print("fn is %s" % fn)
+            print("show is %s" % show)
             self.btn[name] = QPushButton(name)
             icon = QIcon(":/%s.svg" % name.lower())
             self.btn[name].setIcon(icon)
@@ -679,6 +683,7 @@ class SensorDisplay(QMainWindow):
             print("Set Sampleinterval to %d %s" % (self.conf.SampleInterval["time"], self.conf.SampleInterval["unit"]))
             self.sIntVal_edit.setText("%d" % self.conf.SampleInterval["time"])
             sunit = { "ms":0,"s":1 }
+            self._doSave = False
             idx = sunit[self.conf.SampleInterval["unit"]]
             print("Set unit sample interval index to %d" % idx)
             self.sampleUnit.setCurrentIndex(idx)
@@ -687,6 +692,8 @@ class SensorDisplay(QMainWindow):
             idx = cunit[self.conf.CaptureTime["unit"]]
             self.sampcapDur.setCurrentIndex(idx)
             print("Set capture unit  idx to  %d" % idx)
+            self._doSave = True
+
 
             
             self.sensor = device
@@ -975,7 +982,7 @@ class SensorDisplay(QMainWindow):
     def showMsg(self, text, time = 5000):
         self.message.showMessage(text, time)
 
-    def onTimingChanged(self, doSave=True):
+    def onTimingChanged(self):
         if not self.doRecord:
             print("Call onTimingChanged %s" % ( self.sampleUnit.currentIndex()))
             sampInt= {"time":0, "unit":"ms"}
@@ -988,7 +995,7 @@ class SensorDisplay(QMainWindow):
                 self.setSampleInterval_ms =1000
             sInt =  1 if self.sIntVal_edit.text() == None else int(self.sIntVal_edit.text())
             sampInt["time"] = sInt
-            if self.conf is not None:
+            if self.conf != None:
                 self.conf.SampleInterval = sampInt
             print("Sample Intervall number \"%d\"" % sInt)
             self.setSampleInterval_ms *= sInt
@@ -1009,7 +1016,7 @@ class SensorDisplay(QMainWindow):
             cTi = 1 if self.captime_edit.text() == None else int(self.captime_edit.text())
             capTime["time"] = cTi
             self.captureTime_s *= cTi
-            if self.conf is not None:
+            if self.conf != None and self._doSave:
                 self.conf.CaptureTime = capTime
 
             self.capture_size = ceil(float(1000*self.captureTime_s)/(float(self.setSampleInterval_ms)))
@@ -1017,7 +1024,8 @@ class SensorDisplay(QMainWindow):
             if self.yoctoTask is not None:
                 self.yoctoTask.set_capture_size(self.capture_size)
             print("Capture time is %d s/Size %d" % (self.captureTime_s, self.capture_size))
-            if self.conf is not None:
+            if self._doSave and self.conf != None:
+                print("Save config")
                 self.conf.save()
         else:
             print("Sample in progress: Can not update timing")
