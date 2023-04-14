@@ -675,19 +675,18 @@ class SensorDisplay(QMainWindow):
             
             print("Device connected in Datarecorder (connected %s, onGoing %s)" % ( self.connected,self.onGoing))
             self.conf = configuration(self.yoctoTask)
-            print("Set Datarate %s, Sampleinterval %s" %(self.conf.captureTime, self.conf.dataRate))
-            print("Set sampleinterval to %d" %self.conf.dataRate["time"])
-            self.sIntVal_edit.setText("%d" % self.conf.dataRate["time"])
-            sunit = { "ms":0,"s":1}
-            idx = sunit[self.conf.dataRate["unit"]]
-            print("Set unit sample index to %d" %idx)
-            print("Set cap time to  to %d" %self.conf.captureTime["time"])
+            print("Set Capturetime to %d %s" %(self.conf.CaptureTime["time"],self.conf.CaptureTime["unit"]))
+            print("Set Sampleinterval to %d %s" % (self.conf.SampleInterval["time"], self.conf.SampleInterval["unit"]))
+            self.sIntVal_edit.setText("%d" % self.conf.SampleInterval["time"])
+            sunit = { "ms":0,"s":1 }
+            idx = sunit[self.conf.SampleInterval["unit"]]
+            print("Set unit sample interval index to %d" % idx)
             self.sampleUnit.setCurrentIndex(idx)
             cunit = {"s":0, "m":1, "h":2}
-            self.captime_edit.setText("%d" % self.conf.captureTime["time"])
-            idx = cunit[self.conf.captureTime["unit"]]
+            self.captime_edit.setText("%d" % self.conf.CaptureTime["time"])
+            idx = cunit[self.conf.CaptureTime["unit"]]
             self.sampcapDur.setCurrentIndex(idx)
-            print("Set cap unit  idx to  %d" %idx)
+            print("Set capture unit  idx to  %d" % idx)
 
             
             self.sensor = device
@@ -976,41 +975,50 @@ class SensorDisplay(QMainWindow):
     def showMsg(self, text, time = 5000):
         self.message.showMessage(text, time)
 
-    def onTimingChanged(self):
+    def onTimingChanged(self, doSave=True):
         if not self.doRecord:
             print("Call onTimingChanged %s" % ( self.sampleUnit.currentIndex()))
+            sampInt= {"time":0, "unit":"ms"}
+
             if self.sampleUnit.currentIndex()==0:
-                print("Sample interval 1")
+                sampInt["unit"] = "ms"
                 self.setSampleInterval_ms =1
-            elif self.sampleUnit.currentIndex()==0:
-                print("Sample interval 1000")
+            elif self.sampleUnit.currentIndex()==1:
+                sampInt["unit"] = "s"
                 self.setSampleInterval_ms =1000
-            sInt =  1 if self.sIntVal_edit.text() == None else self.sIntVal_edit.text()
-            print("Sample Int str \"%s\"" % sInt)
-            self.setSampleInterval_ms *= int(sInt)
+            sInt =  1 if self.sIntVal_edit.text() == None else int(self.sIntVal_edit.text())
+            sampInt["time"] = sInt
+            if self.conf is not None:
+                self.conf.SampleInterval = sampInt
+            print("Sample Intervall number \"%d\"" % sInt)
+            self.setSampleInterval_ms *= sInt
             if self.yoctoTask is not None:
                 self.yoctoTask.setSampleInterval_ms(self.setSampleInterval_ms)
             print("Sample intervall is %d ms" % self.setSampleInterval_ms)
-            print("Call samp duratio idx %s" % (self.sampcapDur.currentIndex() ))
+            print("Current samp duratio idx %s" % (self.sampcapDur.currentIndex() ))
+            capTime= {"time":0, "unit":"m"}
             if self.sampcapDur.currentIndex()==0:
-                print("s")
+                capTime["unit"] = "s"
                 self.captureTime_s = 1
             elif self.sampcapDur.currentIndex()==1:
-                print("min")
+                capTime["unit"] = "m"
                 self.captureTime_s = 60
             else:
-                print("h")
+                capTime["unit"] = "h"
                 self.captureTime_s = 3600
-            capTime = 1 if self.captime_edit.text() == None else self.captime_edit.text()
-            self.captureTime_s *= int(capTime)
+            cTi = 1 if self.captime_edit.text() == None else int(self.captime_edit.text())
+            capTime["time"] = cTi
+            self.captureTime_s *= cTi
+            if self.conf is not None:
+                self.conf.CaptureTime = capTime
+
             self.capture_size = ceil(float(1000*self.captureTime_s)/(float(self.setSampleInterval_ms)))
             print("Set capture time %d s; Size: is %d samples; Interval @ %f ms" % ( self.captureTime_s, self.capture_size ,self.setSampleInterval_ms))
             if self.yoctoTask is not None:
                 self.yoctoTask.set_capture_size(self.capture_size)
             print("Capture time is %d s/Size %d" % (self.captureTime_s, self.capture_size))
             if self.conf is not None:
-                print("Do not save")
-                #self.conf.save()
+                self.conf.save()
         else:
             print("Sample in progress: Can not update timing")
 

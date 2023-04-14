@@ -106,9 +106,9 @@ class configuration:
             if c.tag == "capturetime":
                 self._captureTime= {"time":int(c.attrib["time"]), "unit":c.attrib["unit"]}
                 #print("Set capture time to %s" % (self._captureTime))
-            if c.tag == "datarate":
-                self._dataRate= {"time":int(c.attrib["time"]), "unit":c.attrib["unit"]}
-                #print("Set capture rate to %s" % (self._dataRate))
+            if c.tag == "sampleinterval":
+                self._sampleInterval= {"time":int(c.attrib["time"]), "unit":c.attrib["unit"]}
+                #print("Set capture rate to %s" % (self.sampleInterval))
             if c.tag == "source":
                 self._source = c.attrib["host"]
             if c.tag == "yfunction":
@@ -124,11 +124,10 @@ class configuration:
 
         print("Yfunction added %s" % (self._yfunction))
         print("source added %s" % (self._source))
-        print("Configured Capture data while %d %s with datarate of %d %s " %(self.captureTime["time"], self.captureTime["unit"], self.dataRate["time"], self.dataRate["unit"]))
+        print("Configured Capture data during %d %s with datarate of %d %s " %(self._captureTime["time"], self._captureTime["unit"], self._sampleInterval["time"], self._sampleInterval["unit"]))
           
     def save(self):
-
-        # ElementTree.Comment("Bla bla")
+        print("Save configuration", (self._captureTime, self._sampleInterval))
         root = ET.Element("configuration")
 
         child = ET.SubElement(root, "targetfolder", {"path": "."})
@@ -136,16 +135,16 @@ class configuration:
             root,
             "capturetime",
             {
-                "time": "%s" % self._captureTime["time"],
-                "unit": "%s" % self._captureTime["unit"],
+                "time": "{}".format( self._captureTime["time"]),
+                "unit": "{}".format(self._captureTime["unit"])
             },
         )
         child = ET.SubElement(
             root,
-            "datarate",
+            "sampleinterval",
             {
-                "time": "%s" % self.dataRate["time"],
-                "unit": "%s" % self.dataRate["unit"]
+                "time": "{}".format(self._sampleInterval["time"]),
+                "unit": "{}".format( self._sampleInterval["unit"])
             },
         )
         child = ET.SubElement(root, "yoctopuc")
@@ -160,11 +159,11 @@ class configuration:
                 "id": "genericSensor1",
                 "signalName": "refTemperatur",
                 "type": "input",
-                "rawMin": "4.0",
-                "rawMax": "20.0",
-                "min": "0",
-                "max": "120",
-                "unit": "C",
+                "rawMin": "{}".format(self._yfunction["generic1"]["rawMin"]),
+                "rawMax": "{}".format(self._yfunction["generic1"]["rawMin"]),
+                "min": "{}".format(self._yfunction["generic1"]["min"]),
+                "max": "{}".format(self._yfunction["generic1"]["max"]),
+                "unit": "{}".format(self._yfunction["generic1"]["unit"]),
             },
         )
         ET.SubElement(
@@ -174,24 +173,40 @@ class configuration:
                 "id": "genericSensor2",
                 "signalName": "Temperatur",
                 "type": "input",
-                "rawMin": "4.0",
-                "rawMax": "20.0",
-                "min": "0",
-                "max": "100",
-                "unit": "°C",
+                "rawMin": '{}'.format(self._yfunction["generic2"]["rawMin"]),
+                "rawMax": "{}".format(self._yfunction["generic2"]["rawMin"]),
+                "min": "{}".format(self._yfunction["generic2"]["min"]),
+                "max": "{}".format(self._yfunction["generic2"]["max"]),
+                "unit": "{}".format(self._yfunction["generic2"]["unit"]),
             },
         )
-        print("Configuration saved")
-        
+        xml_str = xml.dom.minidom.parseString(ET.tostring(root, xml_declaration=True)).toprettyxml()
+
+        with open(configuration.configuration_file, "wb") as f:
+             f.write(bytes(xml_str, 'utf-8'))
+        print("Wrote %s" % configuration.configuration_file)
+
         
     
     @property
-    def captureTime(self):
+    def CaptureTime(self):
         return self._captureTime
 
+    @CaptureTime.setter
+    def CaptureTime(self, capTime):
+        print(capTime)
+        print("Set captureTime %d %s " % ( capTime["time"],capTime["unit"]))
+        self._captureTime = capTime
+
     @property
-    def dataRate(self):
-        return self._dataRate
+    def SampleInterval(self):
+        return self._sampleInterval
+
+    @SampleInterval.setter
+    def SampleInterval(self, dr):
+        print(dr)
+        print("Set Sample interval to %d %s " % ( dr["time"],dr["unit"]))
+        self._sampleInterval = dr
 
     @property
     def getR2PFunction(self):
