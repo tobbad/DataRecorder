@@ -126,7 +126,7 @@ class configuration:
         print("source added %s" % (self._source))
         print("Configured Capture data during %d %s with datarate of %d %s " %(self._captureTime["time"], self._captureTime["unit"], self._sampleInterval["time"], self._sampleInterval["unit"]))
           
-    def save(self):
+    def save(self, doSave):
         print("Save configuration", (self._captureTime, self._sampleInterval))
         root = ET.Element("configuration")
 
@@ -181,20 +181,19 @@ class configuration:
             },
         )
         xml_str = xml.dom.minidom.parseString(ET.tostring(root, xml_declaration=True)).toprettyxml()
+        if doSave:
+            with open(configuration.configuration_file, "wb") as f:
+                 f.write(bytes(xml_str, 'utf-8'))
+            print("Wrote %s" % configuration.configuration_file)
+        else:
+            print("Inhibited save of %s" % configuration.configuration_file)
 
-        with open(configuration.configuration_file, "wb") as f:
-             f.write(bytes(xml_str, 'utf-8'))
-        print("Wrote %s" % configuration.configuration_file)
-
-        
-    
     @property
     def CaptureTime(self):
         return self._captureTime
 
     @CaptureTime.setter
     def CaptureTime(self, capTime):
-        print(capTime)
         print("Set captureTime %d %s " % ( capTime["time"],capTime["unit"]))
         self._captureTime = capTime
 
@@ -204,7 +203,6 @@ class configuration:
 
     @SampleInterval.setter
     def SampleInterval(self, dr):
-        print(dr)
         print("Set Sample interval to %d %s " % ( dr["time"],dr["unit"]))
         self._sampleInterval = dr
 
@@ -244,26 +242,8 @@ class configuration:
                 return res
             return convert2
 
-        if self._yfunction is not None:
-            print("Use _yfunction[generic1] rawMin %f, rawMax %f, min %f, max %f in %s"  % (self._yfunction["generic1"]["rawMax"],
-                                                                         self._yfunction["generic1"]["rawMin"],
-                                                                         self._yfunction["generic1"]["max"],
-                                                                         self._yfunction["generic1"]["min"],
-                                                                         self._yfunction["generic1"]["unit"],
-
-
-                                                                               ))
-            print("Use _yfunction[generic2] rawMin %f, rawMax %f, min %f, max %f in %s "% (self._yfunction["generic2"]["rawMax"],
-                                                                           self._yfunction["generic2"]["rawMin"],
-                                                                           self._yfunction["generic2"]["max"],
-                                                                           self._yfunction["generic2"]["min"],
-                                                                           self._yfunction["generic2"]["unit"]
-                                                                         ))
-        else:
-            print("Non configuration loaded")
-
         res = {"generic1": convert1,
-       "generic2": convert2 }
+               "generic2": convert2}
         return res
 
     def getP2RFunction(self):

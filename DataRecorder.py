@@ -352,7 +352,6 @@ class SensorDisplay(QMainWindow):
             else:
                 self.btn[name].hide()
             hbox.addWidget(self.btn[name])
-            print("Add %s button"% name)
         layout.addLayout(hbox)
 
         hbox =QHBoxLayout()
@@ -632,7 +631,7 @@ class SensorDisplay(QMainWindow):
                 if len(data)>5:
                     self.pData[data[5]].append(([pData[0], pData[1], pData[4], pData[5] ]))
                 if self.csvNaNFile is not None:
-                    print(pData, self.csvNaNFile)
+                    print("pData/ cvsNanFile ",pData, self.csvNaNFile)
                     #self.csvNaNFile.writerows(pData)
                 self.csvFile.writerow(pData)
                 print("Data %d/%d (size=%d) %s appended." % (len(self.rawdata), self.capture_size, len(pData), pData))
@@ -681,16 +680,16 @@ class SensorDisplay(QMainWindow):
             print("Set Sampleinterval to %d %s" % (self.conf.SampleInterval["time"], self.conf.SampleInterval["unit"]))
             self.sIntVal_edit.setText("%d" % self.conf.SampleInterval["time"])
             sunit = { "ms":0,"s":1 }
-            self._doSave = False
             idx = sunit[self.conf.SampleInterval["unit"]]
             print("Set unit sample interval index to %d" % idx)
             self.sampleUnit.setCurrentIndex(idx)
             cunit = {"s":0, "m":1, "h":2}
             self.captime_edit.setText("%d" % self.conf.CaptureTime["time"])
             idx = cunit[self.conf.CaptureTime["unit"]]
+            self._doSave = True
             self.sampcapDur.setCurrentIndex(idx)
             print("Set capture unit  idx to  %d" % idx)
-            self._doSave = True
+            self._doSave = False
 
 
             
@@ -816,14 +815,14 @@ class SensorDisplay(QMainWindow):
             self.filename = nowS
             self.rFile = open(nowS, "w")
             self.csvFile= csv.writer(self.rFile, lineterminator="\n")
-            res = self.r2p["generic2"](23, "mA")
-            header = "# generic2 %s" % (res[1]) 
+            res = self.r2p["generic2"](20, "mA")
+            header = "# generic2 %s" % (res[1])
             self.csvFile.writerow([header])
-            print(res)
+            print("Conversion generic 2 ",  res)
             print("Write Header 2 %s" % header)
             res = self.r2p["generic1"](23, "mA")
-            print(res)
-            header = "# generic1 %s" % (res[1]) 
+            print("Conversion generic 1", res)
+            header = "# generic1 %s" % (res[1])
             print("Write Header 1 %s" % header)
             self.csvFile.writerow([header])
 
@@ -956,10 +955,10 @@ class SensorDisplay(QMainWindow):
              data.append("# Sensor %s Unit %s "   % (k, v[0][3]))
          csvf.writerow(data)
          for i in range(self.pDataSize):
-             print(self.rawdata[i])
+             print("Raw data", self.rawdata[i])
              data = [self.rawdata[i][0],self.pData['generic2'][i][2], self.pData['generic2'][i][3]]
              data.extend([ self.pData['generic1'][i][2],  self.pData['generic1'][i][3] ])
-             print(data)
+             print("Data", data)
              csvf.writerow(data)
          self.dirty = False
          f.close()
@@ -969,7 +968,6 @@ class SensorDisplay(QMainWindow):
         dlg.setWindowTitle("Datarecorder")
         dlg.setText("This is a datalogger application")
         button = dlg.exec_()
-        print(button)
         if button == QMessageBox.Ok:
             print("OK")
 
@@ -980,38 +978,39 @@ class SensorDisplay(QMainWindow):
 
     def onTimingChanged(self):
         if not self.doRecord:
-            print("Call onTimingChanged %s" % ( self.sampleUnit.currentIndex()))
-            sampInt= {"time":0, "unit":"ms"}
-
+            print("Call onTimingChanged in recording %s do Save %s" % ( self.sampleUnit.currentIndex(), self._doSave))
+            self.sampInt= {"time":0, "unit":"ms"}
             if self.sampleUnit.currentIndex()==0:
-                sampInt["unit"] = "ms"
+                self.sampInt["unit"] = "ms"
                 self.setSampleInterval_ms =1
             elif self.sampleUnit.currentIndex()==1:
-                sampInt["unit"] = "s"
+                self.sampInt["unit"] = "s"
                 self.setSampleInterval_ms =1000
             sInt =  1 if self.sIntVal_edit.text() == None else int(self.sIntVal_edit.text())
-            sampInt["time"] = sInt
-            if self.conf != None:
-                self.conf.SampleInterval = sampInt
-            print("Sample Intervall number \"%d\"" % sInt)
+            self.sampInt["time"] = sInt
+            if self.conf != None and self._doSave == True:
+                self.conf.SampleInterval = self.sampInt
             self.setSampleInterval_ms *= sInt
             if self.yoctoTask is not None:
                 self.yoctoTask.setSampleInterval_ms(self.setSampleInterval_ms)
-            print("Sample intervall is %d ms" % self.setSampleInterval_ms)
-            print("Current samp duratio idx %s" % (self.sampcapDur.currentIndex() ))
-            capTime= {"time":0, "unit":"m"}
+            print("Sample intervall is %d %s" % (  self.sampInt["time"],  self.sampInt["unit"]))
+
+            print("Current sample duration idx %s" % (self.sampcapDur.currentIndex() ))
+            self.capTime= {"time":0, "unit":"m"}
             if self.sampcapDur.currentIndex()==0:
-                capTime["unit"] = "s"
+                self.capTime["unit"] = "s"
                 self.captureTime_s = 1
             elif self.sampcapDur.currentIndex()==1:
-                capTime["unit"] = "m"
+                self.capTime["unit"] = "m"
                 self.captureTime_s = 60
             else:
-                capTime["unit"] = "h"
+                self.capTime["unit"] = "h"
                 self.captureTime_s = 3600
             cTi = 1 if self.captime_edit.text() == None else int(self.captime_edit.text())
-            capTime["time"] = cTi
+            self.capTime["time"] = cTi
             self.captureTime_s *= cTi
+            print("Sample Capture time is %d %s" % (self.capTime["time"], self.capTime["unit"]))
+
             if self.conf != None and self._doSave:
                 self.conf.CaptureTime = capTime
 
@@ -1022,9 +1021,11 @@ class SensorDisplay(QMainWindow):
             print("Capture time is %d s/Size %d" % (self.captureTime_s, self.capture_size))
             if self._doSave and self.conf != None:
                 print("Save config")
-                self.conf.save()
+                self.conf.save(self._doSave)
+            else:
+                print("Do not save")
         else:
-            print("Sample in progress: Can not update timing")
+            print("Do record")
 
 
     def tabChanged(self, index):
