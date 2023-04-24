@@ -1,13 +1,13 @@
 <?xml version="1.0" ?>
 <configuration>
 	<targetfolder path="."/>
-	<capturetime time="1" unit="m"/>
-	<sampleinterval time="1" unit="ms"/>
+	<capturetime time="10" unit="s"/>
+	<sampleinterval time="5" unit="s"/>
 	<yoctopuc>
 		<source host="usb">
 			<ymodule id="RX420MA1-123456" type="Yocto-4-20mA-Rx">
-				<yfunction id="genericSensor1" signalName="refTemperatur" type="input" rawMin="4.0" rawMax="4.0" min="0.0" max="100.0" unit="°C"/>
-				<yfunction id="genericSensor2" signalName="Temperatur" type="input" rawMin="4.0" rawMax="4.0" min="0.0" max="100.0" unit="°C"/>
+				<yfunction id="genericSensor1" signalName="refTemperatur" type="input" rawMin="4.0" rawMax="20.0" min="0.0" max="100.0" unit="°C"/>
+				<yfunction id="genericSensor2" signalName="Temperatur" type="input" rawMin="4.0" rawMax="20.0" min="0.0" max="100.0" unit="°C"/>
 			</ymodule>
 		</source>
 	</yoctopuc>

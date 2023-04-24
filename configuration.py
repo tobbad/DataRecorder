@@ -160,7 +160,7 @@ class configuration:
                 "signalName": "refTemperatur",
                 "type": "input",
                 "rawMin": "{}".format(self._yfunction["generic1"]["rawMin"]),
-                "rawMax": "{}".format(self._yfunction["generic1"]["rawMin"]),
+                "rawMax": "{}".format(self._yfunction["generic1"]["rawMax"]),
                 "min": "{}".format(self._yfunction["generic1"]["min"]),
                 "max": "{}".format(self._yfunction["generic1"]["max"]),
                 "unit": "{}".format(self._yfunction["generic1"]["unit"]),
@@ -174,7 +174,7 @@ class configuration:
                 "signalName": "Temperatur",
                 "type": "input",
                 "rawMin": '{}'.format(self._yfunction["generic2"]["rawMin"]),
-                "rawMax": "{}".format(self._yfunction["generic2"]["rawMin"]),
+                "rawMax": "{}".format(self._yfunction["generic2"]["rawMax"]),
                 "min": "{}".format(self._yfunction["generic2"]["min"]),
                 "max": "{}".format(self._yfunction["generic2"]["max"]),
                 "unit": "{}".format(self._yfunction["generic2"]["unit"]),
@@ -228,6 +228,8 @@ class configuration:
 
             return convert1
         def convert2(val, unit):
+            print("rawMax delta %f " % (self._yfunction["generic2"]["rawMax"]-self._yfunction["generic2"]["rawMin"]))
+            print("phy delta  %f " % (self._yfunction["generic2"]["max"]- self._yfunction["generic2"]["min"]))
             if val != None:
                 if  np.isnan(val):
                     res = [np.nan, "mA"]
@@ -240,10 +242,28 @@ class configuration:
                     else:
                         raise ValueError("Unknown conversion to %s" % unit)
                 return res
-            
             return convert2
+
+        if self._yfunction is not None:
+            print("Use _yfunction[generic1] rawMin %f, rawMax %f, min %f, max %f in %s"  % (self._yfunction["generic1"]["rawMax"],
+                                                                         self._yfunction["generic1"]["rawMin"],
+                                                                         self._yfunction["generic1"]["max"],
+                                                                         self._yfunction["generic1"]["min"],
+                                                                         self._yfunction["generic1"]["unit"],
+
+
+                                                                               ))
+            print("Use _yfunction[generic2] rawMin %f, rawMax %f, min %f, max %f in %s "% (self._yfunction["generic2"]["rawMax"],
+                                                                           self._yfunction["generic2"]["rawMin"],
+                                                                           self._yfunction["generic2"]["max"],
+                                                                           self._yfunction["generic2"]["min"],
+                                                                           self._yfunction["generic2"]["unit"]
+                                                                         ))
+        else:
+            print("Non configuration loaded")
+
         res = {"generic1": convert1,
-               "generic2": convert2 }
+       "generic2": convert2 }
         return res
 
     def getP2RFunction(self):

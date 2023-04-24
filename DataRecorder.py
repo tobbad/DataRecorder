@@ -342,9 +342,6 @@ class SensorDisplay(QMainWindow):
         hbox =QHBoxLayout()
         icons = [["Start", self.doStart, False], ["Stop", self.doStop, False], ["Clear", self.doClear, False], ["Save", self.doSave, False]]
         for name, fn, show  in icons:
-            print("name is %s" % name)
-            print("fn is %s" % fn)
-            print("show is %s" % show)
             self.btn[name] = QPushButton(name)
             icon = QIcon(":/%s.svg" % name.lower())
             self.btn[name].setIcon(icon)
@@ -679,6 +676,7 @@ class SensorDisplay(QMainWindow):
             
             print("Device connected in Datarecorder (connected %s, onGoing %s)" % ( self.connected,self.onGoing))
             self.conf = configuration(self.yoctoTask)
+            self.r2p = self.conf.getR2PFunction
             print("Set Capturetime to %d %s" %(self.conf.CaptureTime["time"],self.conf.CaptureTime["unit"]))
             print("Set Sampleinterval to %d %s" % (self.conf.SampleInterval["time"], self.conf.SampleInterval["unit"]))
             self.sIntVal_edit.setText("%d" % self.conf.SampleInterval["time"])
@@ -815,8 +813,6 @@ class SensorDisplay(QMainWindow):
             nowS = now.strftime("%Y%m%d_%H%M%S.csv")
             print("Set time to %s" %nowS)
             self.QFilename.setText(nowS)
-            self.r2p = self.conf.getR2PFunction
-            self.p2r = self.conf.getP2RFunction()
             self.filename = nowS
             self.rFile = open(nowS, "w")
             self.csvFile= csv.writer(self.rFile, lineterminator="\n")
