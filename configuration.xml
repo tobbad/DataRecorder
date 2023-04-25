@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <configuration>
 	<targetfolder path="."/>
-	<capturetime time="10" unit="s"/>
-	<sampleinterval time="5" unit="s"/>
+	<capturetime time="288" unit="s"/>
+	<sampleinterval time="200" unit="ms"/>
 	<yoctopuc>
 		<source host="usb">
 			<ymodule id="RX420MA1-123456" type="Yocto-4-20mA-Rx">

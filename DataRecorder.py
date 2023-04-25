@@ -270,7 +270,7 @@ class SensorDisplay(QMainWindow):
  
         
         hbox =QHBoxLayout()
-        hbox.addWidget(QLabel("X AxisScale"))
+        hbox.addWidget(QLabel("Time AxisScale"))
         self.xaxisScale = QComboBox()
         self.xaxisScale.addItems(["variabel","fixed", ])
         self.xaxisScale.currentIndexChanged.connect(self.fixedUpdate)
@@ -686,10 +686,10 @@ class SensorDisplay(QMainWindow):
             cunit = {"s":0, "m":1, "h":2}
             self.captime_edit.setText("%d" % self.conf.CaptureTime["time"])
             idx = cunit[self.conf.CaptureTime["unit"]]
-            self._doSave = True
+            self._doSave = False
             self.sampcapDur.setCurrentIndex(idx)
             print("Set capture unit  idx to  %d" % idx)
-            self._doSave = False
+            self._doSave = True
 
 
             
@@ -1009,16 +1009,14 @@ class SensorDisplay(QMainWindow):
             cTi = 1 if self.captime_edit.text() == None else int(self.captime_edit.text())
             self.capTime["time"] = cTi
             self.captureTime_s *= cTi
-            print("Sample Capture time is %d %s" % (self.capTime["time"], self.capTime["unit"]))
 
             if self.conf != None and self._doSave:
-                self.conf.CaptureTime = capTime
+                self.conf.CaptureTime = self.capTime
 
             self.capture_size = ceil(float(1000*self.captureTime_s)/(float(self.setSampleInterval_ms)))
-            print("Set capture time %d s; Size: is %d samples; Interval @ %f ms" % ( self.captureTime_s, self.capture_size ,self.setSampleInterval_ms))
+            print("Set capture time %d %s; Size: is %d samples; Interval @ %f %s" % ( self.captureTime_s, self.capTime["unit"], self.capture_size ,self.setSampleInterval_ms, self.sampInt["unit"]))
             if self.yoctoTask is not None:
                 self.yoctoTask.set_capture_size(self.capture_size)
-            print("Capture time is %d s/Size %d" % (self.captureTime_s, self.capture_size))
             if self._doSave and self.conf != None:
                 print("Save config")
                 self.conf.save(self._doSave)

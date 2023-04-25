@@ -226,8 +226,8 @@ class configuration:
 
             return convert1
         def convert2(val, unit):
-            print("rawMax delta %f " % (self._yfunction["generic2"]["rawMax"]-self._yfunction["generic2"]["rawMin"]))
-            print("phy delta  %f " % (self._yfunction["generic2"]["max"]- self._yfunction["generic2"]["min"]))
+            #print("rawMax delta %f " % (self._yfunction["generic2"]["rawMax"]-self._yfunction["generic2"]["rawMin"]))
+            #print("phy delta  %f " % (self._yfunction["generic2"]["max"]- self._yfunction["generic2"]["min"]))
             if val != None:
                 if  np.isnan(val):
                     res = [np.nan, "mA"]
