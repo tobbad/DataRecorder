@@ -195,7 +195,7 @@ class YoctopuceTask(QObject):
             data.extend(d2)
             data.extend(d1)
         else:
-            data.extend([newdata[0],np.nan, np.nan, newdata[1], np.nan, np.nan])
+            data.extend([newdata[0],np.nan, "mA", newdata[1], np.nan, "mA"])
         self.updateSignal.emit(data)
         self._sampleCnt += 1
         #print("New data on connected state to %s/rel Time %s" % (self.connected, delta))

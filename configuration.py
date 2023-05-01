@@ -8,13 +8,14 @@ Handles the configuration of the programm
 """
 import math
 import sys, os
+import numpy as np
+import xml.etree.ElementTree as ET
+import xml.dom.minidom
+
 
 addPath = os.path.join("..", "yoctolib_python", "Sources")
 sys.path.append(addPath)
 # print(sys.path)
-import xml.etree.ElementTree as ET
-import xml.dom.minidom
-import numpy as np
 from yocto_api import *
 from yocto_genericsensor import *
 #from YoctopuceTask import YoctopuceTask
@@ -97,7 +98,7 @@ class configuration:
         print("Wrote %s" % name)
 
     def load(self, confFile):
-        print("Load %s"%confFile )
+        print("Load conf file %s "% (confFile ) )
         self.et = ET.parse(confFile).getroot()
         self._yfunction ={}
         
@@ -219,16 +220,13 @@ class configuration:
                         * (self._yfunction["generic1"]["max"]-self._yfunction["generic1"]["min"]),
                         self._yfunction["generic1"]["unit"]]
                     else:
-                        raise ValueError("Unknown conversion to %s" % unit)
+                        res = [val, unit]
                 else:
                     res = [val, unit]
             return res
 
-            return convert1
         def convert2(val, unit):
-            #print("rawMax delta %f " % (self._yfunction["generic2"]["rawMax"]-self._yfunction["generic2"]["rawMin"]))
-            #print("phy delta  %f " % (self._yfunction["generic2"]["max"]- self._yfunction["generic2"]["min"]))
-            if val != None:
+             if val != None:
                 if  np.isnan(val):
                     res = [np.nan, "mA"]
                 else:
@@ -240,11 +238,10 @@ class configuration:
                     else:
                         raise ValueError("Unknown conversion to %s" % unit)
                 return res
-            return convert2
 
-        res = {"generic1": convert1,
+        fnDict = {"generic1": convert1,
                "generic2": convert2}
-        return res
+        return fnDict
 
     def getP2RFunction(self):
         def convert(val, unit):

@@ -8,7 +8,6 @@ import sys, os
 import optparse
 import csv
 from math import ceil, isnan
-import numpy as np
 from datetime import *
 import numpy as np
 from configuration import configuration
@@ -615,8 +614,6 @@ class SensorDisplay(QMainWindow):
                 self.rawdata.append(data)
                 pData = [data[0], data[1]]
                 self.onGoing = self.onGoing and (not (isnan(data[3])) or (not isnan(data[6])))
-                #print("onGoing %s; data %f is nan: %s" % (self.onGoing, data[3], isnan(data[3]) ) )
-                #print(data[3], data[6])
                 if not self.onGoing:
                     self.sensor = None
                 pData.extend( self.r2p[data[2]]( data[3], data[4]))
@@ -629,14 +626,30 @@ class SensorDisplay(QMainWindow):
                 self.pData[data[2]].append(([pData[0], pData[1], pData[2], pData[3] ]))
                 if len(data)>5:
                     self.pData[data[5]].append(([pData[0], pData[1], pData[4], pData[5] ]))
-                if self.csvNaNFile is not None:
+                if self.nanFile is not None:
                     print("pData/ cvsNanFile ",pData, self.csvNaNFile)
                     self.csvNaNFile.writerow(pData)
+                    if self.onGoing and self.nanFile is not None:
+                        print("close nan file")
+                        self.nanFile.close()
+                        self.nanFile = None
+                        self.csvNaNFile = None
+                if self.csvFile is None:
+                    now = datetime.now()
+                    nowS = now.strftime("%Y%m%d_%H%M%S.csv")
+                    print("Set time to %s" % nowS)
+                    self.QFilename.setText(nowS)
+                    self.filename = nowS
+                    self.rFile = open(nowS, "w")
+                    self.csvFile = csv.writer(self.rFile, lineterminator="\n")
+                    self.writeCsvHeader(self.csvFile)
                 self.csvFile.writerow(pData)
                 print("Data %d/%d (size=%d) %s appended." % (len(self.rawdata), self.capture_size, len(pData), pData))
                 if len(self.rawdata)%20 == 0:
                     self.setNewData()
                     self.updatePlots()
+       else:
+           print("Non Recording: Do No appenddata")
 
     def file_open(self):
         local_dir = (os.path.dirname(self.filename)
@@ -665,6 +678,22 @@ class SensorDisplay(QMainWindow):
     @property
     def connected(self):
         return self.sensor != None
+
+    def writeCsvHeader(self, csvFile):
+        data = self.pData["generic2"][0]
+        print("Set csv Header" )
+
+        res = self.r2p["generic2"](data[2], data[3])
+        header = "# generic2 %s" % (res[1])
+        csvFile.writerow([header])
+        print("Set header 2 to %s" % header)
+
+        data = self.pData["generic1"][0]
+        res = self.r2p["generic1"](data[2], data[3])
+        header = "# generic1 %s" % (res[1])
+        csvFile.writerow([header])
+        print("Set header 1 to %s " % header)
+
 
 
     @pyqtSlot(dict)
@@ -721,15 +750,6 @@ class SensorDisplay(QMainWindow):
             print("%d Sensors are already connected" %len(self.sensor))
         self.updateConnected()
 
-    def writeCsvHeader(self, csvFile):
-        res = self.r2p["generic2"](20, "mA")
-        header = "# generic2 %s" % (res[1])
-        csvFile.writerows([header])
-        res = self.r2p["generic1"](20, "mA")
-        header = "# generic1 %s" % (res[1])
-        csvFile.writerows([header])
-
-
     @pyqtSlot(dict)
     def removal(self, device):
         # log removal
@@ -745,7 +765,8 @@ class SensorDisplay(QMainWindow):
             print("Set NaN file to %s" %nowSNaN)
             self.nanFile = open(nowSNaN, "w")
             self.csvNaNFile = csv.writer(self.nanFile, lineterminator="\n")
-            writeCvsHeader(self.csvNaNFile)
+            self.writeCsvHeader(self.csvNaNFile)
+
         if self.btnState["Start"]:
             self.btn["Start"].show()
         else:
@@ -814,14 +835,9 @@ class SensorDisplay(QMainWindow):
         if self.yoctoTask.capture_start():
             self.onGoing = True
             self.intervalFrame.hide()
-            now = datetime.now()
-            nowS = now.strftime("%Y%m%d_%H%M%S.csv")
-            print("Set time to %s" %nowS)
-            self.QFilename.setText(nowS)
-            self.filename = nowS
-            self.rFile = open(nowS, "w")
-            self.csvFile= csv.writer(self.rFile, lineterminator="\n")
-            writeCsvHeader(self.csvFile)
+            self.rFile = None
+            self.csvFile= None
+
             self.doRecord = True
             print("Start record on %s" %self.yoctoTask.startTask)
             self.setNewData()
@@ -947,10 +963,11 @@ class SensorDisplay(QMainWindow):
          print("doSave  all %s of size %d" % (fname, self.pDataSize))
          f = open( fname,"w", encoding="cp1252")
          csvf =csv.writer(f, lineterminator="\n")
-         writeCsvHeader(csvf)
+         self.writeCsvHeader(csvf)
          data = []
          #print(self.pData)
          for k,v  in self.pData.items():
+             print("Key %s is unit is %s"% (k, v[0][3]))
              data.append("# Sensor %s Unit %s "   % (k, v[0][3]))
          csvf.writerow(data)
          for i in range(self.pDataSize):
@@ -1142,6 +1159,7 @@ class SensorDisplay(QMainWindow):
             else:
                 self.frame2.hide()
             self.pUnit.setText(self.punit)
+            print("Rawunit type is %s"% type(self.rawunit))
             self.rawUnit.setText(self.rawunit)
             progress = 100.0*len(self.rawdata)/float(self.capture_size)
             print("Progress %.1f of %d " % (progress, self.capture_size))
