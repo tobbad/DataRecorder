@@ -61,6 +61,10 @@ class YoctopuceTask(QObject):
         self.takeOver = False
         self.lastTime = 0
         self.connected = False
+        self.doCapture = False
+        self.startTime = None
+        self.initAPI()
+
 
     @pyqtSlot()
     def initAPI(self):
@@ -134,21 +138,8 @@ class YoctopuceTask(QObject):
         self.removal.emit({})
  
     def capture_start(self):
-        self.initAPI()
-        if len(self.sensor)==0:
-            self.connected = False
-            return False
-            print("No sensors connected")
-        else:
-            if self.connected:
-                self.SetUpCapture()
-                self.startTimedt = datetime.datetime.now()
-                self.startTime = self.startTimedt.now()
-                print("Capture started on %s with time %s" % (self.sensor, self.startTime))
-                self._sampleCnt = 0
-            else:
-                print("Not connected:Can not start")
-        return True
+        self.doCapture = True
+        return self.doCapture
     def SetUpCapture(self):
         print("Capture in Yoctopuc Task started (cnt = %d  with %d ms)" % (self.capture_size, self.sampel_interval_ms))
         if self.capture_size > 0 and self.sampel_interval_ms > 0:
@@ -167,67 +158,77 @@ class YoctopuceTask(QObject):
             self.superVisorTimer.start()
             print("Initial timer to %d ms" % self.fb_sampel_interval_ms)
         #print("%s  %s" %(type(fct), type(measure)))
-        now = datetime.datetime
+        if self.doCapture:
+            if self.startTime is None:
+                # Set up capture
+                self.SetUpCapture()
+                # Set up start time
+                self.startTimedt = datetime.datetime.now()
+                self.startTime = self.startTimedt.now()
+                print("Capture started on %s with time %s" % (self.sensor, self.startTime))
+                self._sampleCnt = 0
+             # Get currrent time
+            now = datetime.datetime
 
-        newdata = None
-        self.doCapture = True
-        if isinstance(measure, list):
-            newdata = measure
-            measureTime = now.now()
-        else:
-            measureTime = datetime.datetime.fromtimestamp(measure.get_startTimeUTC())
-        delta = measureTime - self.startTime
-        #print("connected state in new_data is %s/rel Time %s" % (self.connected, delta))
+            newdata = None
+            if isinstance(measure, list):
+                newdata = measure
+                measureTime = now.now()
+            else:
+                measureTime = datetime.datetime.fromtimestamp(measure.get_startTimeUTC())
+            delta = measureTime - self.startTime
+            #print("connected state in new_data is %s/rel Time %s" % (self.connected, delta))
 
-        #print("measureTime %s, start: %s/%s" % (measureTime.now(), self.startTimedt, measureTime.now()))
-        absTime = now.now().strftime("%Y-%m-%dT%H:%M:%S.%f+01:00")
-        self.lastTime = now.now()
-        #print("Now is %s" %self.lastTime)
-        delta = (measureTime - self.startTime).total_seconds()
-        data = [absTime, delta]
-        if fct is not None:
-            d1 = self.sensor["generic1"].get_values()
-            if math.isclose(d1[1], -29999.0):
-                d1 = [d1[0], np.nan, "mA"]
-            d2 = self.sensor["generic2"].get_values()
-            if math.isclose(d2[1], -29999.):
-                d2 = [d2[0], np.nan, "mA"]
-            data.extend(d2)
-            data.extend(d1)
-        else:
-            data.extend([newdata[0],np.nan, "mA", newdata[1], np.nan, "mA"])
-        self.updateSignal.emit(data)
-        self._sampleCnt += 1
-        #print("New data on connected state to %s/rel Time %s" % (self.connected, delta))
-        #self.logfun("Remaining cap %d" % self.capture_size)
-        self.capture_size -= 1
-        if self.capture_size == 0:
-            self.logfun("Finished cap %d samples" % self._sampleCnt)
-            self.updateSignal.emit([None,None])
-            print("Finished capture in yoctopuc")
+            #print("measureTime %s, start: %s/%s" % (measureTime.now(), self.startTimedt, measureTime.now()))
+            absTime = now.now().strftime("%Y-%m-%dT%H:%M:%S.%f+01:00")
+            self.lastTime = now.now()
+            #print("Now is %s" %self.lastTime)
+            delta = (measureTime - self.startTime).total_seconds()
+            data = [absTime, delta]
+            if fct is not None:
+                d1 = self.sensor["generic1"].get_values()
+                if math.isclose(d1[1], -29999.0):
+                    d1 = [d1[0], np.nan, "mA"]
+                d2 = self.sensor["generic2"].get_values()
+                if math.isclose(d2[1], -29999.):
+                    d2 = [d2[0], np.nan, "mA"]
+                data.extend(d2)
+                data.extend(d1)
+            else:
+                data.extend([newdata[0],np.nan, "mA", newdata[1], np.nan, "mA"])
+            self.updateSignal.emit(data)
+            self._sampleCnt += 1
+            #print("New data on connected state to %s/rel Time %s" % (self.connected, delta))
+            #self.logfun("Remaining cap %d" % self.capture_size)
+            self.capture_size -= 1
+            if self.capture_size == 0:
+                self.logfun("Finished cap %d samples" % self._sampleCnt)
+                self.updateSignal.emit([None,None])
+                print("Finished capture in yoctopuc")
 
     def fakeCB(self):
-        if self.connected == False:
+        if self.connected == False and self.doCapture:
             measureTime = datetime.datetime.now()
             delta = (measureTime - self.startTime).total_seconds()
-            print("\tConnected False: Send fake data  delta %s" % (delta))
+            print("\tConnected False: Send fake data  delta %s, connected %s" % (delta, self.connected))
             if not self.connected:
                 self.new_data(None, ['generic2','generic1'])
 
 
     def new_data_superVisor(self, retrigger=True):
-        # If this is called we have to take over regulary sending data to new_data
-        measureTime = datetime.datetime.now()
-        delta = (measureTime - self.startTime).total_seconds()
-        #print("new_data_superVisor fired connected: %d RTime = %s ?"% (self.connected,delta ))
-        if self.sampel_interval_ms != self.fb_sampel_interval_ms :
-            self.fb_sampel_interval_ms = self.fb_sampel_interval_ms
-            self.fb_sampel_interval_ms = self.sampel_interval_ms
-            print("Reset fallback intervall to %d ms -> connect to fakeCB"  % self.sampel_interval_ms)
-            self.superVisorTimer.setInterval(self.sampel_interval_ms)
-            self.superVisorTimer.timeout.connect(self.fakeCB)
-            self.superVisorTimer.stop()
-            self.superVisorTimer.start()
+        if self.doCapture:
+            # If this is called we have to take over regulary sending data to new_data
+            measureTime = datetime.datetime.now()
+            delta = (measureTime - self.startTime).total_seconds()
+            #print("new_data_superVisor fired connected: %d RTime = %s ?"% (self.connected,delta ))
+            if self.sampel_interval_ms != self.fb_sampel_interval_ms :
+                self.fb_sampel_interval_ms = self.fb_sampel_interval_ms
+                self.fb_sampel_interval_ms = self.sampel_interval_ms
+                print("Reset fallback intervall to %d ms -> connect to fakeCB"  % self.sampel_interval_ms)
+                self.superVisorTimer.setInterval(self.sampel_interval_ms)
+                self.superVisorTimer.timeout.connect(self.fakeCB)
+                self.superVisorTimer.stop()
+                self.superVisorTimer.start()
 
     @property
     def sampleCnt(self):

@@ -171,7 +171,7 @@ class SensorDisplay(QMainWindow):
         self.data1 = None
         self.data2 = None
         self.emData = []
-        self.onGoing = True
+        self.onGoing = False
         self.nanFile = None
         self.csvNaNFile = None
         self.btnState = {"Start":False, "Clear":False, "Stop":False, "Save":False}
@@ -686,13 +686,13 @@ class SensorDisplay(QMainWindow):
         res = self.r2p["generic2"](data[2], data[3])
         header = "# generic2 %s" % (res[1])
         csvFile.writerow([header])
-        print("Set header 2 to %s" % header)
+        print("\tSet header 2 to %s" % header)
 
         data = self.pData["generic1"][0]
         res = self.r2p["generic1"](data[2], data[3])
         header = "# generic1 %s" % (res[1])
         csvFile.writerow([header])
-        print("Set header 1 to %s " % header)
+        print("\tSet header 1 to %s " % header)
 
 
 
@@ -719,7 +719,7 @@ class SensorDisplay(QMainWindow):
             print("Set capture unit  idx to  %d" % idx)
             self._doSave = True
             self.sensor = device
-            if not self.onGoing:
+            if  self.onGoing:
                 self.onGoing = True
                 print("Show old buttons")
             else:
@@ -745,7 +745,7 @@ class SensorDisplay(QMainWindow):
                 self.btn["Save"].show()
             else:
                 self.btn["Save"].hide()
-            print("Registered Sensors")
+            print("DR Registered Sensors")
         else:
             print("%d Sensors are already connected" %len(self.sensor))
         self.updateConnected()
@@ -1159,7 +1159,6 @@ class SensorDisplay(QMainWindow):
             else:
                 self.frame2.hide()
             self.pUnit.setText(self.punit)
-            print("Rawunit type is %s"% type(self.rawunit))
             self.rawUnit.setText(self.rawunit)
             progress = 100.0*len(self.rawdata)/float(self.capture_size)
             print("Progress %.1f of %d " % (progress, self.capture_size))
