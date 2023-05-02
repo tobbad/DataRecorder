@@ -183,7 +183,6 @@ class SensorDisplay(QMainWindow):
         self.sensor = None
         self.YoctopuceTask= None
         self.capture()
-        self.isConnected = True
 
     def setUpGUI(self):    
         self.setWindowTitle("DataRecorder")
@@ -649,7 +648,7 @@ class SensorDisplay(QMainWindow):
                     self.setNewData()
                     self.updatePlots()
        else:
-           print("Non Recording: Do No appenddata")
+           print("Non Recording: Do No append data")
 
     def file_open(self):
         local_dir = (os.path.dirname(self.filename)
@@ -699,9 +698,14 @@ class SensorDisplay(QMainWindow):
     @pyqtSlot(dict)
     def arrival(self, device):
         if self.sensor is None:
+            if not self.doRecord:
+                print("Show buttons in not recording arrival")
+                self.btnState["Start"] = True
+                self.btnState["Stop"] = False
+                self.btnState["Clear"] = False
+                self.btnState["Save"] = False
             # log arrival
-            
-            print("Device connected in Datarecorder (connected %s, onGoing %s)" % ( self.connected,self.onGoing))
+            print("Device connected in Datarecorder onGoing %s)" % (self.onGoing))
             self.conf = configuration(self.yoctoTask)
             self.r2p = self.conf.getR2PFunction
             print("Set Capturetime to %d %s" %(self.conf.CaptureTime["time"],self.conf.CaptureTime["unit"]))
@@ -716,35 +720,17 @@ class SensorDisplay(QMainWindow):
             idx = cunit[self.conf.CaptureTime["unit"]]
             self._doSave = False
             self.sampcapDur.setCurrentIndex(idx)
-            print("Set capture unit  idx to  %d" % idx)
             self._doSave = True
             self.sensor = device
             if  self.onGoing:
-                self.onGoing = True
                 print("Show old buttons")
             else:
-                print("Show buttons in arrival")
-                self.btnState["Start"] = True
-                self.btnState["Stop"] = False
-                self.btnState["Clear"] = False
-                self.btnState["Save"] = False
+
                 if self.nanFile is not None:
                     self.nanFile.close()
                 self.nanFile = None
                 self.csvNaNFile = None
-            if  self.btnState["Start"]:
-                 self.btn["Start"].show()
-            else:
-                self.btn["Start"].hide()
-            if  self.btnState["Stop"]:
-                 self.btn["Stop"].show()
-            else:
-                self.btn["Stop"].hide()
 
-            if self.btnState["Save"]:
-                self.btn["Save"].show()
-            else:
-                self.btn["Save"].hide()
             print("DR Registered Sensors")
         else:
             print("%d Sensors are already connected" %len(self.sensor))
@@ -753,12 +739,8 @@ class SensorDisplay(QMainWindow):
     @pyqtSlot(dict)
     def removal(self, device):
         # log removal
-        if not self.onGoing:
-            self.btnState["Start"] = True
-            self.btnState["Stop"] = False
-            self.btnState["Clear"] = False
-            self.btnState["Save"] = False
-        else:
+        if self.onGoing:
+            # keep button state
             print("Detected onGoing in removal")
             now = datetime.now()
             nowSNaN = now.strftime("%Y%m%d_%H%M%S_NaN.csv")
@@ -766,20 +748,6 @@ class SensorDisplay(QMainWindow):
             self.nanFile = open(nowSNaN, "w")
             self.csvNaNFile = csv.writer(self.nanFile, lineterminator="\n")
             self.writeCsvHeader(self.csvNaNFile)
-
-        if self.btnState["Start"]:
-            self.btn["Start"].show()
-        else:
-            self.btn["Start"].hide()
-        if self.btnState["Stop"]:
-            self.btn["Stop"].show()
-        else:
-            self.btn["Stop"].hide()
-
-        if self.btnState["Save"]:
-            self.btn["Save"].show()
-        else:
-            self.btn["Save"].hide()
 
         self.sensor = None
 
@@ -813,23 +781,36 @@ class SensorDisplay(QMainWindow):
             self.showGen2CB.setStyleSheet("background-color:white")
             self.frame1.setStyleSheet("background-color:white")
             self.frame2.setStyleSheet("background-color:white")
+        print("\tStart is %s" % (self.btnState["Start"]))
+        print("\tStop  is %s" % (self.btnState["Stop"]))
+        print("\tClear is %s" % (self.btnState["Clear"]))
+        print("\tSave  is %s" % (self.btnState["Save"]))
 
+        if self.btnState["Start"]:
+            self.btn["Start"].show()
+        else:
+            self.btn["Start"].hide()
 
+        if self.btnState["Stop"]:
+            self.btn["Stop"].show()
+        else:
+            self.btn["Stop"].hide()
+
+        if self.btnState["Save"]:
+            self.btn["Save"].show()
+        else:
+            self.btn["Save"].hide()
 
     def doStart(self):
         print("doStart")
-        self.doRecord = True
         self.onTimingChanged()
         self.yoctoTask.startTask.emit()
         print("Show buttons in doStart/Task is %s" % (self.yoctoTask))
+
         self.btnState["Start"] = False
         self.btnState["Stop"] = True
         self.btnState["Clear"] = False
         self.btnState["Save"] = False
-        self.btn["Start"].hide()
-        self.btn["Stop"].show()
-        self.btn["Clear"].hide()
-        self.btn["Save"].hide()
         if self.yoctoTask is None:
             print("No sensor connected")
         if self.yoctoTask.capture_start():
@@ -842,6 +823,7 @@ class SensorDisplay(QMainWindow):
             print("Start record on %s" %self.yoctoTask.startTask)
             self.setNewData()
             self.updatePlots()
+        self.updateConnected()
 
 
     def stopCapture(self):
@@ -867,7 +849,7 @@ class SensorDisplay(QMainWindow):
         self.btn["Save"].show()
 
     def doStop(self):
-        print("doStop")
+        print("called doStop")
 
         # Ask for really Stop
         dlg =  StopRecordingDlg(self)
@@ -907,11 +889,7 @@ class SensorDisplay(QMainWindow):
         self.btnState["Stop"] = False
         self.btnState["Clear"] = False
         self.btnState["Save"] = False
-
-        self.btn["Stop"].hide()
-        self.btn["Clear"].hide()
-        self.btn["Save"].hide()
-        self.btn["Start"].show()
+        self.updateConnected()
         self.progressBar.setValue(0)
         self.pData = None
         self.rawdata= []
@@ -1011,7 +989,6 @@ class SensorDisplay(QMainWindow):
                 self.yoctoTask.setSampleInterval_ms(self.setSampleInterval_ms)
             print("Sample intervall is %d %s" % (  self.sampInt["time"],  self.sampInt["unit"]))
 
-            print("Current sample duration idx %s" % (self.sampcapDur.currentIndex() ))
             self.capTime= {"time":0, "unit":"m"}
             if self.sampcapDur.currentIndex()==0:
                 self.capTime["unit"] = "s"
