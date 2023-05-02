@@ -835,18 +835,13 @@ class SensorDisplay(QMainWindow):
         if self.nanFile is not None:
             self.nanFile.close()
         self.nanFile = None
-
         self.rFile.close()
         self.rFile = None
         self.btnState["Start"] = False
         self.btnState["Stop"] = False
         self.btnState["Clear"] = True
         self.btnState["Save"] = True
-
-        self.btn["Start"].hide()
-        self.btn["Stop"].hide()
-        self.btn["Clear"].show()
-        self.btn["Save"].show()
+        self.updateConnected()
 
     def doStop(self):
         print("called doStop")
@@ -870,13 +865,11 @@ class SensorDisplay(QMainWindow):
                 self.btnState["Stop"] = False
                 self.btnState["Clear"] = True
                 self.btnState["Save"] = True
-
-                self.btn["Start"].hide()
-                self.btn["Stop"].hide()
-                self.btn["Clear"].show()
-                self.btn["Save"].show()
+                self.updateConnected()
                 self.yoctoTask.stopTask.emit()
                 self.doRecord = False
+                self.progressBar.setValue(int(100))
+
                 self.intervalFrame.show()
             else:
                 print("Continue recording")
@@ -938,24 +931,25 @@ class SensorDisplay(QMainWindow):
                  self.QFilename.text(), fmt[0])
          if fname is None:
              fname = self.QFilename.text()
-         print("doSave  all %s of size %d" % (fname, self.pDataSize))
-         f = open( fname,"w", encoding="cp1252")
-         csvf =csv.writer(f, lineterminator="\n")
-         self.writeCsvHeader(csvf)
-         data = []
-         #print(self.pData)
-         for k,v  in self.pData.items():
-             print("Key %s is unit is %s"% (k, v[0][3]))
-             data.append("# Sensor %s Unit %s "   % (k, v[0][3]))
-         csvf.writerow(data)
-         for i in range(self.pDataSize):
-             print("Raw data", self.rawdata[i])
-             data = [self.rawdata[i][0],self.pData['generic2'][i][2], self.pData['generic2'][i][3]]
-             data.extend([ self.pData['generic1'][i][2],  self.pData['generic1'][i][3] ])
-             print("Data", data)
+         if len(fname)>0:
+             print("doSave  all %s of size %d" % (fname, self.pDataSize))
+             f = open( fname,"w", encoding="cp1252")
+             csvf =csv.writer(f, lineterminator="\n")
+             self.writeCsvHeader(csvf)
+             data = []
+             #print(self.pData)
+             for k,v  in self.pData.items():
+                 print("Key %s is unit is %s"% (k, v[0][3]))
+                 data.append("# Sensor %s Unit %s "   % (k, v[0][3]))
              csvf.writerow(data)
-         self.dirty = False
-         f.close()
+             for i in range(self.pDataSize):
+                 print("Raw data", self.rawdata[i])
+                 data = [self.rawdata[i][0],self.pData['generic2'][i][2], self.pData['generic2'][i][3]]
+                 data.extend([ self.pData['generic1'][i][2],  self.pData['generic1'][i][3] ])
+                 print("Data", data)
+                 csvf.writerow(data)
+             self.dirty = False
+             f.close()
 
     def help_about(self):
         dlg = QMessageBox()
