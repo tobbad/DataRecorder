@@ -181,7 +181,7 @@ class SensorDisplay(QMainWindow):
         self.plotname = ""
         self.closeOk = False
         self.sensor = None
-        self.YoctopuceTask= None
+        self.YoctopuceTask = None
         self.capture()
 
     def setUpGUI(self):
@@ -499,7 +499,6 @@ class SensorDisplay(QMainWindow):
         
         hbox.addWidget(QLabel("File name"))
         self.QFilename = QLineEdit()
-        print("Line edit %s" % self.QFilename)
         self.QFilename.setText("")
         
         hbox.addWidget(self.QFilename)
@@ -668,6 +667,8 @@ class SensorDisplay(QMainWindow):
          self.yoctoTask.removal.connect(self.removal)
          self.yoctoTask.moveToThread(self.yoctoThread)
          self.yoctoTask.updateSignal.connect(self.append_data)
+         self.yoctoTask.startTask.emit()
+
 
     @property
     def connected(self):
@@ -776,10 +777,10 @@ class SensorDisplay(QMainWindow):
             self.showGen2CB.setStyleSheet("background-color:white")
             self.frame1.setStyleSheet("background-color:white")
             self.frame2.setStyleSheet("background-color:white")
-        print("\tStart is %s" % (self.btnState["Start"]))
-        print("\tStop  is %s" % (self.btnState["Stop"]))
-        print("\tClear is %s" % (self.btnState["Clear"]))
-        print("\tSave  is %s" % (self.btnState["Save"]))
+        #print("\tStart is %s" % (self.btnState["Start"]))
+        #print("\tStop  is %s" % (self.btnState["Stop"]))
+        #print("\tClear is %s" % (self.btnState["Clear"]))
+        #print("\tSave  is %s" % (self.btnState["Save"]))
 
         if self.btnState["Start"]:
             self.btn["Start"].show()
@@ -804,7 +805,7 @@ class SensorDisplay(QMainWindow):
     def doStart(self):
         print("doStart")
         self.onTimingChanged()
-        print("Show buttons in doStart/Task is %s" % (self.yoctoTask))
+        print("Show buttons in doStart" )
 
         self.btnState["Start"] = False
         self.btnState["Stop"] = True

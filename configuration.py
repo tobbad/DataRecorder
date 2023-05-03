@@ -103,7 +103,7 @@ class configuration:
         self._yfunction ={}
         
         for c in self.et.iter():
-            print("\t", c.tag, c. attrib)
+            #print("\t", c.tag, c. attrib)
             if c.tag == "capturetime":
                 self._captureTime= {"time":int(c.attrib["time"]), "unit":c.attrib["unit"]}
                 #print("Set capture time to %s" % (self._captureTime))
@@ -113,7 +113,6 @@ class configuration:
             if c.tag == "source":
                 self._source = c.attrib["host"]
             if c.tag == "yfunction":
-                print(c.attrib)
                 self._yfunction[c.attrib["id"].replace("Sensor","")] = {"signalName":c.attrib["signalName"],
                                                 "type": c.attrib["type"],
                                                 "rawMin": float(c.attrib["rawMin"]),
@@ -123,9 +122,9 @@ class configuration:
                                                 "unit": str(c.attrib["unit"])
                                                 }
 
-        print("Yfunction added %s" % (self._yfunction))
-        print("source added %s" % (self._source))
-        print("Configured Capture data during %d %s with datarate of %d %s " %(self._captureTime["time"], self._captureTime["unit"], self._sampleInterval["time"], self._sampleInterval["unit"]))
+        #print("Yfunction added %s" % (self._yfunction))
+        #print("source added %s" % (self._source))
+        #print("Configured Capture data during %d %s with datarate of %d %s " %(self._captureTime["time"], self._captureTime["unit"], self._sampleInterval["time"], self._sampleInterval["unit"]))
           
     def save(self, doSave):
         print("Save configuration", (self._captureTime, self._sampleInterval))

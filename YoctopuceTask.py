@@ -136,18 +136,20 @@ class YoctopuceTask(QObject):
         self.removal.emit({})
  
     def capture_start(self):
+        print("Start capture %d samples with report freq %s" % (self.capture_size, self.reportFrequncy))
         self.doCapture = True
         return self.doCapture
     def SetUpCapture(self):
-        print("Capture in Yoctopuc Task started (cnt = %d  with %d ms)" % (self.capture_size, self.sampel_interval_ms))
+        print("Set up capture in Yoctopuc Task started (cnt = %d  with %d ms)" % (self.capture_size, self.sampel_interval_ms))
         if self.capture_size > 0 and self.sampel_interval_ms > 0:
             for s in self.sensor.values():
-                print("Register cb on %s with samples cnt %d" % (s, self.capture_size))
+                print("\tRegister cb on %s with samples cnt %d" % (s, self.capture_size))
                 s.registerTimedReportCallback(self.new_data)
                 s.set_reportFrequency(self.reportFrequncy)
-            print("Yoctopuc Capture started on %s" % (self.sensor))
+            print("Capture set up on  %s" % (self.sensor))
 
     def new_data(self, fct, measure=None):
+
         if self.superVisorTimer == None:
             self.fb_sampel_interval_ms = self.sampel_interval_ms+self.timeout_add
             self.superVisorTimer = QTimer(self)
@@ -155,15 +157,12 @@ class YoctopuceTask(QObject):
             self.superVisorTimer.timeout.connect(self.new_data_superVisor)
             self.superVisorTimer.start()
             print("Initial timer to %d ms" % self.fb_sampel_interval_ms)
-        #print("%s  %s" %(type(fct), type(measure)))
         if self.doCapture:
             if self.startTime is None:
-                # Set up capture
-                self.SetUpCapture()
                 # Set up start time
                 self.startTimedt = datetime.datetime.now()
                 self.startTime = self.startTimedt.now()
-                print("Capture started on %s with time %s" % (self.sensor, self.startTime))
+                print("Capture started @ %s" % (self.startTime))
                 self._sampleCnt = 0
              # Get currrent time
             now = datetime.datetime
@@ -253,20 +252,23 @@ class YoctopuceTask(QObject):
             if self.sampel_interval_ms > 1000:
                 self.reportFrequncy = "%ds" % (self.sampel_interval_ms/1000)
             else:
-                self.reportFrequncy = "%d/s" % (1000/self.sampel_interval_ms )
+                C = "%d/s" % (1000/self.sampel_interval_ms )
         else:
             self.reportFrequncy = "OFF"
         for s in self.sensor.values():
             s.set_reportFrequency(self.reportFrequncy)
-        print("Y Set Sample interval to %d, Rep Freq to %s" %((sampel_interval_ms, self.reportFrequncy  )))
+        print("\t Set Sample interval to %d, Rep Freq to %s" %((sampel_interval_ms, self.reportFrequncy  )))
         self.logfun("Set Sample interval to %d, Rep Freq to %s" % (sampel_interval_ms, self.reportFrequncy  ))
+        self.SetUpCapture()
+
 
     def set_capture_size(self, capture_size):
         self.capture_size = capture_size
         self.logfun("Capture size is set to  %d" % (capture_size))
-        print("Capture size is set to %d" % (capture_size))
+        print("\t Set Capture size ito %d" % (capture_size))
         self._sampleCnt = 0
         self.capture_size =capture_size
+        self.SetUpCapture()
 
     def functionValueChangeCallback(self, fct: YFunction, value: str):
         hardwareId = fct.get_hardwareId()
