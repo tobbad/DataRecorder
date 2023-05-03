@@ -308,8 +308,11 @@ class sensor:
         return str(self.sen).split("=")[1].split(".")[1]
 
     def get_values(self):
-        val = self.sen.get_currentValue()
-        res = [self.function, val, self.sen.get_unit()]
+        if self.sen.isOnline():
+            val = self.sen.get_currentValue()
+            res = [self.function, val, self.sen.get_unit()]
+        else:
+            res = [self.functionType, -29999.0, "mA"]
         return res
 
     def capture_stop(self):

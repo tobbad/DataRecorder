@@ -183,8 +183,9 @@ class SensorDisplay(QMainWindow):
         self.sensor = None
         self.YoctopuceTask= None
         self.capture()
+        self.yoctoTask.startTask.emit()
 
-    def setUpGUI(self):    
+    def setUpGUI(self):
         self.setWindowTitle("DataRecorder")
         self.setWindowIcon(QIcon(":/stop.svg"))
         self.addMenuBar()
@@ -672,7 +673,6 @@ class SensorDisplay(QMainWindow):
          self.yoctoTask.removal.connect(self.removal)
          self.yoctoTask.moveToThread(self.yoctoThread)
          self.yoctoTask.updateSignal.connect(self.append_data)
-         self.yoctoTask.startTask.emit()
 
     @property
     def connected(self):
@@ -801,6 +801,11 @@ class SensorDisplay(QMainWindow):
         else:
             self.btn["Save"].hide()
 
+        if self.btnState["Clear"]:
+            self.btn["Clear"].show()
+        else:
+            self.btn["Clear"].hide()
+
     def doStart(self):
         print("doStart")
         self.onTimingChanged()
@@ -869,7 +874,6 @@ class SensorDisplay(QMainWindow):
                 self.yoctoTask.stopTask.emit()
                 self.doRecord = False
                 self.progressBar.setValue(int(100))
-
                 self.intervalFrame.show()
             else:
                 print("Continue recording")
