@@ -46,14 +46,13 @@ class YoctopuceTask(QObject):
         self.stopTask.connect(self.freeAPI)
         self.sensor = {}
         self.capture_size = 0
-        
+        self.initAPI()
         self.timer = QTimer()
         self.timer.timeout.connect(self.handleEvents)
         self.timer.start(50)
         self.checkDevices = 0
         self._sampleCnt = 0
         self.file = None
-        self.initAPI()
         self.reportFrequncy = "1s"
         self.sampel_interval_ms = 1000
         self.superVisorTimer = None
@@ -63,7 +62,6 @@ class YoctopuceTask(QObject):
         self.connected = False
         self.doCapture = False
         self.startTime = None
-        self.initAPI()
 
 
     @pyqtSlot()

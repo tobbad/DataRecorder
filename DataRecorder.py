@@ -183,7 +183,6 @@ class SensorDisplay(QMainWindow):
         self.sensor = None
         self.YoctopuceTask= None
         self.capture()
-        self.yoctoTask.startTask.emit()
 
     def setUpGUI(self):
         self.setWindowTitle("DataRecorder")
@@ -292,7 +291,6 @@ class SensorDisplay(QMainWindow):
         
         layout.addLayout(hbox)
 
-        
         onlyUInt = QIntValidator( 1, 65535, self)
         self.frameXMinMax = QFrame()
         hbox =QHBoxLayout()
@@ -334,7 +332,7 @@ class SensorDisplay(QMainWindow):
         hbox.addWidget(self.maxy)
         self.frameYMinMax.setLayout(hbox)
         layout.addWidget(self.frameYMinMax)
-        
+
         self.fixedUpdate()
         
         
@@ -511,12 +509,9 @@ class SensorDisplay(QMainWindow):
         hbox.addWidget(self.QPlotname)
 
         layout.addLayout(hbox)
-        
-               
         self.onTimingChanged()
-        layout.addLayout(hbox)
- 
         res.setLayout(layout)
+
         self.QFilename.textChanged.connect(self.recorderFileNameChanged)
         self.QPlotname.textChanged.connect(self.plotNameChanged)
         self.sIntVal_edit.textChanged.connect(self.onTimingChanged)
@@ -809,7 +804,6 @@ class SensorDisplay(QMainWindow):
     def doStart(self):
         print("doStart")
         self.onTimingChanged()
-        self.yoctoTask.startTask.emit()
         print("Show buttons in doStart/Task is %s" % (self.yoctoTask))
 
         self.btnState["Start"] = False
@@ -970,7 +964,7 @@ class SensorDisplay(QMainWindow):
 
     def onTimingChanged(self):
         if not self.doRecord:
-            print("Call onTimingChanged in recording %s do Save %s" % ( self.sampleUnit.currentIndex(), self._doSave))
+            #print("Call onTimingChanged in recording %s do Save %s" % ( self.sampleUnit.currentIndex(), self._doSave))
             self.sampInt= {"time":0, "unit":"ms"}
             if self.sampleUnit.currentIndex()==0:
                 self.sampInt["unit"] = "ms"
@@ -985,7 +979,7 @@ class SensorDisplay(QMainWindow):
             self.setSampleInterval_ms *= sInt
             if self.yoctoTask is not None:
                 self.yoctoTask.setSampleInterval_ms(self.setSampleInterval_ms)
-            print("Sample intervall is %d %s" % (  self.sampInt["time"],  self.sampInt["unit"]))
+            #print("Sample intervall is %d %s" % (  self.sampInt["time"],  self.sampInt["unit"]))
 
             self.capTime= {"time":0, "unit":"m"}
             if self.sampcapDur.currentIndex()==0:
@@ -1005,7 +999,7 @@ class SensorDisplay(QMainWindow):
                 self.conf.CaptureTime = self.capTime
 
             self.capture_size = ceil(float(1000*self.captureTime_s)/(float(self.setSampleInterval_ms)))
-            print("Set capture time %d %s; Size: is %d samples; Interval @ %f %s" % ( self.captureTime_s, self.capTime["unit"], self.capture_size ,self.setSampleInterval_ms, self.sampInt["unit"]))
+            #print("Set capture time %d %s; Size: is %d samples; Interval @ %f %s" % ( self.captureTime_s, self.capTime["unit"], self.capture_size ,self.setSampleInterval_ms, self.sampInt["unit"]))
             if self.yoctoTask is not None:
                 self.yoctoTask.set_capture_size(self.capture_size)
             if self._doSave and self.conf != None:
@@ -1014,7 +1008,7 @@ class SensorDisplay(QMainWindow):
             else:
                 print("Do not save")
         else:
-            print("Do record")
+            print("Skip as do not record")
 
 
     def tabChanged(self, index):
