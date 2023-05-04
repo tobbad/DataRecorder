@@ -60,7 +60,7 @@ class YoctopuceTask(QObject):
         self.takeOver = False
         self.lastTime = 0
         self.connected = False
-        self.doCapture = False
+        self.doRecord = False
         self.startTime = None
 
 
@@ -137,8 +137,8 @@ class YoctopuceTask(QObject):
  
     def capture_start(self):
         print("Start capture %d samples with report freq %s" % (self.capture_size, self.reportFrequncy))
-        self.doCapture = True
-        return self.doCapture
+        self.doRecord = True
+        return self.doRecord
     def SetUpCapture(self):
         print("Set up capture in Yoctopuc Task started (cnt = %d  with %d ms)" % (self.capture_size, self.sampel_interval_ms))
         if self.capture_size > 0 and self.sampel_interval_ms > 0:
@@ -149,15 +149,15 @@ class YoctopuceTask(QObject):
             print("Capture set up on  %s" % (self.sensor))
 
     def new_data(self, fct, measure=None):
-
         if self.superVisorTimer == None:
-            self.fb_sampel_interval_ms = self.sampel_interval_ms+self.timeout_add
+            self.sampleIntervalUpdate  = True
             self.superVisorTimer = QTimer(self)
-            self.superVisorTimer.setInterval(self.fb_sampel_interval_ms)
+            sampleIntfb = self.sampel_interval_ms+self.timeout_add
+            self.superVisorTimer.setInterval(sampleIntfb)
             self.superVisorTimer.timeout.connect(self.new_data_superVisor)
             self.superVisorTimer.start()
-            print("Initial timer to %d ms" % self.fb_sampel_interval_ms)
-        if self.doCapture:
+            print("Create supervisor thread with %d ms sample intervall" % sampleIntfb)
+        if self.doRecord:
             if self.startTime is None:
                 # Set up start time
                 self.startTimedt = datetime.datetime.now()
@@ -204,7 +204,7 @@ class YoctopuceTask(QObject):
                 print("Finished capture in yoctopuc")
 
     def fakeCB(self):
-        if self.connected == False and self.doCapture:
+        if self.connected == False and self.doRecord:
             measureTime = datetime.datetime.now()
             delta = (measureTime - self.startTime).total_seconds()
             print("\tConnected False: Send fake data  delta %s, connected %s" % (delta, self.connected))
@@ -213,19 +213,17 @@ class YoctopuceTask(QObject):
 
 
     def new_data_superVisor(self, retrigger=True):
-        if self.doCapture:
+        if self.doRecord:
             # If this is called we have to take over regulary sending data to new_data
-            measureTime = datetime.datetime.now()
-            delta = (measureTime - self.startTime).total_seconds()
             #print("new_data_superVisor fired connected: %d RTime = %s ?"% (self.connected,delta ))
-            if self.sampel_interval_ms != self.fb_sampel_interval_ms :
-                self.fb_sampel_interval_ms = self.fb_sampel_interval_ms
-                self.fb_sampel_interval_ms = self.sampel_interval_ms
+            if self.sampleIntervalUpdate :
                 print("Reset fallback intervall to %d ms -> connect to fakeCB"  % self.sampel_interval_ms)
+                self.superVisorTimer.stop()
                 self.superVisorTimer.setInterval(self.sampel_interval_ms)
                 self.superVisorTimer.timeout.connect(self.fakeCB)
-                self.superVisorTimer.stop()
                 self.superVisorTimer.start()
+                self.sampleIntervalUpdate = False
+
 
     @property
     def sampleCnt(self):
@@ -243,6 +241,7 @@ class YoctopuceTask(QObject):
             self.file = None
         self.superVisorTimer.stop()
         del self.superVisorTimer
+        self.superVisorTimer = None
         #self.freeAPI()
 
     def setSampleInterval_ms(self, sampel_interval_ms):
@@ -252,7 +251,7 @@ class YoctopuceTask(QObject):
             if self.sampel_interval_ms > 1000:
                 self.reportFrequncy = "%ds" % (self.sampel_interval_ms/1000)
             else:
-                C = "%d/s" % (1000/self.sampel_interval_ms )
+                self.reportFrequncy = "%d/s" % (1000/self.sampel_interval_ms )
         else:
             self.reportFrequncy = "OFF"
         for s in self.sensor.values():

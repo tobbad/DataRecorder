@@ -157,7 +157,6 @@ class SensorDisplay(QMainWindow):
         self.filename = "./"
         self.emdata=None
         self.btn = {}
-        self.doRecord = False
         self.capture_size = 0
         self.setSampleInterval_ms =1
         self.captureTime_s = 1
@@ -171,6 +170,7 @@ class SensorDisplay(QMainWindow):
         self.data1 = None
         self.data2 = None
         self.emData = []
+        self.doRecord = False
         self.onGoing = False
         self.nanFile = None
         self.csvNaNFile = None
@@ -814,12 +814,12 @@ class SensorDisplay(QMainWindow):
         if self.yoctoTask is None:
             print("No sensor connected")
         if self.yoctoTask.capture_start():
+            self.doRecord = True
             self.onGoing = True
             self.intervalFrame.hide()
             self.rFile = None
             self.csvFile= None
 
-            self.doRecord = True
             print("Start record on %s" %self.yoctoTask.startTask)
             self.setNewData()
             self.updatePlots()
@@ -845,7 +845,6 @@ class SensorDisplay(QMainWindow):
 
     def doStop(self):
         print("called doStop")
-
         # Ask for really Stop
         dlg =  StopRecordingDlg(self)
         res = dlg.exec_()
