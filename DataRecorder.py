@@ -249,10 +249,12 @@ class SensorDisplay(QMainWindow):
             self.frameXMinMax.show()
         elif self.xaxisScale.currentIndex()==0:
             self.frameXMinMax.hide()
+
         if self.yaxisScale.currentIndex() == 1:
             self.frameYMinMax.show()
         elif self.xaxisScale.currentIndex()==0:
             self.frameYMinMax.hide()
+
 
 
     def Recorder(self):
@@ -327,8 +329,8 @@ class SensorDisplay(QMainWindow):
         hbox.addWidget(self.maxyLabel)
         self.maxy= QLineEdit()
         self.maxy.setAlignment(Qt.AlignRight| Qt.AlignVCenter)
-        self.maxy.setText("0")
         self.maxy.setValidator(onlyUInt)
+        self.maxy.setText("0")
         hbox.addWidget(self.maxy)
         self.frameYMinMax.setLayout(hbox)
         layout.addWidget(self.frameYMinMax)
@@ -391,7 +393,6 @@ class SensorDisplay(QMainWindow):
         self.progressBar.resize(300,100)
         hbox.addWidget(self.progressBar)
         layout.addLayout(hbox)
-
 
         self.frame1 = QFrame()
         self.frame1.setStyleSheet("QFrame {background-color: rgb(255, 255, 255);"
@@ -1097,7 +1098,27 @@ class SensorDisplay(QMainWindow):
                 self._actRawVal1.setText("%.2f" % g1RawLast)
                 self._actRawMin1.setText("%.2f" % g1Rawmin)
                 self._actRawMax1.setText("%.2f" % g1Rawmax)
-                self.recorderGraph.plot(x, g1, name="generic1", pen=pg.mkPen("green"))
+                pl = self.recorderGraph.plot(x, g1, name="generic1", pen=pg.mkPen("green"))
+                if self.xaxisScale.currentIndex() == 1:
+                    tmin = int(self.minTime.text())
+                    tmax = int(self.maxTime.text())
+                    print("Set x range to %d..%d" % (tmin, tmax))
+                    self.recorderGraph.setXRange(tmin, tmax, padding=0)
+                    self.recorderGraph.disableAutoRange(self.recorderGraph.ViewBox.XAxis)
+                else:
+                    print("enable x autoscale")
+                    self.recorderGraph.enableAutoRange(self.recorderGraph.ViewBox.XAxis)
+
+
+                if self.yaxisScale.currentIndex() == 1:
+                    minY = int(self.miny.text())
+                    maxY = int(self.maxy.text())
+                    print("Set y range to %d..%d" % (minY, maxY))
+                    self.recorderGraph.setYRange(minY, maxY, padding=0)
+                    self.recorderGraph.disableAutoRange(self.recorderGraph.ViewBox.YAxis)
+                else:
+                    self.recorderGraph.enableAutoRange(self.recorderGraph.ViewBox.YAxis)
+                    print("enable y autoscale")
             else:
                 self.frame1.hide()
 
