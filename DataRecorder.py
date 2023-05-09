@@ -38,17 +38,15 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QPushButton,
     QLabel, 
-    QSpinBox, 
-    QComboBox, 
+    QComboBox,
     QProgressBar, 
     QLineEdit, 
     QGridLayout, 
     QFrame,
     QCheckBox,
-    QRadioButton,
     QDialogButtonBox,
     QDialog,
-    QMessageBox,
+    QMessageBox
 )
 from PyQt5.QtGui import (
     QIcon, 
@@ -254,6 +252,7 @@ class SensorDisplay(QMainWindow):
             self.frameYMinMax.show()
         elif self.xaxisScale.currentIndex()==0:
             self.frameYMinMax.hide()
+        self.updatePlots()
 
 
 
@@ -297,7 +296,7 @@ class SensorDisplay(QMainWindow):
         self.frameXMinMax = QFrame()
         hbox =QHBoxLayout()
 
-        self.minLabel =QLabel("Showed minimal time")
+        self.minLabel =QLabel("Minimal time")
         hbox.addWidget(self.minLabel)
         self.minTime = QLineEdit()
         self.minTime.setAlignment(Qt.AlignRight| Qt.AlignVCenter)
@@ -305,7 +304,7 @@ class SensorDisplay(QMainWindow):
         self.minTime.setValidator(onlyUInt)
         hbox.addWidget(self.minTime)
         
-        self.maxLabel =QLabel("Showed maximal time")
+        self.maxLabel =QLabel("Maximal time")
         hbox.addWidget(self.maxLabel)
         self.maxTime = QLineEdit()
         self.maxTime.setAlignment(Qt.AlignRight| Qt.AlignVCenter)
@@ -1099,25 +1098,21 @@ class SensorDisplay(QMainWindow):
                 self._actRawMin1.setText("%.2f" % g1Rawmin)
                 self._actRawMax1.setText("%.2f" % g1Rawmax)
                 pl = self.recorderGraph.plot(x, g1, name="generic1", pen=pg.mkPen("green"))
+                vp = self.recorderGraph.getViewBox()
                 if self.xaxisScale.currentIndex() == 1:
                     tmin = int(self.minTime.text())
                     tmax = int(self.maxTime.text())
-                    print("Set x range to %d..%d" % (tmin, tmax))
                     self.recorderGraph.setXRange(tmin, tmax, padding=0)
-                    self.recorderGraph.disableAutoRange(self.recorderGraph.ViewBox.XAxis)
+                    vp.disableAutoRange(axis="x")
                 else:
-                    print("enable x autoscale")
-                    self.recorderGraph.enableAutoRange(self.recorderGraph.ViewBox.XAxis)
-
+                    vp.enableAutoRange(axis="x")
 
                 if self.yaxisScale.currentIndex() == 1:
                     minY = int(self.miny.text())
                     maxY = int(self.maxy.text())
-                    print("Set y range to %d..%d" % (minY, maxY))
                     self.recorderGraph.setYRange(minY, maxY, padding=0)
-                    self.recorderGraph.disableAutoRange(self.recorderGraph.ViewBox.YAxis)
+                    vp.disableAutoRange(axis="y")
                 else:
-                    self.recorderGraph.enableAutoRange(self.recorderGraph.ViewBox.YAxis)
                     print("enable y autoscale")
             else:
                 self.frame1.hide()
