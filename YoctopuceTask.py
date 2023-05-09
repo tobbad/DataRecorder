@@ -25,7 +25,7 @@ def except_hook(cls, exception, traceback):
     sys.__excepthook__(cls, exception, traceback)
 sys.excepthook = except_hook
 
-def currThread():
+def currThread() -> object:
     return '[thread-' + str(int(QThread.currentThreadId())) + ']'
 
 class YoctopuceTask(QObject):
@@ -46,7 +46,6 @@ class YoctopuceTask(QObject):
         self.stopTask.connect(self.freeAPI)
         self.sensor = {}
         self.capture_size = 0
-        self.initAPI()
         self.timer = QTimer()
         self.timer.timeout.connect(self.handleEvents)
         self.timer.start(50)
@@ -66,7 +65,7 @@ class YoctopuceTask(QObject):
 
     @pyqtSlot()
     def initAPI(self):
-        print('Yoctopuce task started', currThread())
+        print('Yoctopuce initAPI in %s' % currThread())
         self.yocto_err = YRefParam()
         YAPI.RegisterLogFunction(self.logfun)
         # Setup the API to use Yoctopuce devices on localhost
@@ -81,7 +80,8 @@ class YoctopuceTask(QObject):
 
     @pyqtSlot()
     def freeAPI(self):
-        self.timer.stop()
+        self.capture_stop()
+        print("Yoctopuce task stopped")
         YAPI.FreeAPI()
         self.statusMsg.emit('Yoctopuce task stopped')
 
@@ -136,11 +136,11 @@ class YoctopuceTask(QObject):
         self.removal.emit({})
  
     def capture_start(self):
-        print("Start capture %d samples with report freq %s" % (self.capture_size, self.reportFrequncy))
+        print("Start capture  %d samples with report freq %s" % (self.capture_size, self.reportFrequncy))
         self.doRecord = True
         return self.doRecord
     def SetUpCapture(self):
-        print("Set up capture in Yoctopuc Task started (cnt = %d  with %d ms)" % (self.capture_size, self.sampel_interval_ms))
+        print("Set up capture in Yoctopuc Task (%s) started (cnt = %d  with %d ms)" % (currThread(), self.capture_size, self.sampel_interval_ms))
         if self.capture_size > 0 and self.sampel_interval_ms > 0:
             for s in self.sensor.values():
                 print("\tRegister cb on %s with samples cnt %d" % (s, self.capture_size))
@@ -151,6 +151,7 @@ class YoctopuceTask(QObject):
     def new_data(self, fct, measure=None):
         if self.superVisorTimer == None:
             self.sampleIntervalUpdate  = True
+            print("Set up timer in Thread in %s" % (currThread()))
             self.superVisorTimer = QTimer(self)
             sampleIntfb = self.sampel_interval_ms+self.timeout_add
             self.superVisorTimer.setInterval(sampleIntfb)
@@ -231,18 +232,23 @@ class YoctopuceTask(QObject):
         return self._sampleCnt
     
     def capture_stop(self):
-        print("Capture in Yoctopuc Task finished ")
-        for s in self.sensor.values():
-            s.capture_stop()
-        print("Capture finished on sensors")
-        if self.file is not None:
-            self.file.close()
-            print("Removed file reference")
-            self.file = None
-        self.superVisorTimer.stop()
-        del self.superVisorTimer
-        self.superVisorTimer = None
-        #self.freeAPI()
+        if self.superVisorTimer is None:
+            print("Capture in Yoctopuc Task %s finished  "% currThread())
+            for s in self.sensor.values():
+                s.capture_stop()
+            if self.file is not None:
+                self.file.close()
+                print("Removed file reference")
+                self.file = None
+            print("Before stop in thread %s" % currThread())
+            self.superVisorTimer.stop()
+            print("After stop")
+            del self.superVisorTimer
+            self.superVisorTimer = None
+            self.freeAPI()
+            del self
+        else:
+            print("Yoctopuc API is removed")
 
     def setSampleInterval_ms(self, sampel_interval_ms):
         self.sampel_interval_ms = sampel_interval_ms
