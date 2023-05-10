@@ -37,7 +37,7 @@ class YoctopuceTask(QObject):
     arrival = pyqtSignal(dict)      # out: publish a new device arrival
     newValue = pyqtSignal(str,str)  # out: publish a new function value
     removal = pyqtSignal(dict)      # out: publish a device disconnect
-    updateSignal = pyqtSignal(list) # out: Send data to th gui
+    updateSignal = pyqtSignal(list) # out: Send data to the gui
 
     def __init__(self):
         super(YoctopuceTask, self).__init__()
@@ -80,10 +80,13 @@ class YoctopuceTask(QObject):
 
     @pyqtSlot()
     def freeAPI(self):
+        print("freeAPI")
         self.capture_stop()
         print("Yoctopuce task stopped")
         YAPI.FreeAPI()
         self.statusMsg.emit('Yoctopuce task stopped')
+        self.capture_stop()
+        print("Sensors are stopped")
 
     @pyqtSlot()
     def handleEvents(self):
@@ -232,7 +235,7 @@ class YoctopuceTask(QObject):
         return self._sampleCnt
     
     def capture_stop(self):
-        if self.superVisorTimer is None:
+        if self.superVisorTimer != None:
             print("Capture in Yoctopuc Task %s finished  "% currThread())
             for s in self.sensor.values():
                 s.capture_stop()
@@ -349,7 +352,7 @@ if __name__ == "__main__":
     s.capture_start()
     print("wait for acquisition finished")
     while s.sampleCnt < cnt:
-        print("Stil receve %d" % cnt)
+        print("Stil receive %d" % cnt)
         sleep(1)
     print("Aqistion stop")
     s.capture_stop()

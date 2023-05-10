@@ -5,7 +5,7 @@ Created on Mon Feb  6 09:47:21 2023
 @author: tobias.badertscher
 """
 import sys, os
-import optparse
+import time as ti
 import csv
 from math import ceil, isnan
 from datetime import *
@@ -626,14 +626,17 @@ class SensorDisplay(QMainWindow):
                 if self.csvFile is None:
                     now = datetime.now()
                     nowS = now.strftime("%Y%m%d_%H%M%S.csv")
-                    print("Set time to %s" % nowS)
+                    print("Set up file %s with %d Samples with Sampleinterval of %d %s" %(nowS,self.capture_size, self.conf.SampleInterval["time"],  self.conf.SampleInterval["unit"] ))
+                    #print(" Samples with Sampleinterval of %d ??" % (self.conf.SampleInterval["time"] ))
+                    #print(" Samples with Sampleinterval of ?? %s" % (  self.conf.SampleInterval["unit"] ))
+                    #print("Sample Cnt to %s  " % (type(self.conf.SampleInterval["time"]) ))
                     self.QFilename.setText(nowS)
                     self.filename = nowS
                     self.rFile = open(nowS, "w")
                     self.csvFile = csv.writer(self.rFile, lineterminator="\n")
                     self.writeCsvHeader(self.csvFile)
                 self.csvFile.writerow(pData)
-                print("Data %d/%d (size=%d) %s appended." % (len(self.rawdata), self.capture_size, len(pData), pData))
+                print("Data %d/%d %s." % (len(self.rawdata), self.capture_size,  pData))
                 if len(self.rawdata) % 20 == 0:
                     self.setNewData()
                     self.updatePlots()
@@ -818,24 +821,34 @@ class SensorDisplay(QMainWindow):
         self.updateConnected()
 
     def stopCapture(self):
-        print("Stop recording")
+        print("Yoctopuc Task stop")
         self.doRecord = False
-        self.stopTask.emit()
+        self.yoctoTask.stopTask.emit()
         print("Show buttons in stopCapture")
         if self.nanFile is not None:
             self.nanFile.close()
         self.nanFile = None
         self.rFile.close()
         self.rFile = None
+        self.yoctoThread.exit()
+        while self.yoctoThread.isRunning():
+            print("Wait for thread to exit")
+            ti.sleep(1)
+        print("Set yoctoTask to None ")
+        del self.yoctoThread
+        del self.yoctoTask
+        self.yoctoThread = None
+        self.yoctoTask = None
+        self.doRecord = False
+        print("Show buttons in doStop")
         self.btnState["Start"] = False
         self.btnState["Stop"] = False
         self.btnState["Clear"] = True
         self.btnState["Save"] = True
         self.updateConnected()
-        del self.yoctoThread
-        del self.yoctoTask
-        self.yoctoThread = None
-        self.yoctoTask = None
+
+        self.progressBar.setValue(int(100))
+        self.intervalFrame.show()
 
     def doStop(self):
         # Ask for really Stop
@@ -845,24 +858,7 @@ class SensorDisplay(QMainWindow):
             state = dlg.state()
             print("Returned by dlg: %d " % state)
             if state:
-                print("doStop: Yoctopuc Task stop")
-                self.capture_size = self.pDataSize
-                if self.nanFile is not None:
-                    self.nanFile.close()
-                self.rFile.close()
-                print("Show buttons in doStop")
-                self.btnState["Start"] = False
-                self.btnState["Stop"] = False
-                self.btnState["Clear"] = True
-                self.btnState["Save"] = True
-                self.updateConnected()
-                self.doRecord = False
-                print("Emit yoctotask stop")
-                self.yoctoTask.stopTask.emit()
-                self.yoctoThread = None
-                self.yoctoTask = None
-                self.progressBar.setValue(int(100))
-                self.intervalFrame.show()
+                self.stopCapture()
             else:
                 print("doStop: Continue recording")
 
