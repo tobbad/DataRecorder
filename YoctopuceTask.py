@@ -20,6 +20,7 @@ from PyQt5.QtCore import pyqtSlot, pyqtSignal, QObject, QThread, QTimer
 sys.path.append(os.path.join("..", "yoctolib_python", "Sources"))
 from yocto_api import *
 from yocto_genericsensor import *
+from yocto_currentloopoutput import *
 
 def except_hook(cls, exception, traceback):
     sys.__excepthook__(cls, exception, traceback)
@@ -45,6 +46,7 @@ class YoctopuceTask(QObject):
         self.startTask.connect(self.initAPI)
         self.stopTask.connect(self.freeAPI)
         self.sensor = {}
+        self.oSensor = {}
         self.capture_size = 0
         self.timer = QTimer()
         self.timer.timeout.connect(self.handleEvents)
@@ -106,18 +108,69 @@ class YoctopuceTask(QObject):
     def deviceArrival(self, m: YModule):
         newSensorList = []
         serialNumber = m.get_serialNumber()
-        print("Y: Device arrival SerNr %s %s, " % (serialNumber, m))
-        pSensor = YGenericSensor.FirstGenericSensor()
-        print("Sensor %s" %pSensor )
-        if len(self.sensor)>3:
+        print("Y: Output Device arrival SerNr %s %s" % (serialNumber, m))
+        if serialNumber == "RX420MA1-16CAEA":
+            pSensor = YGenericSensor.FirstGenericSensor()
+            print("Sensor %s" % pSensor)
+            if len(self.sensor) > 3:
+                return
+            while pSensor != None:
+                newSensor = sensor(pSensor)
+                newSensorList.append(newSensor)
+                print("Added sensor %s " % (newSensor))
+                pSensor = YGenericSensor.nextGenericSensor(pSensor)
+            sen = {}
+            for s in newSensorList:
+                print(s.function)
+                sen[s.function] = s
+            self.sensor = sen
+            self.connected = True
+            print("Registered %d Sensors %s" % (len(self.sensor), self.sensor))
+            if self.connected:
+                print("Y: device Arrival, setUpCapture")
+                self.SetUpCapture()
+            self.connected = True
+            self.arrival.emit(self.sensor)
+            if len(self.sensor) == 0:
+                print("No sensors detected")
+                sys.exit()
+        elif serialNumber == "TX420MA1-151ECE":
+            pSensor = YCurrentLoopOutput.FirstCurrentLoopOutput()
+            print("Output Sensor %s" %pSensor )
+            if len(self.oSensor) > 3:
+                return
+            while pSensor != None:
+                newSensor = sensor(pSensor)
+                newSensorList.append(newSensor)
+                print("Added sensor %s " % (newSensor))
+                pSensor = YCurrentLoopOutput.nextCurrentLoopOutput(pSensor)
+            sen = {}
+            for s in newSensorList:
+                print(s.function)
+                sen[s.function] = s
+            self.oSensor = sen
+            self.connected = True
+            print("Registered %d Sensors %s" % (len(self.oSensor), self.oSensor))
+            if self.connected:
+                print("Y: device Arrival, setUpPlayback")
+                self.SetUpPlayback()
+            self.connected = True
+            self.arrival.emit(self.oSensor)
+            if len(self.oSensor) == 0:
+                print("No sensors detected")
+                sys.exit()
+
+    def copyPaste(self):
+        if len(self.sensor) > 3:
             return
         while pSensor != None:
             newSensor = sensor(pSensor)
             newSensorList.append(newSensor)
-            print("Added sensor %s " %(newSensor))
+            print("Added sensor %s " % (newSensor))
             pSensor = YGenericSensor.nextGenericSensor(pSensor)
         sen = {}
         for s in newSensorList:
+            print(s.function)
             sen[s.function] = s
         self.sensor = sen
         self.connected = True
@@ -138,14 +191,19 @@ class YoctopuceTask(QObject):
         # pass the disconnect to the UI thread via the removal signal
         self.removal.emit({})
  
-    def capture_start(self):
-        print("Start capture  %d samples with report freq %s" % (self.capture_size, self.reportFrequncy))
-        self.doRecord = True
-        return self.doRecord
     def SetUpCapture(self):
         print("Set up capture in Yoctopuc Task (%s) started (cnt = %d  with %d ms)" % (currThread(), self.capture_size, self.sampel_interval_ms))
         if self.capture_size > 0 and self.sampel_interval_ms > 0:
             for s in self.sensor.values():
+                print("\tRegister cb on %s with samples cnt %d" % (s, self.capture_size))
+                s.registerTimedReportCallback(self.new_data)
+                s.set_reportFrequency(self.reportFrequncy)
+            print("Capture set up on  %s" % (self.sensor))
+
+    def SetUpPlayback(self):
+        print("Set up play back in Yoctopuc Task (%s) started (cnt = %d  with %d ms)" % (currThread(), self.capture_size, self.sampel_interval_ms))
+        if self.capture_size > 0 and self.sampel_interval_ms > 0:
+            for s in self.outsensor.values():
                 print("\tRegister cb on %s with samples cnt %d" % (s, self.capture_size))
                 s.registerTimedReportCallback(self.new_data)
                 s.set_reportFrequency(self.reportFrequncy)
@@ -233,7 +291,11 @@ class YoctopuceTask(QObject):
     def sampleCnt(self):
         print("Sample count %d" % self._sampleCnt)
         return self._sampleCnt
-    
+    def capture_start(self):
+        print("Start capture  %d samples with report freq %s" % (self.capture_size, self.reportFrequncy))
+        self.doRecord = True
+        return self.doRecord
+
     def capture_stop(self):
         if self.superVisorTimer != None:
             print("Capture in Yoctopuc Task %s finished  "% currThread())
@@ -295,10 +357,28 @@ class YoctopuceTask(QObject):
 class sensor:
     def __init__(self, sensor):
         self.sen = sensor
+        print("Added ")
         name = sensor.get_friendlyName()
         self._name = str(self.sen).split("=")[1].split(".")[1].replace("Sensor","")
         self.type = self.sen.get_module().get_serialNumber()
         print("Sensor functionname is %s ;ModuleId is: %s"% (self.function, self.moduleId))
+        print(self.sen.get_friendlyName())
+        self.functionType = self.sen.get_module().functionType(0)
+
+    def init(self, sensor):
+        self.sen = sensor
+        name = sensor.get_friendlyName()
+        self._name = "Nope"
+        print("Attached %s" % str(self.sen).split("=")[1])
+        if "generic" in str(self.sen).split("=")[1].split(".")[1]:
+            self._name = str(self.sen).split("=")[1].split(".")[1].replace("Sensor", "")
+            self.type = self.sen.get_module().get_serialNumber()
+        elif "CurrentLoop" in str(self.sen).split("=")[1].split(".")[1]:
+            print("Added transmitter")
+            self._name = str(self.sen).split("=")[1].split(".")[1].replace("Transmitter", "trans")
+            self.type = self.sen.get_module().get_serialNumber()
+        print("Sensor functionname is %s ;ModuleId is: %s" % (self.function, self.moduleId))
+        print(self.sen.get_friendlyName())
         self.functionType = self.sen.get_module().functionType(0)
 
     def __str__(self):
@@ -352,7 +432,7 @@ if __name__ == "__main__":
     s.capture_start()
     print("wait for acquisition finished")
     while s.sampleCnt < cnt:
-        print("Stil receive %d" % cnt)
+        print("Still receive %d" % cnt)
         sleep(1)
     print("Aqistion stop")
     s.capture_stop()
