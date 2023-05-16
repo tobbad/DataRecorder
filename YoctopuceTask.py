@@ -44,7 +44,7 @@ class YoctopuceTask(QObject):
         super(YoctopuceTask, self).__init__()
         # connect incoming signals
         self.startTask.connect(self.initAPI)
-        self.stopTask.connect(self.freeAPI)
+        self.stopTask.connect(self.capture_stop)
         self.sensor = {}
         self.oSensor = {}
         self.capture_size = 0
@@ -121,7 +121,7 @@ class YoctopuceTask(QObject):
                 pSensor = YGenericSensor.nextGenericSensor(pSensor)
             sen = {}
             for s in newSensorList:
-                print(s.function)
+                print("Added function %s" %s.function)
                 sen[s.function] = s
             self.sensor = sen
             self.connected = True
@@ -146,7 +146,7 @@ class YoctopuceTask(QObject):
                 pSensor = YCurrentLoopOutput.nextCurrentLoopOutput(pSensor)
             sen = {}
             for s in newSensorList:
-                print(s.function)
+                print("Added function %s" %s.function)
                 sen[s.function] = s
             self.oSensor = sen
             self.connected = True
@@ -170,7 +170,7 @@ class YoctopuceTask(QObject):
             pSensor = YGenericSensor.nextGenericSensor(pSensor)
         sen = {}
         for s in newSensorList:
-            print(s.function)
+            print("Added function %s" % s.function)
             sen[s.function] = s
         self.sensor = sen
         self.connected = True
@@ -218,7 +218,7 @@ class YoctopuceTask(QObject):
             self.superVisorTimer.setInterval(sampleIntfb)
             self.superVisorTimer.timeout.connect(self.new_data_superVisor)
             self.superVisorTimer.start()
-            print("Create supervisor thread with %d ms sample intervall" % sampleIntfb)
+            print("Create supervisor timer in thread= %s with %d ms sample intervall" % (currThread(), sampleIntfb))
         if self.doRecord:
             if self.startTime is None:
                 # Set up start time
@@ -291,6 +291,7 @@ class YoctopuceTask(QObject):
     def sampleCnt(self):
         print("Sample count %d" % self._sampleCnt)
         return self._sampleCnt
+
     def capture_start(self):
         print("Start capture  %d samples with report freq %s" % (self.capture_size, self.reportFrequncy))
         self.doRecord = True
@@ -298,22 +299,16 @@ class YoctopuceTask(QObject):
 
     def capture_stop(self):
         if self.superVisorTimer != None:
-            print("Capture in Yoctopuc Task %s finished  "% currThread())
+            print("Received Signal in thread %s" % currThread())
+            self.superVisorTimer.stop()
+            print("superVisorTimer.stop() ")
             for s in self.sensor.values():
                 s.capture_stop()
             if self.file is not None:
                 self.file.close()
                 print("Removed file reference")
                 self.file = None
-            print("Before stop in thread %s" % currThread())
-            self.superVisorTimer.stop()
-            print("After stop")
-            del self.superVisorTimer
-            self.superVisorTimer = None
-            self.freeAPI()
-            del self
-        else:
-            print("Yoctopuc API is removed")
+            print("Stop supervise")
 
     def setSampleInterval_ms(self, sampel_interval_ms):
         self.sampel_interval_ms = sampel_interval_ms
@@ -356,14 +351,16 @@ class YoctopuceTask(QObject):
 
 class sensor:
     def __init__(self, sensor):
+        self.secondsInStr = None
         self.sen = sensor
         print("Added ")
         name = sensor.get_friendlyName()
         self._name = str(self.sen).split("=")[1].split(".")[1].replace("Sensor","")
         self.type = self.sen.get_module().get_serialNumber()
         print("Sensor functionname is %s ;ModuleId is: %s"% (self.function, self.moduleId))
-        print(self.sen.get_friendlyName())
+        print("Sensor class sensor friendly name %s" % self.sen.get_friendlyName())
         self.functionType = self.sen.get_module().functionType(0)
+        self.secondsInStr = "OFF"
 
     def init(self, sensor):
         self.sen = sensor
@@ -378,7 +375,7 @@ class sensor:
             self._name = str(self.sen).split("=")[1].split(".")[1].replace("Transmitter", "trans")
             self.type = self.sen.get_module().get_serialNumber()
         print("Sensor functionname is %s ;ModuleId is: %s" % (self.function, self.moduleId))
-        print(self.sen.get_friendlyName())
+        print("Sensor class sensor friendly name %s" % self.sen.get_friendlyName())
         self.functionType = self.sen.get_module().functionType(0)
 
     def __str__(self):
@@ -404,12 +401,18 @@ class sensor:
         return res
 
     def capture_stop(self):
-        self.set_reportFrequency("OFF")
-        self.sen.registerTimedReportCallback(None)
+        self.secondsInStr = "OFF"
+        self.sen.muteValueCallbacks()
+        print("Set report to %s.  Mute Yoctopuc" % self.secondsInStr)
+        self.set_reportFrequency(self.secondsInStr)
+
+    def capture_start(self):
+        self.sen.unmuteValueCallbacks()
+        print("Set report %s. Unmute Yoctopuc" % self.secondsInStr)
+        self.set_reportFrequency(self.secondsInStr)
 
     def set_reportFrequency(self, secondsInStr):
-        print("Sensor: Set report frequency to %s" % ( secondsInStr))
-        self.sen.set_reportFrequency(secondsInStr)
+        self.secondsInStr = secondsInStr
 
     def registerTimedReportCallback(self, cb):
         if cb is None:

@@ -210,7 +210,7 @@ class SensorDisplay(QMainWindow):
         self.layout.addWidget(tabWidget)
         self.setCentralWidget(widget)
         self.showMsg("Ready")
-        print("Gui Ready")
+        print("Gui Ready in Thread %s" % currThread())
 
     def addMenuBar(self):
         fileOpenAction = self.createAction("&Open...", self.file_open)
@@ -259,7 +259,7 @@ class SensorDisplay(QMainWindow):
         self.updatePlots()
 
     def Recorder(self):
-        print("Recorder")
+        print("Set up Recorder")
         res = QWidget()
 
         layout = QVBoxLayout()
@@ -532,7 +532,6 @@ class SensorDisplay(QMainWindow):
         print("Recorder file channge %s" % (self.QFilename.text()))
 
     def Emulator(self):
-        print("Emulator")
         res = QWidget()
         layout = QVBoxLayout()
         self.emulatorGraph = pg.PlotWidget()
@@ -636,12 +635,12 @@ class SensorDisplay(QMainWindow):
                     self.csvFile = csv.writer(self.rFile, lineterminator="\n")
                     self.writeCsvHeader(self.csvFile)
                 self.csvFile.writerow(pData)
-                print("Data %d/%d %s." % (len(self.rawdata), self.capture_size,  pData))
+                print("Data %d/%d %s. Thread= %s" % (len(self.rawdata), self.capture_size,  pData, currThread()))
                 if len(self.rawdata) % 20 == 0:
                     self.setNewData()
                     self.updatePlots()
         else:
-            print("Non Recording: Do No append data")
+            print("Non Recording in Thread %s: Do not append data" % currThread())
 
     def file_open(self):
         local_dir = (os.path.dirname(self.filename)
@@ -815,13 +814,13 @@ class SensorDisplay(QMainWindow):
             self.rFile = None
             self.csvFile = None
 
-            print("Start record on %s" % self.yoctoTask.startTask)
+            print("Start record on %s" % self.yoctoTask)
             self.setNewData()
             self.updatePlots()
         self.updateConnected()
 
     def stopCapture(self):
-        print("Yoctopuc Task stop")
+        print("Yoctopuc Task stop: Send signal from Thread %s" % currThread())
         self.doRecord = False
         self.yoctoTask.stopTask.emit()
         print("Show buttons in stopCapture")
@@ -830,15 +829,6 @@ class SensorDisplay(QMainWindow):
         self.nanFile = None
         self.rFile.close()
         self.rFile = None
-        self.yoctoThread.exit()
-        while self.yoctoThread.isRunning():
-            print("Wait for thread to exit")
-            ti.sleep(1)
-        print("Set yoctoTask to None ")
-        del self.yoctoThread
-        del self.yoctoTask
-        self.yoctoThread = None
-        self.yoctoTask = None
         self.doRecord = False
         print("Show buttons in doStop")
         self.btnState["Start"] = False
@@ -856,7 +846,6 @@ class SensorDisplay(QMainWindow):
         res = dlg.exec_()
         if dlg:
             state = dlg.state()
-            print("Returned by dlg: %d " % state)
             if state:
                 self.stopCapture()
             else:
