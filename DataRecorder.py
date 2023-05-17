@@ -153,7 +153,6 @@ class SensorDisplay(QMainWindow):
     def __init__(self):
         print("Create app")
         super().__init__()
-        self.dirty = False
         self.emFile = ""
         self.filename = "./"
         self.emdata = None
@@ -923,7 +922,6 @@ class SensorDisplay(QMainWindow):
                 data.extend([self.pData['generic1'][i][2], self.pData['generic1'][i][3]])
                 print("Data", data)
                 csvf.writerow(data)
-            self.dirty = False
             f.close()
 
     def help_about(self):
