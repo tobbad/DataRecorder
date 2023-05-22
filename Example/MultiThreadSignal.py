@@ -13,31 +13,47 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import *
 
 def currThread() -> object:
-    return '[thread-' + str(int(QThread.currentThreadId())) + ']'
+    return '\n\t[thread-' + str(int(QThread.currentThreadId())) + ']\n\t[thread-' + str(QThread.currentThread()) + ']'
+    #return '[thread-' + str(QThread.currentThread()) + ']'
+
+
+class SubClassThread(QThread):
+    startTask = pyqtSignal()      # in: start the task
+    stopTask = pyqtSignal()       # in: stop the task
+    m2s = pyqtSignal(str)         # out: publish a message main to sub
+    s2m = pyqtSignal(str)         # out: publish from sub to main
+
+    def __init__(self):
+        super().__init__()
+        print("Sub thread created in \t%s" % currThread())
+
+    def start(self):
+        print("Sub class start in %s" % currThread())
+        super().start()
+
 
 
 
 class SubClass(QObject):
-    startTask = pyqtSignal()      # in: start the task
-    stopTask = pyqtSignal()       # in: stop the task
-    m2t = pyqtSignal(str)     # out: publish a message
-    t2m = pyqtSignal(str)
 
-    def __init__(self, parent= None):
-        super().__init__(parent)
+    def __init__(self, thread):
+        super().__init__(None)
+        self.thread = thread
         print("Set up sub class %s" % currThread())
-        self.startTask.connect(self.start)
-        self.stopTask.connect(self.stop)
-        self.m2t.connect(self.fromRemote)
+        self.thread.startTask.connect(self.start)
+        self.thread.stopTask.connect(self.stop)
+        self.thread.m2s.connect(self.fromMain)
         self.cnt=0
+        print("Timer created")
         self.timer = QTimer(self)
-
+        print("Timer is created")
 
 
     def start(self):
         print("SubClass received start (%s)" % currThread())
+        #print("Timer created")
         #self.timer = QTimer(self)
-        print("Timer created")
+        #print("Timer is created")
 
         self.timer.setInterval(10000)
         self.timer.timeout.connect(self.send)
@@ -46,37 +62,37 @@ class SubClass(QObject):
         print("Started")
 
     def stop(self):
-        print("Other side stopped (%s)"% currThread())
+        print("Other side  received stop(%s"% currThread())
         self.timer.stop()
 
     def send(self):
         self.cnt+=1
         msg = "%d" % self.cnt
-        self.t2m.emit(msg)
-        print("Remote in %s send %s" %( currThread(), msg))
+        self.thread.s2m.emit(msg)
+        print("Remote%s send msg: %s" %( currThread(), msg))
 
-    def fromRemote(self, msg):
-        print("Received in R (Thread = %s) from Main: %s" %(currThread(),msg))
+    def fromMain(self, msg):
+        print("Message received in Sub (Thread%s) from Main: %s" %(currThread(), msg))
 
 class MainThread(QMainWindow):
-    def __init__(self, parent= None):
+    def __init__(self, parent=None):
         super().__init__(parent)
         print("Set up main thread %s" % currThread())
-        self.otherT = QThread()
-        self.otherT.start()
+        self.thread = SubClassThread()
         res = self.SetUpGui()
         self.setCentralWidget(res)
 
         print("GUI is set up")
-        self.oc = SubClass()
+        self.sc = SubClass(self.thread)
         print("SubClass is set up")
-        self.oc.startTask.connect(self.start)
-        self.oc.stopTask.connect(self.stop)
-        self.oc.m2t.connect(self.sendfn)
-        self.oc.t2m.connect(self.receive)
-        self.oc.moveToThread(self.otherT)
+        self.thread.startTask.connect(self.start)
+        self.thread.stopTask.connect(self.stop)
+        self.thread.s2m.connect(self.receive)
+        self.thread.moveToThread(self.thread)
+        self.thread.start()
+
         print("Emit start")
-        self.oc.startTask.emit()
+        self.thread.startTask.emit()
 
 
     def SetUpGui(self):
@@ -113,20 +129,22 @@ class MainThread(QMainWindow):
     def sendfn(self):
         text = self.line.text()
         print("Main send signal \"%s\"" % text )
-        self.oc.m2t.emit(text)
+        self.thread.m2s.emit(text)
     def receive(self, msg):
         self.remote.setText(msg)
 
     def fromRemote(self, msg):
-        print("Main  %s received: Msg %s" % (currThread(), msg))
+        print("Main\n%s received: Msg\t%s" % (currThread(), msg))
 
     def start(self):
         print("Main %s received start " % (currThread()))
 
     def stop(self):
-        print("Main %s received stop" % (currThread()))
+        print('Main %s received stop' % (currThread()))
+
     def rstop(self):
-        print("Main received stop from  %s" % (currThread()))
+        print('Main %s send stop to remote' % (currThread()))
+        self.thread.stopTask.emit()
 
 
 
