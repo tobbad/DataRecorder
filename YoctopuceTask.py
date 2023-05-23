@@ -28,9 +28,7 @@ sys.excepthook = except_hook
 
 def currThread() -> object:
     return '[thread-' + str(int(QThread.currentThreadId())) + ']'
-
-class YoctopuceTask(QObject):
-
+class SignalHubThread(QThread):
     startTask = pyqtSignal()        # in: start the task
     stopTask = pyqtSignal()         # in: stop the task
     getData = pyqtSignal(str)       # get Data
@@ -41,16 +39,24 @@ class YoctopuceTask(QObject):
     updateSignal = pyqtSignal(list) # out: Send data to the gui
 
     def __init__(self):
+        super().__init__()
+        print("SignalHubThread created from \t%s" % currThread())
+
+    def start(self):
+        print("SignalHubThread start in %s" % currThread())
+        super().start()
+
+class YoctopuceTask(QObject):
+
+    def __init__(self, subSigThread):
         super(YoctopuceTask, self).__init__()
         # connect incoming signals
-        self.startTask.connect(self.initAPI)
-        self.stopTask.connect(self.capture_stop)
+        self.subSigThread = subSigThread
+        self.subSigThread.startTask.connect(self.initAPI)
+        self.subSigThread.stopTask.connect(self.capture_stop)
         self.sensor = {}
         self.oSensor = {}
         self.capture_size = 0
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.handleEvents)
-        self.timer.start(50)
         self.checkDevices = 0
         self._sampleCnt = 0
         self.file = None
@@ -63,21 +69,25 @@ class YoctopuceTask(QObject):
         self.connected = False
         self.doRecord = False
         self.startTime = None
+        self.started = False
 
 
     @pyqtSlot()
     def initAPI(self):
         print('Yoctopuce initAPI in %s' % currThread())
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.handleEvents)
+        self.timer.start(50)
         self.yocto_err = YRefParam()
         YAPI.RegisterLogFunction(self.logfun)
         # Setup the API to use Yoctopuce devices on localhost
         if YAPI.RegisterHub("usb", self.yocto_err) != YAPI.SUCCESS:            
-            self.statusMsg.emit('Failed to init Yoctopuce API: ' +
+            self.subSigThread.statusMsg.emit('Failed to init Yoctopuce API: ' +
                                 self.yocto_err.value)
             return
         YAPI.RegisterDeviceArrivalCallback(self.deviceArrival)
         YAPI.RegisterDeviceRemovalCallback(self.deviceRemoval)
-        self.statusMsg.emit('Yoctopuce task ready')
+        self.subSigThread.statusMsg.emit('Yoctopuce task ready')
         # prepare to scan Yoctopuce events periodically
 
     @pyqtSlot()
@@ -87,7 +97,6 @@ class YoctopuceTask(QObject):
         print("Yoctopuce task stopped")
         YAPI.FreeAPI()
         self.statusMsg.emit('Yoctopuce task stopped')
-        self.capture_stop()
         print("Sensors are stopped")
 
     @pyqtSlot()
@@ -108,7 +117,7 @@ class YoctopuceTask(QObject):
     def deviceArrival(self, m: YModule):
         newSensorList = []
         serialNumber = m.get_serialNumber()
-        print("Y: Output Device arrival SerNr %s %s" % (serialNumber, m))
+        print("Y: Input Device arrival SerNr %s %s" % (serialNumber, m))
         if serialNumber == "RX420MA1-16CAEA":
             pSensor = YGenericSensor.FirstGenericSensor()
             print("Sensor %s" % pSensor)
@@ -121,16 +130,15 @@ class YoctopuceTask(QObject):
                 pSensor = YGenericSensor.nextGenericSensor(pSensor)
             sen = {}
             for s in newSensorList:
-                print("Added function %s" %s.function)
                 sen[s.function] = s
             self.sensor = sen
             self.connected = True
-            print("Registered %d Sensors %s" % (len(self.sensor), self.sensor))
+            #print("Registered %d Sensors %s" % (len(self.sensor), self.sensor))
             if self.connected:
                 print("Y: device Arrival, setUpCapture")
                 self.SetUpCapture()
             self.connected = True
-            self.arrival.emit(self.sensor)
+            self.subSigThread.arrival.emit(self.sensor)
             if len(self.sensor) == 0:
                 print("No sensors detected")
                 sys.exit()
@@ -160,7 +168,8 @@ class YoctopuceTask(QObject):
                 print("No sensors detected")
                 sys.exit()
 
-    def copyPaste(self):
+    def ReceiveAndEmulate(self):
+        newSensorList = []
         if len(self.sensor) > 3:
             return
         while pSensor != None:
@@ -198,23 +207,22 @@ class YoctopuceTask(QObject):
                 print("\tRegister cb on %s with samples cnt %d" % (s, self.capture_size))
                 s.registerTimedReportCallback(self.new_data)
                 s.set_reportFrequency(self.reportFrequncy)
-            print("Capture set up on  %s" % (self.sensor))
+            print("Capture set in  %s" % (currThread()))
 
     def SetUpPlayback(self):
         print("Set up play back in Yoctopuc Task (%s) started (cnt = %d  with %d ms)" % (currThread(), self.capture_size, self.sampel_interval_ms))
         if self.capture_size > 0 and self.sampel_interval_ms > 0:
             for s in self.outsensor.values():
-                print("\tRegister cb on %s with samples cnt %d" % (s, self.capture_size))
                 s.registerTimedReportCallback(self.new_data)
                 s.set_reportFrequency(self.reportFrequncy)
-            print("Capture set up on  %s" % (self.sensor))
+            print("Capture set in  %s" % (currThread()))
 
     def new_data(self, fct, measure=None):
         if self.superVisorTimer == None:
             self.sampleIntervalUpdate  = True
-            print("Set up timer in Thread in %s" % (currThread()))
             self.superVisorTimer = QTimer(self)
             sampleIntfb = self.sampel_interval_ms+self.timeout_add
+            print("Create supervisor timer in thread= %s with %d ms sample intervall in %s" % (currThread(), sampleIntfb ,currThread()))
             self.superVisorTimer.setInterval(sampleIntfb)
             self.superVisorTimer.timeout.connect(self.new_data_superVisor)
             self.superVisorTimer.start()
@@ -255,7 +263,7 @@ class YoctopuceTask(QObject):
                 data.extend(d1)
             else:
                 data.extend([newdata[0],np.nan, "mA", newdata[1], np.nan, "mA"])
-            self.updateSignal.emit(data)
+            self.subSigThread.updateSignal.emit(data)
             self._sampleCnt += 1
             #print("New data on connected state to %s/rel Time %s" % (self.connected, delta))
             #self.logfun("Remaining cap %d" % self.capture_size)
@@ -293,15 +301,16 @@ class YoctopuceTask(QObject):
         return self._sampleCnt
 
     def capture_start(self):
-        print("Start capture  %d samples with report freq %s" % (self.capture_size, self.reportFrequncy))
+        print("Start capture  %d samples with report freq %s in %s" % (self.capture_size, self.reportFrequncy,  currThread()))
         self.doRecord = True
         return self.doRecord
 
     def capture_stop(self):
         if self.superVisorTimer != None:
-            print("Received Signal in thread %s" % currThread())
+            print("Yoctopuc API capture_stop in  %s" % currThread())
             self.superVisorTimer.stop()
-            print("superVisorTimer.stop() ")
+            print("superVisorTimer is stopped ")
+            self.superVisorTimer.stop()
             for s in self.sensor.values():
                 s.capture_stop()
             if self.file is not None:
@@ -309,6 +318,14 @@ class YoctopuceTask(QObject):
                 print("Removed file reference")
                 self.file = None
             print("Stop supervise")
+
+    def start(self):
+        if  self.started == False:
+            print("Start Yoctopuc task in %s" % currThread())
+            super().start()
+        else:
+            print("Yoctopuc already started in %s" % currThread())
+        self.started = True
 
     def setSampleInterval_ms(self, sampel_interval_ms):
         self.sampel_interval_ms = sampel_interval_ms
@@ -341,9 +358,9 @@ class YoctopuceTask(QObject):
 
     def logfun(self, line: str):
         msg = line.rstrip()
-        print("API Log: " + msg, currThread())
+        #print("API Log: " + msg, currThread())
         # show low-level API logs as status
-        self.statusMsg.emit(msg)
+        self.subSigThread.statusMsg.emit(msg)
     
     def getSensors(self):
         return self.sensor
@@ -353,12 +370,11 @@ class sensor:
     def __init__(self, sensor):
         self.secondsInStr = None
         self.sen = sensor
-        print("Added ")
         name = sensor.get_friendlyName()
         self._name = str(self.sen).split("=")[1].split(".")[1].replace("Sensor","")
         self.type = self.sen.get_module().get_serialNumber()
-        print("Sensor functionname is %s ;ModuleId is: %s"% (self.function, self.moduleId))
-        print("Sensor class sensor friendly name %s" % self.sen.get_friendlyName())
+        #print("Sensor functionname is %s ;ModuleId is: %s"% (self.function, self.moduleId))
+        #print("Sensor class sensor friendly name %s" % self.sen.get_friendlyName())
         self.functionType = self.sen.get_module().functionType(0)
         self.secondsInStr = "OFF"
 

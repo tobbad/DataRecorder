@@ -11,7 +11,7 @@ from math import ceil, isnan
 from datetime import *
 import numpy as np
 from configuration import configuration
-from YoctopuceTask import YoctopuceTask
+from YoctopuceTask import YoctopuceTask, SignalHubThread
 
 sys.path.append(
     os.sep.join(
@@ -103,18 +103,15 @@ class StopRecordingDlg(QDialog):
 
     def clicked(self, btn):
         if btn.text() == "&Yes":
-            print("Set stop to True")
             self._state = True
         elif btn.text() == "&No":
-            print("Set stop to False")
             self._state = False
         else:
             print("Unknown btn text %s" % btn.text())
-        print("Stop Record %s" % ("Yes" if self._state else "No"))
+        print("StopRecordingDlg %s" % ("Yes" if self._state else "No"))
         self.done(self._state)
 
     def state(self):
-        print("Return _state %d" % self._state)
         return self._state
 
 
@@ -179,6 +176,7 @@ class SensorDisplay(QMainWindow):
         self._doSave = False
         self.yoctoThread = None
         self.yoctoTask = None
+        self.subSigThread = SignalHubThread()
         self.setUpGUI()
         self.plotname = ""
         self.closeOk = False
@@ -656,16 +654,17 @@ class SensorDisplay(QMainWindow):
         # Start Yoctopuce I/O task in a separate thread
         if self.yoctoThread is None:
             print("Inital Set up yoctopuc task")
-            self.yoctoThread = QThread()
-            self.yoctoThread.start()
-            self.yoctoTask = YoctopuceTask()
-            self.yoctoTask.statusMsg.connect(self.showMsg)
-            self.yoctoTask.arrival.connect(self.arrival)
-            self.yoctoTask.newValue.connect(self.newValue)
-            self.yoctoTask.removal.connect(self.removal)
-            self.yoctoTask.moveToThread(self.yoctoThread)
-            self.yoctoTask.updateSignal.connect(self.append_data)
-            self.yoctoTask.startTask.emit()
+            self.yoctoTask = YoctopuceTask(self.subSigThread)
+            self.subSigThread.statusMsg.connect(self.showMsg)
+            self.subSigThread.arrival.connect(self.arrival)
+            self.subSigThread.newValue.connect(self.newValue)
+            self.subSigThread.removal.connect(self.removal)
+            self.subSigThread.stopTask.connect(self.stopCapture)
+            self.yoctoTask.moveToThread(self.subSigThread)
+            self.subSigThread.updateSignal.connect(self.append_data)
+            self.subSigThread.startTask.emit()
+            self.subSigThread.start()
+
 
     @property
     def connected(self):
@@ -696,7 +695,7 @@ class SensorDisplay(QMainWindow):
                 self.btnState["Clear"] = False
                 self.btnState["Save"] = False
             # log arrival
-            print("Device connected in Datarecorder onGoing %s)" % (self.onGoing))
+            print("Device connected in Datarecorder onGoing %s" % (self.onGoing))
             self.conf = configuration(self.yoctoTask)
             self.r2p = self.conf.getR2PFunction
             print("Set Capturetime to %d %s" % (self.conf.CaptureTime["time"], self.conf.CaptureTime["unit"]))
@@ -818,10 +817,14 @@ class SensorDisplay(QMainWindow):
             self.updatePlots()
         self.updateConnected()
 
+    def stopRemote(self):
+        print("Stop Remote in %s" % currThread())
+        self.subSigThread.stopTask.emit()
+
+
     def stopCapture(self):
-        print("Yoctopuc Task stop: Send signal from Thread %s" % currThread())
+        print("DataRecorder stopCapture received in %s" % currThread())
         self.doRecord = False
-        self.yoctoTask.stopTask.emit()
         print("Show buttons in stopCapture")
         if self.nanFile is not None:
             self.nanFile.close()
@@ -829,13 +832,11 @@ class SensorDisplay(QMainWindow):
         self.rFile.close()
         self.rFile = None
         self.doRecord = False
-        print("Show buttons in doStop")
         self.btnState["Start"] = False
         self.btnState["Stop"] = False
         self.btnState["Clear"] = True
         self.btnState["Save"] = True
         self.updateConnected()
-
         self.progressBar.setValue(int(100))
         self.intervalFrame.show()
 
@@ -846,7 +847,7 @@ class SensorDisplay(QMainWindow):
         if dlg:
             state = dlg.state()
             if state:
-                self.stopCapture()
+                self.stopRemote()
             else:
                 print("doStop: Continue recording")
 

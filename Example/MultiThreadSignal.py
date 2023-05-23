@@ -17,7 +17,7 @@ def currThread() -> object:
     #return '[thread-' + str(QThread.currentThread()) + ']'
 
 
-class SubClassThread(QThread):
+class SignalHubThread(QThread):
     startTask = pyqtSignal()      # in: start the task
     stopTask = pyqtSignal()       # in: stop the task
     m2s = pyqtSignal(str)         # out: publish a message main to sub
@@ -25,10 +25,10 @@ class SubClassThread(QThread):
 
     def __init__(self):
         super().__init__()
-        print("Sub thread created in \t%s" % currThread())
+        print("SignalHubThread created in \t%s" % currThread())
 
     def start(self):
-        print("Sub class start in %s" % currThread())
+        print("SignalHubThread start in %s" % currThread())
         super().start()
 
 
@@ -46,15 +46,11 @@ class SubClass(QObject):
         self.cnt=0
         print("Timer created")
         self.timer = QTimer(self)
-        print("Timer is created")
+        print("Timer in Subclass is created")
 
 
     def start(self):
         print("SubClass received start (%s)" % currThread())
-        #print("Timer created")
-        #self.timer = QTimer(self)
-        #print("Timer is created")
-
         self.timer.setInterval(10000)
         self.timer.timeout.connect(self.send)
         print("Timer about to start")
@@ -62,7 +58,7 @@ class SubClass(QObject):
         print("Started")
 
     def stop(self):
-        print("Other side  received stop(%s"% currThread())
+        print("Other side  received stop %s"% currThread())
         self.timer.stop()
 
     def send(self):
@@ -78,7 +74,7 @@ class MainThread(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         print("Set up main thread %s" % currThread())
-        self.thread = SubClassThread()
+        self.thread = SignalHubThread()
         res = self.SetUpGui()
         self.setCentralWidget(res)
 
@@ -119,7 +115,7 @@ class MainThread(QMainWindow):
 
         hbox = QHBoxLayout()
         self.stopb = QPushButton("Remote Stop")
-        self.stopb.clicked.connect(self.rstop)
+        self.stopb.clicked.connect(self.remoteStop)
         hbox.addWidget(self.stopb)
         self.layout.addLayout(hbox)
 
@@ -128,7 +124,7 @@ class MainThread(QMainWindow):
 
     def sendfn(self):
         text = self.line.text()
-        print("Main send signal \"%s\"" % text )
+        print("Main send signal \"%s\" in %s " % (text, currThread() ))
         self.thread.m2s.emit(text)
     def receive(self, msg):
         self.remote.setText(msg)
@@ -137,12 +133,12 @@ class MainThread(QMainWindow):
         print("Main\n%s received: Msg\t%s" % (currThread(), msg))
 
     def start(self):
-        print("Main %s received start " % (currThread()))
+        print("Main %s received start in " % (currThread()))
 
     def stop(self):
-        print('Main %s received stop' % (currThread()))
+        print('Main %s received stop in' % (currThread()))
 
-    def rstop(self):
+    def remoteStop(self):
         print('Main %s send stop to remote' % (currThread()))
         self.thread.stopTask.emit()
 
