@@ -622,7 +622,7 @@ class SensorDisplay(QMainWindow):
                 if self.csvFile is None:
                     now = datetime.now()
                     nowS = now.strftime("%Y%m%d_%H%M%S.csv")
-                    print("Set up file %s with %d Samples with Sampleinterval of %d %s" %(nowS,self.capture_size, self.conf.SampleInterval["time"],  self.conf.SampleInterval["unit"] ))
+                    print("Set up rfile %s with %d Samples with Sampleinterval of %d %s in %s" %(nowS,self.capture_size, self.conf.SampleInterval["time"],  self.conf.SampleInterval["unit"], currThread() ))
                     #print(" Samples with Sampleinterval of %d ??" % (self.conf.SampleInterval["time"] ))
                     #print(" Samples with Sampleinterval of ?? %s" % (  self.conf.SampleInterval["unit"] ))
                     #print("Sample Cnt to %s  " % (type(self.conf.SampleInterval["time"]) ))
@@ -637,7 +637,7 @@ class SensorDisplay(QMainWindow):
                     self.setNewData()
                     self.updatePlots()
         else:
-            print("Non Recording in Thread %s: Do not append data" % currThread())
+            print("Non Recording in Thread %s: Do not append data %s" % (currThread(), data))
 
     def file_open(self):
         local_dir = (os.path.dirname(self.filename)
@@ -660,7 +660,7 @@ class SensorDisplay(QMainWindow):
             self.subSigThread.newValue.connect(self.newValue)
             self.subSigThread.removal.connect(self.removal)
             self.subSigThread.stopTask.connect(self.stopCapture)
-            self.yoctoTask.moveToThread(self.subSigThread)
+            self.subSigThread.moveToThread(self.subSigThread)
             self.subSigThread.updateSignal.connect(self.append_data)
             self.subSigThread.startTask.emit()
             self.subSigThread.start()
@@ -687,6 +687,8 @@ class SensorDisplay(QMainWindow):
 
     @pyqtSlot(dict)
     def arrival(self, device):
+        if len(device) == 0:
+            self.sensor = None
         if self.sensor is None:
             if not self.doRecord:
                 print("Show buttons in not recording arrival")
@@ -698,12 +700,11 @@ class SensorDisplay(QMainWindow):
             print("Device connected in Datarecorder onGoing %s" % (self.onGoing))
             self.conf = configuration(self.yoctoTask)
             self.r2p = self.conf.getR2PFunction
-            print("Set Capturetime to %d %s" % (self.conf.CaptureTime["time"], self.conf.CaptureTime["unit"]))
-            print("Set Sampleinterval to %d %s" % (self.conf.SampleInterval["time"], self.conf.SampleInterval["unit"]))
+            print("GUI Set Capturetime to %d %s" % (self.conf.CaptureTime["time"], self.conf.CaptureTime["unit"]))
+            print("GUI Set Sampleinterval to %d %s" % (self.conf.SampleInterval["time"], self.conf.SampleInterval["unit"]))
             self.sIntVal_edit.setText("%d" % self.conf.SampleInterval["time"])
             sunit = {"ms": 0, "s": 1}
             idx = sunit[self.conf.SampleInterval["unit"]]
-            print("Set unit sample interval index to %d" % idx)
             self.sampleUnit.setCurrentIndex(idx)
             cunit = {"s": 0, "m": 1, "h": 2}
             self.captime_edit.setText("%d" % self.conf.CaptureTime["time"])
@@ -720,11 +721,11 @@ class SensorDisplay(QMainWindow):
                     self.nanFile.close()
                 self.nanFile = None
                 self.csvNaNFile = None
-
             print("DR Registered Sensors")
         else:
             print("%d Sensors are already connected" % len(self.sensor))
         self.updateConnected()
+        self.onTimingChanged()
 
     @pyqtSlot(dict)
     def removal(self, device):
@@ -738,7 +739,6 @@ class SensorDisplay(QMainWindow):
             self.nanFile = open(nowSNaN, "w")
             self.csvNaNFile = csv.writer(self.nanFile, lineterminator="\n")
             self.writeCsvHeader(self.csvNaNFile)
-
         self.sensor = None
 
         print('Device disconnected:', device)
@@ -756,7 +756,6 @@ class SensorDisplay(QMainWindow):
         # self.functionValues[hardwareId].setText(hardwareId + ": " + value)
 
     def updateConnected(self):
-        print("Update connected to %s" % self.connected)
         if self.connected:
             label = self.showGen1CB.text()
             self.showGen1CB.setText(label)
@@ -824,12 +823,12 @@ class SensorDisplay(QMainWindow):
 
     def stopCapture(self):
         print("DataRecorder stopCapture received in %s" % currThread())
-        self.doRecord = False
         print("Show buttons in stopCapture")
         if self.nanFile is not None:
             self.nanFile.close()
         self.nanFile = None
-        self.rFile.close()
+        if self.rFile is not None:
+            self.rFile.close()
         self.rFile = None
         self.doRecord = False
         self.btnState["Start"] = False
@@ -974,7 +973,7 @@ class SensorDisplay(QMainWindow):
                 self.conf.CaptureTime = self.capTime
 
             self.capture_size = ceil(float(1000 * self.captureTime_s) / (float(self.setSampleInterval_ms)))
-            # print("Set capture time %d %s; Size: is %d samples; Interval @ %f %s" % ( self.captureTime_s, self.capTime["unit"], self.capture_size ,self.setSampleInterval_ms, self.sampInt["unit"]))
+            print("Set capture time %d %s; Size: is %d samples; Interval @ %f %s" % ( self.captureTime_s, self.capTime["unit"], self.capture_size ,self.setSampleInterval_ms, self.sampInt["unit"]))
             if self.yoctoTask is not None:
                 self.yoctoTask.set_capture_size(self.capture_size)
             if self._doSave and self.conf != None:
