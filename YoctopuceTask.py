@@ -89,7 +89,6 @@ class YoctopuceTask(QObject):
         self.connected = False
         self.doRecord = False
         self.startTime = None
-        self.started = False
         self.printUpdate = False
 
     @pyqtSlot()
@@ -305,7 +304,8 @@ class YoctopuceTask(QObject):
             self.capture_size -= 1
             if self.capture_size == 0:
                 self.logfun("Finished cap %d samples" % self._sampleCnt)
-                self.updateSignal.emit([None, None])
+                self.subSigThread.updateSignal.emit([None, None])
+                self.capture_stop()
                 print("Finished capture in yoctopuc")
 
     def fakeCB(self):
@@ -345,6 +345,8 @@ class YoctopuceTask(QObject):
             % (self.capture_size, self.reportFrequncy, currThread())
         )
         self.doRecord = True
+        for k, v in self.sensor.items():
+                v.capture_start()
         return self.doRecord
 
     def capture_stop(self):
@@ -352,7 +354,6 @@ class YoctopuceTask(QObject):
             print("Yoctopuc API capture_stop in  %s" % currThread())
             self.superVisorTimer.stop()
             print("superVisorTimer is stopped ")
-            self.superVisorTimer.stop()
             for k, v in self.sensor.items():
                 v.capture_stop()
             if self.file is not None:
@@ -361,13 +362,6 @@ class YoctopuceTask(QObject):
                 self.file = None
             print("Stop supervise")
 
-    def start(self):
-        if self.started == False:
-            print("Start Yoctopuc task in %s" % currThread())
-            super().start()
-        else:
-            print("Yoctopuc already started in %s" % currThread())
-        self.started = True
 
     def setSampleInterval_ms(self, sampel_interval_ms):
         self.sampel_interval_ms = sampel_interval_ms
@@ -466,12 +460,13 @@ class sensor:
 
     def capture_stop(self):
         self.secondsInStr = "OFF"
+        self.registerTimedReportCallback(None)
         self.sen.muteValueCallbacks()
         print("Set report to %s.  Mute Yoctopuc" % self.secondsInStr)
         self.sen.set_reportFrequency(self.secondsInStr)
 
     def capture_start(self):
-        self.unmuteValueCallbacks()
+        self.sen.unmuteValueCallbacks()
         print("Set report %s. Unmute Yoctopuc" % self.secondsInStr)
         self.sen.set_reportFrequency(self.secondsInStr)
         return True

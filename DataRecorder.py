@@ -164,7 +164,6 @@ class SensorDisplay(QMainWindow):
         self.rawunit = None
         self.punit = None
         self.functionValues = {}
-        self.yoctoTask = None
         self.data1 = None
         self.data2 = None
         self.emData = []
@@ -175,13 +174,13 @@ class SensorDisplay(QMainWindow):
         self.btnState = {"Start": False, "Clear": False, "Stop": False, "Save": False}
         self.conf = None
         self._doSave = False
-        self.yoctoThread = None
         self.yoctoTask = None
         self.subSigThread = SignalHubThread()
         self.setUpGUI()
         self.plotname = ""
         self.closeOk = False
         self.sensor = None
+        self.emulatorGraph = None
         self.capture()  # Set up here to detect connection
 
     def setUpGUI(self):
@@ -199,7 +198,8 @@ class SensorDisplay(QMainWindow):
         # Add tab widget for Recorder an Emulator
         tabWidget.addTab(self.Recorder(), "Recorder")
         # tabWidget.addTab(self.Icons(), "Icons")
-        tabWidget.addTab(self.Emulator(), "Emulator")
+        self.Emulator()
+        #tabWidget.addTab(self.Emulator(), "Emulator")
         tabWidget.currentChanged.connect(self.tabChanged)
 
         widget = QWidget()
@@ -696,7 +696,7 @@ class SensorDisplay(QMainWindow):
 
     def capture(self):
         # Start Yoctopuce I/O task in a separate thread
-        if self.yoctoThread is None:
+        if self.yoctoTask is None:
             print("Inital Set up yoctopuc task")
             self.yoctoTask = YoctopuceTask(self.subSigThread)
             self.subSigThread.statusMsg.connect(self.showMsg)
@@ -733,8 +733,9 @@ class SensorDisplay(QMainWindow):
         if len(device) == 0:
             self.sensor = None
         if self.sensor is None:
+            self.sensor = device
             if not self.doRecord:
-                print("Show buttons in not recording arrival")
+                print("Show buttons in sensor arrival")
                 self.btnState["Start"] = True
                 self.btnState["Stop"] = False
                 self.btnState["Clear"] = False
@@ -770,7 +771,7 @@ class SensorDisplay(QMainWindow):
                     self.nanFile.close()
                 self.nanFile = None
                 self.csvNaNFile = None
-            print("DR Registered Sensors")
+            print("DR Registered Sensors %s" % self.sensor)
         else:
             print("%d Sensors are already connected" % len(self.sensor))
         self.updateConnected()
@@ -841,12 +842,10 @@ class SensorDisplay(QMainWindow):
             self.btn["Clear"].hide()
 
     def doStart(self):
-        print("Show buttons in doStart Thread %s" % (self.yoctoThread))
-        if self.yoctoThread is None:
-            print("Set up yoctoThread ")
-            self.capture()
-        self.onTimingChanged()
+        self.capture()
+        print("Show buttons in doStart Thread %s" % (self.yoctoTask))
 
+        self.onTimingChanged()
         self.btnState["Start"] = False
         self.btnState["Stop"] = True
         self.btnState["Clear"] = False
@@ -859,6 +858,7 @@ class SensorDisplay(QMainWindow):
             self.intervalFrame.hide()
             self.rFile = None
             self.csvFile = None
+            print("Start capture")
 
             print("Start record on %s" % self.yoctoTask)
             self.setNewData()
@@ -886,6 +886,7 @@ class SensorDisplay(QMainWindow):
         self.updateConnected()
         self.progressBar.setValue(int(100))
         self.intervalFrame.show()
+
 
     def doStop(self):
         # Ask for really Stop
@@ -1197,7 +1198,7 @@ class SensorDisplay(QMainWindow):
             self.recorderGraph.setTitle(self.QPlotname.text())
             self.recorderGraph.addLegend()
 
-        if self.emdata is not None:
+        if self.emdata is not None and self.emulatorGraph is not None:
             if self.emFile is None:
                 fname = ""
             else:
