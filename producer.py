@@ -93,7 +93,8 @@ def YoctoMonitor():
             print("Break %s" % conf["file"])
             conf["file"].close()
             return
-        
+
+
 if __name__ == "__main__":
 
     errmsg = YRefParam()
