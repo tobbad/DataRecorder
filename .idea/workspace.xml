@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="f04261e6-d836-4e24-b686-b9df1d2f7b1d" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/DataRecorder.py" beforeDir="false" afterPath="$PROJECT_DIR$/DataRecorder.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/YoctopuceTask.py" beforeDir="false" afterPath="$PROJECT_DIR$/YoctopuceTask.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configuration.xml" beforeDir="false" afterPath="$PROJECT_DIR$/configuration.xml" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FlaskConsoleOptions" custom-start-script="import sys&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;from flask.cli import ScriptInfo&#10;locals().update(ScriptInfo(create_app=None).load_app().make_shell_context())&#10;print(&quot;Python %s on %s\nApp: %s [%s]\nInstance: %s&quot; % (sys.version, sys.platform, app.import_name, app.env, app.instance_path))">
+    <envs>
+      <env key="FLASK_APP" value="app" />
+    </envs>
+    <option name="myCustomStartScript" value="import sys&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;from flask.cli import ScriptInfo&#10;locals().update(ScriptInfo(create_app=None).load_app().make_shell_context())&#10;print(&quot;Python %s on %s\nApp: %s [%s]\nInstance: %s&quot; % (sys.version, sys.platform, app.import_name, app.env, app.instance_path))" />
+    <option name="myEnvs">
+      <map>
+        <entry key="FLASK_APP" value="app" />
+      </map>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/../../../../../../ProgramData/Anaconda3/Lib/site-packages/nltk/sentiment/util.py" root0="SKIP_INSPECTION" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="2NaRVFVzq1zO9dVYrjga1HhBTJE" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_ADD_EXTERNAL_FILES&quot;: &quot;true&quot;,
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/tobias.badertscher/source/repos/python/yoctolib_python/Sources/yocto_currentloopoutput.py&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="f04261e6-d836-4e24-b686-b9df1d2f7b1d" name="Changes" comment="" />
+      <created>1679900231787</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1679900231787</updated>
+      <workItem from="1679900233087" duration="8571000" />
+      <workItem from="1679987148641" duration="12803000" />
+      <workItem from="1680158622628" duration="11359000" />
+      <workItem from="1680503830441" duration="5459000" />
+      <workItem from="1680595772971" duration="8504000" />
+      <workItem from="1680773385155" duration="5149000" />
+      <workItem from="1681135611980" duration="1003000" />
+      <workItem from="1681136681963" duration="5769000" />
+      <workItem from="1681197129522" duration="5450000" />
+      <workItem from="1681322093974" duration="79000" />
+      <workItem from="1681322187898" duration="536000" />
+      <workItem from="1681368289466" duration="760000" />
+      <workItem from="1681454503413" duration="13989000" />
+      <workItem from="1682322563567" duration="8555000" />
+      <workItem from="1682422276757" duration="2751000" />
+      <workItem from="1682428603047" duration="4330000" />
+      <workItem from="1682496420352" duration="7803000" />
+      <workItem from="1682931489920" duration="5884000" />
+      <workItem from="1682937544755" duration="547000" />
+      <workItem from="1683009898915" duration="16714000" />
+      <workItem from="1683101452010" duration="8389000" />
+      <workItem from="1683183499378" duration="9592000" />
+      <workItem from="1683530395914" duration="11401000" />
+      <workItem from="1683615616508" duration="13547000" />
+      <workItem from="1683700107733" duration="11515000" />
+      <workItem from="1684142134047" duration="5850000" />
+      <workItem from="1684218749896" duration="9822000" />
+      <workItem from="1684305350652" duration="14532000" />
+      <workItem from="1684738248489" duration="11525000" />
+      <workItem from="1684822842267" duration="13429000" />
+      <workItem from="1684909590496" duration="15398000" />
+      <workItem from="1684995529617" duration="1849000" />
+      <workItem from="1684997404968" duration="5065000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/YoctopuceTask.py</url>
+          <line>141</line>
+          <option name="timeStamp" value="2" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/DataRecorder.py</url>
+          <line>843</line>
+          <option name="timeStamp" value="4" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/configuration.py</url>
+          <line>185</line>
+          <option name="timeStamp" value="5" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/DataRecorder.py</url>
+          <line>762</line>
+          <option name="timeStamp" value="7" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/DataRecorder.py</url>
+          <line>307</line>
+          <option name="timeStamp" value="8" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/DataRecorder.py</url>
+          <line>161</line>
+          <option name="timeStamp" value="14" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/DataRecorder.py</url>
+          <line>833</line>
+          <option name="timeStamp" value="15" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/DataRecorder.py</url>
+          <line>492</line>
+          <option name="timeStamp" value="16" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/YoctopuceTask.py</url>
+          <line>404</line>
+          <option name="timeStamp" value="17" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/YoctopuceTask.py</url>
+          <line>460</line>
+          <option name="timeStamp" value="18" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/YoctopuceTask.py</url>
+          <line>74</line>
+          <option name="timeStamp" value="19" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/YoctopuceTask.py</url>
+          <line>156</line>
+          <option name="timeStamp" value="20" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+</project>
