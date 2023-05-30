@@ -197,6 +197,7 @@ class SensorDisplay(QMainWindow):
         self.message.addPermanentWidget(self.sizeLabel)
         # Add tab widget for Recorder an Emulator
         tabWidget.addTab(self.Recorder(), "Recorder")
+        tabWidget.addTab(self.Emulator(), "Emulator")
         # tabWidget.addTab(self.Icons(), "Icons")
         self.Emulator()
         #tabWidget.addTab(self.Emulator(), "Emulator")
@@ -611,6 +612,7 @@ class SensorDisplay(QMainWindow):
         if self.emData is not None:
             self.setNewData()
             self.updatePlots()
+        print("Emulator created %s" % self.emulatorGraph)
         return res
 
     def append_data(self, data):
@@ -918,10 +920,8 @@ class SensorDisplay(QMainWindow):
         datal = []
         self.emUnit = []
         for idx, line in enumerate(csvf):
-            print("%d : %s" % (idx, line))
-
             if line[0].startswith("#"):
-                print("Skip line %s  " % line[idx])
+                print("Skip line %s  " % line)
             else:
                 time = line[0]
                 relTime = float(line[1])
@@ -933,7 +933,7 @@ class SensorDisplay(QMainWindow):
                     [time, relTime, val1, self.emUnit[0], val2, self.emUnit[1]]
                 )
         f.close()
-        self.emData = np.zeros([idx + 1, 3])
+        self.emData = np.zeros([idx -2, 3])
         print("Create numpy array of length %d" % (idx))
         self.pData = {"generic2": [], "generic1": []}
         print("Load file %s :" % (fname))
@@ -1197,7 +1197,7 @@ class SensorDisplay(QMainWindow):
             self.progressBar.setValue(int(progress))
             self.recorderGraph.setTitle(self.QPlotname.text())
             self.recorderGraph.addLegend()
-
+        print(self.emulatorGraph)
         if self.emdata is not None and self.emulatorGraph is not None:
             if self.emFile is None:
                 fname = ""
