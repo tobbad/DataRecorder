@@ -153,7 +153,6 @@ class SensorDisplay(QMainWindow):
         super().__init__()
         self.emFile = ""
         self.filename = "./"
-        self.emdata = None
         self.btn = {}
         self.capture_size = 0
         self.setSampleInterval_ms = 1
@@ -180,7 +179,6 @@ class SensorDisplay(QMainWindow):
         self.plotname = ""
         self.closeOk = False
         self.sensor = None
-        self.emulatorGraph = None
         self.capture()  # Set up here to detect connection
 
     def setUpGUI(self):
@@ -561,19 +559,26 @@ class SensorDisplay(QMainWindow):
             "bottom", '<span style="color:white;font-size:10px">Time (s)</span>'
         )
         layout.addWidget(self.emulatorGraph)
-
+        self.emulatorGraph.setTitle("Initial")
         hbox = QHBoxLayout()
         self.showeGen1 = QCheckBox("Show generic1", self)
         self.showeGen1.stateChanged.connect(self.updatePlots)
         self.showeGen1.setChecked(True)
         self.showeGen1.setStyleSheet("color: rgb(255, 0, 0);")
-
         hbox.addWidget(self.showeGen1)
+
         self.showeGen2 = QCheckBox("Show generic2", self)
         self.showeGen2.setChecked(True)
         self.showeGen2.stateChanged.connect(self.updatePlots)
         self.showeGen2.setStyleSheet("color: rgb(0, 255, 0);")
         hbox.addWidget(self.showeGen2)
+
+        self.sync = QCheckBox("Synchronize", self)
+        self.sync.stateChanged.connect(self.updatePlots)
+        self.sync.setChecked(True)
+        self.sync.stateChanged.connect(self.synChecked)
+        hbox.addWidget(self.sync)
+        print("Added sync %s" % (self.sync))
         layout.addLayout(hbox)
 
         gLayout = QGridLayout()
@@ -693,8 +698,8 @@ class SensorDisplay(QMainWindow):
         fmt = ["CSV Files (*.csv)", "Excel Files (*.xslc)"]
         files = QFileDialog.getOpenFileName(self, "Load data", local_dir, fmt[0])
         if files:
-            self.emulatorFile = files[0]
-            self.load_file(self.emulatorFile)
+            self.emFileName = files[0]
+            self.load_file(self.emFileName)
 
     def capture(self):
         # Start Yoctopuce I/O task in a separate thread
@@ -710,6 +715,12 @@ class SensorDisplay(QMainWindow):
             self.subSigThread.updateSignal.connect(self.append_data)
             self.subSigThread.startTask.emit()
             self.subSigThread.start()
+    def synChecked(self):
+        if self.sync.isChecked():
+            print("Sync is active")
+        else:
+            print("Sync is passive")
+
 
     @property
     def connected(self):
@@ -860,8 +871,6 @@ class SensorDisplay(QMainWindow):
             self.intervalFrame.hide()
             self.rFile = None
             self.csvFile = None
-            print("Start capture")
-
             print("Start record on %s" % self.yoctoTask)
             self.setNewData()
             self.updatePlots()
@@ -923,6 +932,7 @@ class SensorDisplay(QMainWindow):
             if line[0].startswith("#"):
                 print("Skip line %s  " % line)
             else:
+                #print("Load line %d %s " % (idx,  line))
                 time = line[0]
                 relTime = float(line[1])
                 val1 = float(line[2])
@@ -933,16 +943,17 @@ class SensorDisplay(QMainWindow):
                     [time, relTime, val1, self.emUnit[0], val2, self.emUnit[1]]
                 )
         f.close()
-        self.emData = np.zeros([idx -2, 3])
-        print("Create numpy array of length %d" % (idx))
+        self.emData = np.zeros([len(datal), 3])
+        print("Create numpy array of length %d" % (len(datal)))
         self.pData = {"generic2": [], "generic1": []}
         print("Load file %s :" % (fname))
         for idx, line in enumerate(datal):
             print("2nD %d : %s" % (idx, line))
-            self.pData["generic2"].append([float(line[1]), float(line[2])])
+            self.pData["generic2"].append([float(line[1]), float(line[2]), float(line[4])])
+            self.emData[idx] = [float(line[1]), float(line[2]), float(line[4])]
         print("Set emData to \n%s" % (self.emData))
-        self.emFile = fname
-        print("Set emulator file name to %s" % self.emFile)
+        self.emFileName = os.path.basename(fname)
+        print("Set emulator file name to %s" % self.emFileName)
         self.setNewData()
         self.updatePlots()
 
@@ -951,7 +962,7 @@ class SensorDisplay(QMainWindow):
             print("No data yet captured")
             return
         fmt = ["CSV Files (*.csv)", "Excel Files (*.xslc)"]
-
+        data = []
         fname, ftype = QFileDialog.getSaveFileName(
             self, "Store captured data", self.QFilename.text(), fmt[0]
         )
@@ -962,7 +973,6 @@ class SensorDisplay(QMainWindow):
             f = open(fname, "w", encoding="cp1252")
             csvf = csv.writer(f, lineterminator="\n")
             self.writeCsvHeader(csvf)
-            data = []
             # print(self.pData)
             for k, v in self.pData.items():
                 print("Key %s is unit is %s" % (k, v[0][3]))
@@ -972,11 +982,13 @@ class SensorDisplay(QMainWindow):
                 print("Raw data", self.rawdata[i])
                 data = [
                     self.rawdata[i][0],
+                    self.rawdata[i][1],
                     self.pData["generic2"][i][2],
                     self.pData["generic2"][i][3],
                 ]
                 data.extend(
-                    [self.pData["generic1"][i][2], self.pData["generic1"][i][3]]
+                    [self.pData["generic1"][i][2],
+                     self.pData["generic1"][i][3]]
                 )
                 print("Data", data)
                 csvf.writerow(data)
@@ -1104,11 +1116,11 @@ class SensorDisplay(QMainWindow):
                 self.rawunit = self.rawdata[i][7]
                 self.punit = self.pData["generic1"][i][3]
         if self.emData is not None:
-            self.emdata = np.zeros([len(self.emData), 3])
+            self.emData = np.zeros([len(self.emData), 3])
             for i in range(len(self.emData)):
-                self.emdata[i][0] = float(self.emData[i][0])
-                self.emdata[i][1] = float(self.emData[i][1])
-                self.emdata[i][2] = float(self.emData[i][2])
+                self.emData[i][0] = float(self.emData[i][0])
+                self.emData[i][1] = float(self.emData[i][1])
+                self.emData[i][2] = float(self.emData[i][2])
 
     def updatePlots(self):
         if (self.data1 is None) or (self.data2 is None):
@@ -1197,27 +1209,25 @@ class SensorDisplay(QMainWindow):
             self.progressBar.setValue(int(progress))
             self.recorderGraph.setTitle(self.QPlotname.text())
             self.recorderGraph.addLegend()
-        print(self.emulatorGraph)
-        if self.emdata is not None and self.emulatorGraph is not None:
-            if self.emFile is None:
-                fname = ""
-            else:
-                fname = self.emFile.split("/")[-1]
-            x = self.emdata[:, 0]
-            y1 = self.emdata[:, 1]
-            y2 = self.emdata[:, 2]
+        if len(self.emData) >0  and self.emulatorGraph is not None:
+            x = self.emData[:, 0]
+            y1 = self.emData[:, 1]
+            y2 = self.emData[:, 2]
             self.emulatorGraph.clear()
-            self.emulatorGraph.addLegend()
-            if self.showeGen1.checkState():
+
+            if self.showGen1CB.checkState():
+                print("Plot %s, %s" % (str(x), y1))
                 p1 = self.emulatorGraph.plot(
                     x, y1, name="generic1", pen=pg.mkPen("red")
                 )
-                self.emulatorGraph.setTitle()
-            if self.showeGen2.checkState():
+            if self.showGen2CB.checkState():
                 p2 = self.emulatorGraph.plot(
                     x, y2, name="generic2", pen=pg.mkPen("green")
                 )
-            self.emulatorGraph.setTitle(self.emFile.split("/")[-1])
+            self.emulatorGraph.setTitle(self.emFileName)
+            self.emulatorGraph.addLegend()
+
+
         else:
             print("Skip as emData size of %d" % (len(self.emData)))
 
