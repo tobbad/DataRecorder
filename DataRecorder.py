@@ -6,12 +6,12 @@ Created on Mon Feb  6 09:47:21 2023
 """
 import sys, os
 import time as ti
-import csv
 from math import ceil, isnan
 from datetime import *
 import numpy as np
 from configuration import configuration
 from YoctopuceTask import YoctopuceTask, SignalHubThread
+import DataSet
 
 sys.path.append(
     os.sep.join(
@@ -158,18 +158,12 @@ class SensorDisplay(QMainWindow):
         self.setSampleInterval_ms = 1
         self.captureTime_s = 1
         self.rawdata = []
-        self.cData = None
         self.unit = []
         self.rawunit = None
         self.punit = None
         self.functionValues = {}
-        self.data1 = None
-        self.data2 = None
-        self.emData = []
         self.doRecord = False
         self.onGoing = False
-        self.nanFile = None
-        self.csvNaNFile = None
         self.btnState = {"Start": False, "Clear": False, "Stop": False, "Save": False}
         self.conf = None
         self._doSave = False
@@ -618,7 +612,7 @@ class SensorDisplay(QMainWindow):
 
         res.setLayout(layout)
         if self.emData is not None:
-            self.setNewData()
+            self.syncData()
             self.updatePlots()
         print("Emulator created %s" % self.emulatorGraph)
         return res
@@ -627,20 +621,21 @@ class SensorDisplay(QMainWindow):
         if self.doRecord:
             if data[0] is None:
                 print(
-                    "Finished capturing (%d, %d)"
-                    % (len(self.rawdata), len(self.rawdata[0]))
+                    "Finished capturing %d)"
+                    % (len(self.cData)))
                 )
-                self.setNewData()
+                self.syncData()
                 self.updatePlots()
                 self.stopCapture()
             else:
-                self.rawdata.append(data)
-                pData = [data[0], data[1]]
                 self.onGoing = self.onGoing and (
                     not (isnan(data[3])) or (not isnan(data[6]))
                 )
                 if not self.onGoing:
                     self.sensor = None
+                self.cData.onGoing = onGoing
+                self.cData.append(data)
+
                 pData.extend(self.r2p[data[2]](data[3], data[4]))
                 if len(data) > 5:
                     pData.extend(self.r2p[data[5]](data[6], data[7]))
@@ -653,19 +648,11 @@ class SensorDisplay(QMainWindow):
                     self.cData[data[5]].append(
                         ([pData[0], pData[1], pData[4], pData[5]])
                     )
-                if self.nanFile is not None:
-                    print("cData/ cvsNanFile ", pData, self.csvNaNFile)
-                    self.csvNaNFile.writerow(pData)
-                    if self.onGoing and self.nanFile is not None:
-                        print("close nan file")
-                        self.nanFile.close()
-                        self.nanFile = None
-                        self.csvNaNFile = None
                 if self.csvFile is None:
                     now = datetime.now()
                     nowS = now.strftime("%Y%m%d_%H%M%S.csv")
                     print(
-                        "Set up rfile %s with %d Samples with Sampleinterval of %d %s in %s"
+                        "Set up csv Data file %s with %d Samples with Sampleinterval of %d %s in %s"
                         % (
                             nowS,
                             self.capture_size,
@@ -677,18 +664,15 @@ class SensorDisplay(QMainWindow):
                     # print(" Samples with Sampleinterval of %d ??" % (self.conf.SampleInterval["time"] ))
                     # print(" Samples with Sampleinterval of ?? %s" % (  self.conf.SampleInterval["unit"] ))
                     # print("Sample Cnt to %s  " % (type(self.conf.SampleInterval["time"]) ))
+                    self.cData.setFileName(nowS)
                     self.QFilename.setText(nowS)
-                    self.filename = nowS
-                    self.rFile = open(nowS, "w")
-                    self.csvFile = csv.writer(self.rFile, lineterminator="\n")
-                    self.writeCsvHeader(self.csvFile)
                 self.csvFile.writerow(pData)
                 print(
                     "Data %d/%d %s. Thread= %s"
-                    % (len(self.rawdata), self.capture_size, pData, currThread())
+                    % (len(self.cData), self.capture_size, pData, currThread())
                 )
-                if len(self.rawdata) % 20 == 0:
-                    self.setNewData()
+                if len(self.cData) % 20 == 0:
+                    self.syncData()
                     self.updatePlots()
         else:
             print(
@@ -729,20 +713,6 @@ class SensorDisplay(QMainWindow):
     def connected(self):
         return self.sensor != None
 
-    def writeCsvHeader(self, csvFile):
-        data = self.cData["generic2"][0]
-        print("Set csv Header")
-
-        res = self.r2p["generic2"](data[2], data[3])
-        header = "# generic2 %s" % (res[1])
-        csvFile.writerow([header])
-        print("\tSet header 2 to %s" % header)
-
-        data = self.cData["generic1"][0]
-        res = self.r2p["generic1"](data[2], data[3])
-        header = "# generic1 %s" % (res[1])
-        csvFile.writerow([header])
-        print("\tSet header 1 to %s " % header)
 
     @pyqtSlot(dict)
     def arrival(self, device):
@@ -759,7 +729,10 @@ class SensorDisplay(QMainWindow):
             # log arrival
             print("Device connected in Datarecorder onGoing %s" % (self.onGoing))
             self.conf = configuration(self.yoctoTask)
-            self.r2p = self.conf.getR2PFunction
+            r2p = self.conf.getR2PFunction
+            self.cData = DataSet(r2p)
+            self.eData = DataSet(r2p)
+
             print(
                 "GUI Set Capturetime to %d %s"
                 % (self.conf.CaptureTime["time"], self.conf.CaptureTime["unit"])
@@ -782,11 +755,7 @@ class SensorDisplay(QMainWindow):
             if self.onGoing:
                 print("Show old buttons")
             else:
-
-                if self.nanFile is not None:
-                    self.nanFile.close()
-                self.nanFile = None
-                self.csvNaNFile = None
+                self.cData.setNanFileName(None)
             print("DR Registered Sensors %s" % self.sensor)
         else:
             print("%d Sensors are already connected" % len(self.sensor))
@@ -801,10 +770,6 @@ class SensorDisplay(QMainWindow):
             print("Detected onGoing in removal")
             now = datetime.now()
             nowSNaN = now.strftime("%Y%m%d_%H%M%S_NaN.csv")
-            print("Set NaN file to %s" % nowSNaN)
-            self.nanFile = open(nowSNaN, "w")
-            self.csvNaNFile = csv.writer(self.nanFile, lineterminator="\n")
-            self.writeCsvHeader(self.csvNaNFile)
         self.sensor = None
 
         print("Device disconnected:", device)
@@ -872,10 +837,9 @@ class SensorDisplay(QMainWindow):
             self.doRecord = True
             self.onGoing = True
             self.intervalFrame.hide()
-            self.rFile = None
-            self.csvFile = None
+            self.cData.setFileName(None)
             print("Start record on %s" % self.yoctoTask)
-            self.setNewData()
+            self.syncData()
             self.updatePlots()
         self.updateConnected()
 
@@ -886,12 +850,8 @@ class SensorDisplay(QMainWindow):
     def stopCapture(self):
         print("DataRecorder stopCapture received in %s" % currThread())
         print("Show buttons in stopCapture")
-        if self.nanFile is not None:
-            self.nanFile.close()
-        self.nanFile = None
-        if self.rFile is not None:
-            self.rFile.close()
-        self.rFile = None
+        self.cData.setNanFileName = None
+        self.cData.setFileName = None
         self.doRecord = False
         self.btnState["Start"] = False
         self.btnState["Stop"] = False
@@ -922,8 +882,7 @@ class SensorDisplay(QMainWindow):
         self.btnState["Save"] = False
         self.updateConnected()
         self.progressBar.setValue(0)
-        self.cData = None
-        self.rawdata = []
+        self.cData.clear()
         self.sensor = None
 
     def load_file(self, fname):
@@ -965,7 +924,7 @@ class SensorDisplay(QMainWindow):
         print("Set emData to \n%s" % (self.emData))
         self.emFileName = os.path.basename(fname)
         print("Set emulator file name to %s" % self.emFileName)
-        self.setNewData()
+        self.syncData()
         self.updatePlots()
 
     def doSave(self):
@@ -1081,7 +1040,7 @@ class SensorDisplay(QMainWindow):
             print("Skip as do not record")
 
     def tabChanged(self, index):
-        self.setNewData()
+        self.syncData()
         self.updatePlots()
         print("Tab changed %d" % (index))
 
@@ -1104,15 +1063,18 @@ class SensorDisplay(QMainWindow):
         else:
             return 0
 
-    def setNewData(self):
+    def syncData(self):
+        self.cData.sync()
+        self.eData.sync()
         if self.cData is None:
             print("Set up new generic data1/2")
             self.cData = {}
             self.cData["generic1"] = []
             self.cData["generic2"] = []
-            self.data1 = np.zeros([self.cDataSize, 3])
-            self.data2 = np.zeros([self.cDataSize, 3])
-            self.unit = ["", ""]
+            self.cdata1 = np.zeros([self.cDataSize, 3])
+            self.cdata2 = np.zeros([self.cDataSize, 3])
+            self.cData["generic2_u"] = ""
+            self.cData["generic1_u"] = ""
             return
         if self.cDataSize > 0:
             print("Set new data of size cData %d" % (self.cDataSize))
@@ -1125,8 +1087,8 @@ class SensorDisplay(QMainWindow):
                 self.data2[i][0] = float(self.cData["generic2"][i][1])
                 self.data2[i][1] = float(self.cData["generic2"][i][2])
                 self.data2[i][2] = float(self.rawdata[0][3])
-                self.rawunit = self.rawdata[0][7]
-                self.punit = self.cData["generic1"][i][3]
+                self.cData["generic1_u"] = self.cData["generic1"][i][3]
+                self.cData["generic2_u"] = self.rawdata[0][7]
 
     def updatePlots(self):
         if (self.data1 is None) or (self.data2 is None):
