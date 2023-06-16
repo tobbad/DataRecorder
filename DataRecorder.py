@@ -158,7 +158,7 @@ class SensorDisplay(QMainWindow):
         self.setSampleInterval_ms = 1
         self.captureTime_s = 1
         self.rawdata = []
-        self.pData = None
+        self.cData = None
         self.unit = []
         self.rawunit = None
         self.punit = None
@@ -194,8 +194,10 @@ class SensorDisplay(QMainWindow):
         self.message.setSizeGripEnabled(False)
         self.message.addPermanentWidget(self.sizeLabel)
         # Add tab widget for Recorder an Emulator
-        tabWidget.addTab(self.Recorder(), "Recorder")
-        tabWidget.addTab(self.Emulator(), "Emulator")
+        self.recorder = self.Recorder()
+        tabWidget.addTab(self.recorder, "Recorder")
+        self.emulator = self.Emulator()
+        tabWidget.addTab(self.emulator, "Emulator")
         # tabWidget.addTab(self.Icons(), "Icons")
         self.Emulator()
         #tabWidget.addTab(self.Emulator(), "Emulator")
@@ -558,6 +560,7 @@ class SensorDisplay(QMainWindow):
         self.emulatorGraph.setLabel(
             "bottom", '<span style="color:white;font-size:10px">Time (s)</span>'
         )
+        self.emulatorGraph.addLegend()
         layout.addWidget(self.emulatorGraph)
         self.emulatorGraph.setTitle("Initial")
         hbox = QHBoxLayout()
@@ -641,17 +644,17 @@ class SensorDisplay(QMainWindow):
                 pData.extend(self.r2p[data[2]](data[3], data[4]))
                 if len(data) > 5:
                     pData.extend(self.r2p[data[5]](data[6], data[7]))
-                if len(self.pData) == 0:
-                    self.pData[data[2]] = []
+                if len(self.cData) == 0:
+                    self.cData[data[2]] = []
                     if len(data) > 5:
-                        self.pData[data[5]] = []
-                self.pData[data[2]].append(([pData[0], pData[1], pData[2], pData[3]]))
+                        self.cData[data[5]] = []
+                self.cData[data[2]].append(([pData[0], pData[1], pData[2], pData[3]]))
                 if len(data) > 5:
-                    self.pData[data[5]].append(
+                    self.cData[data[5]].append(
                         ([pData[0], pData[1], pData[4], pData[5]])
                     )
                 if self.nanFile is not None:
-                    print("pData/ cvsNanFile ", pData, self.csvNaNFile)
+                    print("cData/ cvsNanFile ", pData, self.csvNaNFile)
                     self.csvNaNFile.writerow(pData)
                     if self.onGoing and self.nanFile is not None:
                         print("close nan file")
@@ -727,7 +730,7 @@ class SensorDisplay(QMainWindow):
         return self.sensor != None
 
     def writeCsvHeader(self, csvFile):
-        data = self.pData["generic2"][0]
+        data = self.cData["generic2"][0]
         print("Set csv Header")
 
         res = self.r2p["generic2"](data[2], data[3])
@@ -735,7 +738,7 @@ class SensorDisplay(QMainWindow):
         csvFile.writerow([header])
         print("\tSet header 2 to %s" % header)
 
-        data = self.pData["generic1"][0]
+        data = self.cData["generic1"][0]
         res = self.r2p["generic1"](data[2], data[3])
         header = "# generic1 %s" % (res[1])
         csvFile.writerow([header])
@@ -919,7 +922,7 @@ class SensorDisplay(QMainWindow):
         self.btnState["Save"] = False
         self.updateConnected()
         self.progressBar.setValue(0)
-        self.pData = None
+        self.cData = None
         self.rawdata = []
         self.sensor = None
 
@@ -927,6 +930,7 @@ class SensorDisplay(QMainWindow):
         f = open(fname, encoding="cp1252")
         csvf = csv.reader(f, lineterminator="\n")
         datal = []
+        self.eData = {"generic2": [], "generic1": []}
         self.emUnit = []
         for idx, line in enumerate(csvf):
             if line[0].startswith("#"):
@@ -939,18 +943,25 @@ class SensorDisplay(QMainWindow):
                 self.emUnit.append(line[3])
                 val2 = float(line[4])
                 self.emUnit.append(line[5])
+                self.eData["generic2"].append([time, relTime, val2, line[5]])
+                self.eData["generic1"].append([time, relTime, val1, line[3]])
+
                 datal.append(
                     [time, relTime, val1, self.emUnit[0], val2, self.emUnit[1]]
                 )
         f.close()
         self.emData = np.zeros([len(datal), 3])
         print("Create numpy array of length %d" % (len(datal)))
-        self.pData = {"generic2": [], "generic1": []}
+        self.cData = {"generic2": [], "generic1": []}
         print("Load file %s :" % (fname))
         for idx, line in enumerate(datal):
-            print("2nD %d : %s" % (idx, line))
-            self.pData["generic2"].append([float(line[1]), float(line[2]), float(line[4])])
-            self.emData[idx] = [float(line[1]), float(line[2]), float(line[4])]
+            #print("2nD %d : %s" % (idx, line))
+            self.emData[idx][0]= float(line[1])
+            self.emData[idx][1]= float(line[2])
+            self.emData[idx][2]= float(line[4])
+            self.cData["generic2"].append([line[0], float(line[1]) , float(line[2]), line[3]])
+            self.cData["generic1"].append([line[0], float(line[1]) , float(line[4]) , line[5]])
+
         print("Set emData to \n%s" % (self.emData))
         self.emFileName = os.path.basename(fname)
         print("Set emulator file name to %s" % self.emFileName)
@@ -958,7 +969,7 @@ class SensorDisplay(QMainWindow):
         self.updatePlots()
 
     def doSave(self):
-        if self.pData is None:
+        if self.cData is None:
             print("No data yet captured")
             return
         fmt = ["CSV Files (*.csv)", "Excel Files (*.xslc)"]
@@ -969,26 +980,26 @@ class SensorDisplay(QMainWindow):
         if fname is None:
             fname = self.QFilename.text()
         if len(fname) > 0:
-            print("doSave  all %s of size %d" % (fname, self.pDataSize))
+            print("doSave  all %s of size %d" % (fname, self.cDataSize))
             f = open(fname, "w", encoding="cp1252")
             csvf = csv.writer(f, lineterminator="\n")
             self.writeCsvHeader(csvf)
-            # print(self.pData)
-            for k, v in self.pData.items():
+            # print(self.cData)
+            for k, v in self.cData.items():
                 print("Key %s is unit is %s" % (k, v[0][3]))
                 data.append("# Sensor %s Unit %s " % (k, v[0][3]))
             csvf.writerow(data)
-            for i in range(self.pDataSize):
+            for i in range(self.cDataSize):
                 print("Raw data", self.rawdata[i])
                 data = [
                     self.rawdata[i][0],
                     self.rawdata[i][1],
-                    self.pData["generic2"][i][2],
-                    self.pData["generic2"][i][3],
+                    self.cData["generic2"][i][2],
+                    self.cData["generic2"][i][3],
                 ]
                 data.extend(
-                    [self.pData["generic1"][i][2],
-                     self.pData["generic1"][i][3]]
+                    [self.cData["generic1"][i][2],
+                     self.cData["generic1"][i][3]]
                 )
                 print("Data", data)
                 csvf.writerow(data)
@@ -1086,49 +1097,45 @@ class SensorDisplay(QMainWindow):
         self.updatePlots()
 
     @property
-    def pDataSize(self):
-        if self.pData is not None and len(self.pData["generic1"]) > 0:
-            return len(self.pData["generic1"])
+    def cDataSize(self):
+        if self.cData is not None and len(self.cData["generic1"]) > 0:
+            print("cData is %d" % len(self.cData["generic1"]))
+            return len(self.cData["generic1"])
         else:
             return 0
 
     def setNewData(self):
-        if self.pData is None:
+        if self.cData is None:
             print("Set up new generic data1/2")
-            self.pData = {}
-            self.pData["generic1"] = []
-            self.pData["generic2"] = []
-            self.data1 = np.zeros([self.pDataSize, 3])
-            self.data2 = np.zeros([self.pDataSize, 3])
+            self.cData = {}
+            self.cData["generic1"] = []
+            self.cData["generic2"] = []
+            self.data1 = np.zeros([self.cDataSize, 3])
+            self.data2 = np.zeros([self.cDataSize, 3])
             self.unit = ["", ""]
             return
-        if self.pDataSize > 0:
-            print("Set new data of size pData %d" % (self.pDataSize))
-            self.data1 = np.zeros([self.pDataSize, 3])
-            self.data2 = np.zeros([self.pDataSize, 3])
-            for i in range(self.pDataSize):
-                self.data1[i][0] = float(self.pData["generic1"][i][1])
-                self.data1[i][1] = float(self.pData["generic1"][i][2])
-                self.data1[i][2] = float(self.rawdata[i][6])
-                self.data2[i][0] = float(self.pData["generic2"][i][1])
-                self.data2[i][1] = float(self.pData["generic2"][i][2])
-                self.data2[i][2] = float(self.rawdata[i][3])
-                self.rawunit = self.rawdata[i][7]
-                self.punit = self.pData["generic1"][i][3]
-        if self.emData is not None:
-            self.emData = np.zeros([len(self.emData), 3])
-            for i in range(len(self.emData)):
-                self.emData[i][0] = float(self.emData[i][0])
-                self.emData[i][1] = float(self.emData[i][1])
-                self.emData[i][2] = float(self.emData[i][2])
+        if self.cDataSize > 0:
+            print("Set new data of size cData %d" % (self.cDataSize))
+            self.data1 = np.zeros([self.cDataSize, 3])
+            self.data2 = np.zeros([self.cDataSize, 3])
+            for i in range(self.cDataSize):
+                self.data1[i][0] = float(self.cData["generic1"][i][1])
+                self.data1[i][1] = float(self.cData["generic1"][i][2])
+                self.data1[i][2] = float(self.rawdata[0][6])
+                self.data2[i][0] = float(self.cData["generic2"][i][1])
+                self.data2[i][1] = float(self.cData["generic2"][i][2])
+                self.data2[i][2] = float(self.rawdata[0][3])
+                self.rawunit = self.rawdata[0][7]
+                self.punit = self.cData["generic1"][i][3]
 
     def updatePlots(self):
         if (self.data1 is None) or (self.data2 is None):
             print("Skip plot as there is no data")
             return
-        if self.pDataSize > 0:
+        if self.cDataSize > 0:
             x = self.data1[:, 0]
             self.recorderGraph.clear()
+            print("Plot on %s" % type(self.recorderGraph))
 
             if self.showGen1CB.isChecked():
                 self.gen1Label.setText("generic1")
@@ -1172,7 +1179,7 @@ class SensorDisplay(QMainWindow):
                     self.recorderGraph.setYRange(minY, maxY, padding=0)
                     vp.disableAutoRange(axis="y")
                 else:
-                    print("enable y autoscale")
+                    vp.enableAutoRange(axis="y")
             else:
                 self.frame1.hide()
 
@@ -1198,25 +1205,29 @@ class SensorDisplay(QMainWindow):
                 self._actRawVal2.setText("%.2f" % g2Raw[-1])
                 self._actRawMin2.setText("%.2f" % g2Rawmin)
                 self._actRawMax2.setText("%.2f" % g2Rawmax)
-
                 self.recorderGraph.plot(x, g2, name="generic2", pen=pg.mkPen("red"))
             else:
                 self.frame2.hide()
             self.pUnit.setText(self.punit)
             self.rawUnit.setText(self.rawunit)
-            progress = 100.0 * len(self.rawdata) / float(self.capture_size)
-            print("Progress %.1f of %d " % (progress, self.capture_size))
-            self.progressBar.setValue(int(progress))
             self.recorderGraph.setTitle(self.QPlotname.text())
             self.recorderGraph.addLegend()
-        if len(self.emData) >0  and self.emulatorGraph is not None:
+        progress = 100.0 * len(self.rawdata) / float(self.capture_size)
+        print("Progress %.1f of %d " % (progress, self.capture_size))
+        self.progressBar.setValue(int(progress))
+        #
+        # Emulator graph
+        #
+        if len(self.emData) > 0  and self.emulatorGraph is not None:
             x = self.emData[:, 0]
             y1 = self.emData[:, 1]
             y2 = self.emData[:, 2]
             self.emulatorGraph.clear()
+            print("eM Plot on %s" % type(self.emulatorGraph))
 
+            self.emulatorGraph.addLegend()
             if self.showGen1CB.checkState():
-                print("Plot %s, %s" % (str(x), y1))
+                print("em Plot \n%s" % self.emData)
                 p1 = self.emulatorGraph.plot(
                     x, y1, name="generic1", pen=pg.mkPen("red")
                 )
@@ -1225,7 +1236,6 @@ class SensorDisplay(QMainWindow):
                     x, y2, name="generic2", pen=pg.mkPen("green")
                 )
             self.emulatorGraph.setTitle(self.emFileName)
-            self.emulatorGraph.addLegend()
 
 
         else:
