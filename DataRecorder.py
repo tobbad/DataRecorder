@@ -151,7 +151,9 @@ class SensorDisplay(QMainWindow):
     def __init__(self):
         print("Create app")
         super().__init__()
-        self.emFile = ""
+        self.eData =None
+        self.cData = None
+        self.nanData = None
         self.filename = "./"
         self.btn = {}
         self.capture_size = 0
@@ -618,6 +620,8 @@ class SensorDisplay(QMainWindow):
         return res
 
     def append_data(self, data):
+        self.cData.append(data)
+        self.nanData.append(data)
         if self.doRecord:
             if data[0] is None:
                 print(
@@ -731,6 +735,7 @@ class SensorDisplay(QMainWindow):
             self.conf = configuration(self.yoctoTask)
             r2p = self.conf.getR2PFunction
             self.cData = DataSet(r2p)
+            self.nanData = DataSet(r2p)
             self.eData = DataSet(r2p)
 
             print(
@@ -834,7 +839,8 @@ class SensorDisplay(QMainWindow):
         if self.yoctoTask is None:
             print("No sensor connected")
         if self.yoctoTask.capture_start():
-            self.doRecord = True
+            self.cData.doRecord = True
+            self.nanData.doRecord = True
             self.onGoing = True
             self.intervalFrame.hide()
             self.cData.setFileName(None)
@@ -850,9 +856,8 @@ class SensorDisplay(QMainWindow):
     def stopCapture(self):
         print("DataRecorder stopCapture received in %s" % currThread())
         print("Show buttons in stopCapture")
-        self.cData.setNanFileName = None
-        self.cData.setFileName = None
-        self.doRecord = False
+        self.cData.doRecord = False
+        self.nanData.doRecord = False
         self.btnState["Start"] = False
         self.btnState["Stop"] = False
         self.btnState["Clear"] = True
@@ -886,6 +891,7 @@ class SensorDisplay(QMainWindow):
         self.sensor = None
 
     def load_file(self, fname):
+
         f = open(fname, encoding="cp1252")
         csvf = csv.reader(f, lineterminator="\n")
         datal = []
@@ -927,7 +933,17 @@ class SensorDisplay(QMainWindow):
         self.syncData()
         self.updatePlots()
 
-    def doSave(self):
+    def doSavecData(self):
+        fname =         fname, ftype = QFileDialog.getSaveFileName(
+            self, "Store captured data", self.QFilename.text(), fmt[0]
+        )
+        if fname is None:
+            fname = self.QFilename.text()
+
+        if len(fname) > 0:
+            self.cData
+            self.cData.save(fName)
+
         if self.cData is None:
             print("No data yet captured")
             return
@@ -1065,6 +1081,7 @@ class SensorDisplay(QMainWindow):
 
     def syncData(self):
         self.cData.sync()
+        self.nanData.sync()
         self.eData.sync()
         if self.cData is None:
             print("Set up new generic data1/2")
