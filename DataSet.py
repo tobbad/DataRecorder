@@ -10,17 +10,17 @@ import csv
 import numpy as np
 
 class DataSet:
-    def __init__(self, r2p):
-        self.rData = []   # data as it is (raw) / unconcverted
-        self.dData = [] # Physical data
+    def __init__(self, r2p, p2r):
+        self.rData = [] # data as it is (raw) / unconconverted
+        self.pData = {} # Physical data
         self.r2p = r2p
+        self.p2r = p2r
         self.doRecord = False
         self.onGoing = False
         self.nanFile = None
         self.file = None
         self.cvsFile = None
-        self.gen1 =None
-        self.gen2 =None
+        self.data = {"generic1": None, "generic2": None, "unit_raw": None, "unit_phy": None}
 
     def append(self, data):
         if self.onGoing:
@@ -44,9 +44,10 @@ class DataSet:
         else:
             return 0
 
+    @property
     def doRecord(self):
         return self.doRecord
-   @doRecord.setter
+    @doRecord.setter
     def doRecord(self, val):
         self.doRecord = val
 
@@ -58,29 +59,29 @@ class DataSet:
     def onGoing(self, onGoing):
         self.onGoing = onGoing
 
-    def sync(self):
-            if len(rData)> 0:
-                print("Set new data of size cData %d" % (self.dataSize))
-                self.gen1 = np.zeros([self.dataSize, 3])
-                self.gen2 = np.zeros([self.dataSize, 3])
+    def sync(self, setPData= False):
+        if setPData:
+            self.data = {"generic1": None, "generic2": None, "unit_raw": None, "unit_phy": None}
+            for
+        else:
+            if self.dataSize>0:
+                print("Set new data of size cData %d" %(self.dataSize)
                 for i in range(self.dataSize):
-                    self.gen1[i][0] = float(self.pData][i][1])
-                    self.gen1[i][1] = float(self.pData][i][1])
-                    self.gen1[i][2] = float(self.pData][i][1])
+                    self.pData
+                    self.data["generic1"][i][0] = float(self.pData[i][1]
+                    self.data["generic1"][i][1] = float(self.pData[i][2]
+                    self.data["generic1"][i][2] = float(self.pData[i][1]
 
-                    self.gen1[i][1] = float(self.cData["generic1"][i][2])
-                    self.gen1[i][2] = float(self.rawdata[0][6])
-                    self.gen2[i][0] = float(self.cData["generic2"][i][1])
-                    self.gen2[i][1] = float(self.cData["generic2"][i][2])
-                    self.gen2[i][2] = float(self.rawdata[0][3])
-                    self.cData["generic1_u"] = self.cData["generic1"][i][3]
-                    self.cData["generic2_u"] = self.rawdata[0][7]
+                    self.data["generic2"][i][0] = float(self.pData[i][1]
+                    self.data["generic2"][i][1] = float(self.pData[i][4]
+                    self.data["generic2"][i][2] = float(self.pData[i][1]
+
+                    self.data["unit_phy"] = self.pdata[3]
+                    self.data["unit_raw"] = self.rawdata[0][3]
 
     def load(self, fname):
-        if self.file is not None:
-            print("!!! File in save is %s !!! " % self.file)
-        self.file = open(fname)
-        self.cvsFile = csv.writer(self.file, lineterminator="\n")
+        file = open(fname)
+        self.cvsFile = csv.reader(file, lineterminator="\n")
         self.emUnit =[]
         for idx, line in enumerate(self.cvsFile):
             if line[0].startswith("#"):
@@ -89,18 +90,21 @@ class DataSet:
                 # print("Load line %d %s " % (idx,  line))
                 time = line[0]
                 relTime = float(line[1])
-                val1 = float(line[2])
-                self.emUnit.append(line[3])
+                rval1 = self.r2p(line[2], line[3])
+                self.emUnit.append(rval1[1])
                 val2 = float(line[4])
+                rval2 =  self.r2p(line[4], line[5])
                 self.emUnit.append(line[5])
-                self.rData.append(
-                    [time, relTime, val1, self.emUnit[0], val2, self.emUnit[1]]
-                )
-        self.file.close()
-        self.sync()
+                self.rData.append([time, relTime])
+                self.rData.append( [rval1, rval2 ])
+        file.close()
+        self.sync(True)
 
     def save(self, fname):
         self.setFileName(None)
+        for i in range(len(self.pData)):
+            print(self.pdata[i]))
+
     def setFileName(self, filename):
         if filename is None:
             self.file.close()
@@ -121,7 +125,7 @@ class DataSet:
             self.writeCsvHeader(self.cvsNanFile)
 
     def writeCsvHeader(self, csvFile):
-        data = self.cData["generic2"][0]
+        data = self.data["generic2"][0]
         print("Set csv Header")
 
         res = self.r2p["generic2"](data[2], data[3])
@@ -129,15 +133,12 @@ class DataSet:
         csvFile.writerow([header])
         print("\tSet header 2 to %s" % header)
 
-        data = self.cData["generic1"][0]
+        data = self.data["generic1"][0]
         res = self.r2p["generic1"](data[2], data[3])
         header = "# generic1 %s" % (res[1])
         csvFile.writerow([header])
         print("\tSet header 1 to %s " % header)
 
     def clear(self):
-        self.pData = {"generic1":[], "generic2":[] }
+        self.data = {"generic1":[], "generic2":[] }
 
-
-    def __len__(self):
-        return len(self.rawdata)
