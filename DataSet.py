@@ -8,19 +8,24 @@ Created on Mon Feb  6 09:47:21 2023
 import sys, os
 import csv
 import numpy as np
-
+import configuration
+from datetime import *
+from YoctopuceTask import *
 class DataSet:
-    def __init__(self, r2p, p2r):
+    def __init__(self, p2r, r2p):
         self.rData = [] # data as it is (raw) / unconconverted
         self.pData = {} # Physical data
         self.r2p = r2p
         self.p2r = p2r
-        self.doRecord = False
-        self.onGoing = False
+        self._doRecord = False
+        self._onGoing = False
         self.nanFile = None
+        self.nanCvsFile = None
         self.file = None
-        self.cvsFile = None
+        self.csvFile = None
         self.data = {"generic1": None, "generic2": None, "unit_raw": None, "unit_phy": None}
+        self._data1 = None
+        self._data2 = None
 
     def append(self, data):
         if self.onGoing:
@@ -33,7 +38,7 @@ class DataSet:
                 self.nanFile.close()
                 self.nanFile = None
             self.pData.append(pData)
-            if self.cvsFile is not None:
+            if self.csvFile is not None:
                 self.csvFile.writerow(pData)
 
     @property
@@ -46,82 +51,82 @@ class DataSet:
 
     @property
     def doRecord(self):
-        return self.doRecord
+        return self._doRecord
     @doRecord.setter
     def doRecord(self, val):
-        self.doRecord = val
+        self._doRecord = val
 
     @property
     def onGoing(self):
-        return self.onGoing
+        return self._onGoing
 
     @onGoing.setter
     def onGoing(self, onGoing):
-        self.onGoing = onGoing
+        self._onGoing = onGoing
+
+    @property
+    def data1(self):
+        return self._data1
+
+    @property
+    def data2(self):
+        return self._data2
 
     def sync(self, setPData= False):
         if setPData:
             self.data = {"generic1": None, "generic2": None, "unit_raw": None, "unit_phy": None}
-            for
         else:
             if self.dataSize>0:
-                print("Set new data of size cData %d" %(self.dataSize)
-                for i in range(self.dataSize):
-                    self.pData
-                    self.data["generic1"][i][0] = float(self.pData[i][1]
-                    self.data["generic1"][i][1] = float(self.pData[i][2]
-                    self.data["generic1"][i][2] = float(self.pData[i][1]
-
-                    self.data["generic2"][i][0] = float(self.pData[i][1]
-                    self.data["generic2"][i][1] = float(self.pData[i][4]
-                    self.data["generic2"][i][2] = float(self.pData[i][1]
-
-                    self.data["unit_phy"] = self.pdata[3]
-                    self.data["unit_raw"] = self.rawdata[0][3]
+                print("Set new data of size cData %d" %(self.dataSize))
 
     def load(self, fname):
-        file = open(fname)
-        self.cvsFile = csv.reader(file, lineterminator="\n")
-        self.emUnit =[]
-        for idx, line in enumerate(self.cvsFile):
-            if line[0].startswith("#"):
-                print("Skip line %s  " % line)
-            else:
-                # print("Load line %d %s " % (idx,  line))
-                time = line[0]
-                relTime = float(line[1])
-                rval1 = self.r2p(line[2], line[3])
-                self.emUnit.append(rval1[1])
-                val2 = float(line[4])
-                rval2 =  self.r2p(line[4], line[5])
-                self.emUnit.append(line[5])
-                self.rData.append([time, relTime])
-                self.rData.append( [rval1, rval2 ])
-        file.close()
+        if fname is not None:
+            file = open(fname)
+            self.csvFile = csv.reader(file, lineterminator="\n")
+            for idx, line in enumerate(self.csvFile):
+                if line[0].startswith("#"):
+                    print("Skip line %s  " % line)
+                else:
+                    # print("Load line %d %s " % (idx,  line))
+                    time = line[0]
+                    relTime = float(line[1])
+                    rval1 = self.r2p(line[2], line[3])
+                    rval2 =  self.r2p(line[4], line[5])
+                    self.rData.append([time, relTime])
+                    self.rData.append( [rval1, rval2 ])
+                    print(self.rdata[-1])
+            file.close()
         self.sync(True)
 
     def save(self, fname):
         self.setFileName(None)
-        for i in range(len(self.pData)):
-            print(self.pdata[i]))
+        for i in range(dataSize):
+            print(self.pdata[i])
+
 
     def setFileName(self, filename):
-        if filename is None:
+        if self.file is not None:
             self.file.close()
             self.file = None
-            self.cvsFile = None
+            self.csvFile = None
         else:
-            self.file = open(filename)
-            self.cvsFile = self.csvFile = csv.writer(self.file, lineterminator="\n")
-            self.writeCsvHeader(self.cvsFile)
+            now = datetime.datetime.now()
+            filename = now.strftime("%Y%m%d_%H%M%S.csv")
+            print("Set csv Filename to %s" %filename)
+        self.file = open(filename, "w")
+        self.csvFile = csv.writer(self.file, lineterminator="\n")
+        self.writeCsvHeader(self.csvFile)
 
     def setNanFileName(self, filename):
+        if self.nanFile is None:
+            return
         if filename is None:
-            self.nanCvsFile.close()
+            self.nanFile.close()
+            self.nanFile = None
             self.nanCvsFile = None
         else:
             self.nanFile = open(filename)
-            self.cvsNanFile = self.csvFile = csv.writer(self.nanFile, lineterminator="\n")
+            self.nanCvsFile = self.csvFile = csv.writer(self.nanFile, lineterminator="\n")
             self.writeCsvHeader(self.cvsNanFile)
 
     def writeCsvHeader(self, csvFile):
@@ -141,4 +146,5 @@ class DataSet:
 
     def clear(self):
         self.data = {"generic1":[], "generic2":[] }
+
 

@@ -11,7 +11,7 @@ from datetime import *
 import numpy as np
 from configuration import configuration
 from YoctopuceTask import YoctopuceTask, SignalHubThread
-import DataSet
+from DataSet import DataSet
 
 sys.path.append(
     os.sep.join(
@@ -613,7 +613,7 @@ class SensorDisplay(QMainWindow):
         layout.addLayout(gLayout)
 
         res.setLayout(layout)
-        if self.emData is not None:
+        if self.eData is not None:
             self.syncData()
             self.updatePlots()
         print("Emulator created %s" % self.emulatorGraph)
@@ -631,7 +631,8 @@ class SensorDisplay(QMainWindow):
         files = QFileDialog.getOpenFileName(self, "Load data", local_dir, fmt[0])
         if files:
             self.emFileName = files[0]
-            self.eData = DataSet(None, p2r)
+            r2p = self.conf.getR2PFunction()
+            self.eData = DataSet(None, r2p)
             self.eData.setFileName(self.emFileName)
             self.eData.load()
 
@@ -677,8 +678,8 @@ class SensorDisplay(QMainWindow):
             print("Device connected in Datarecorder onGoing %s" % (self.onGoing))
             self.conf = configuration(self.yoctoTask)
             p2r = self.conf.getP2RFunction()
-            self.cData = DataSet(r2p, None)
-            self.nanData = DataSet(r2p, None)
+            self.cData = DataSet(p2r, None)
+            self.nanData = DataSet(p2r, None)
 
             print(
                 "GUI Set Capturetime to %d %s"
@@ -833,7 +834,7 @@ class SensorDisplay(QMainWindow):
         self.sensor = None
 
 
-    def doSavecData(self):
+    def doSave(self):
         fname =         fname, ftype = QFileDialog.getSaveFileName(
             self, "Store captured data", self.QFilename.text(), fmt[0]
         )
@@ -953,10 +954,14 @@ class SensorDisplay(QMainWindow):
     def syncData(self):
         self.cData.sync()
         self.nanData.sync()
-        self.eData.sync()
+        if self.eData is not None:
+            self.eData.sync()
 
     def updatePlots(self):
-        if (self.data1 is None) or (self.data2 is None):
+        if self.cData is None:
+            print("Skip update as no Sensors conected")
+            return
+        if (self.cData.data1 is None) or (self.cData.data2 is None):
             print("Skip plot as there is no data")
             return
         if self.cDataSize > 0:
@@ -966,9 +971,9 @@ class SensorDisplay(QMainWindow):
 
             if self.showGen1CB.isChecked():
                 self.gen1Label.setText("generic1")
-                g1 = self.data1[:, 1]
+                g1 = self.cData.data1[:, 1]
                 g1Pure = g1[np.logical_not(np.isnan(g1))]
-                g1Raw = self.data1[:, 2]
+                g1Raw = self.cData.data1[:, 2]
                 g1RawPure = g1Raw[np.logical_not(np.isnan(g1Raw))]
                 g1RawLast = 0
 
