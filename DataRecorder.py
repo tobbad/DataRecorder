@@ -165,7 +165,6 @@ class SensorDisplay(QMainWindow):
         self.punit = None
         self.functionValues = {}
         self.doRecord = False
-        self.onGoing = False
         self.btnState = {"Start": False, "Clear": False, "Stop": False, "Save": False}
         self.conf = None
         self._doSave = False
@@ -675,11 +674,16 @@ class SensorDisplay(QMainWindow):
                 self.btnState["Clear"] = False
                 self.btnState["Save"] = False
             # log arrival
-            print("Device connected in Datarecorder onGoing %s" % (self.onGoing))
             self.conf = configuration(self.yoctoTask)
-            p2r = self.conf.getP2RFunction()
-            self.cData = DataSet(p2r, None)
-            self.nanData = DataSet(p2r, None)
+            p2r = self.conf.getP2RFunction
+            print(p2r)
+            r2p = self.conf.getR2PFunction
+            print(r2p)
+            self.cData = DataSet(p2r, r2p)
+            self.nanData = DataSet(p2r, r2p)
+            self.eData = DataSet(p2r, r2p)
+            print("Device connected in Datarecorder onGoing %s" % (self.cData.onGoing))
+
 
             print(
                 "GUI Set Capturetime to %d %s"
@@ -700,7 +704,7 @@ class SensorDisplay(QMainWindow):
             self.sampcapDur.setCurrentIndex(idx)
             self._doSave = True
             self.sensor = device
-            if self.onGoing:
+            if self.cData.onGoing:
                 print("Show old buttons")
             else:
                 self.cData.setNanFileName(None)
@@ -713,7 +717,7 @@ class SensorDisplay(QMainWindow):
     @pyqtSlot(dict)
     def removal(self, device):
         # log removal
-        if self.onGoing:
+        if self.cData.onGoing:
             # keep button state
             print("Detected onGoing in removal")
             now = datetime.now()
@@ -784,7 +788,7 @@ class SensorDisplay(QMainWindow):
         if self.yoctoTask.capture_start():
             self.cData.doRecord = True
             self.nanData.doRecord = True
-            self.onGoing = True
+            self.cData.onGoing = True
             self.intervalFrame.hide()
             self.cData.setFileName(None)
             print("Start record on %s" % self.yoctoTask)
@@ -964,8 +968,8 @@ class SensorDisplay(QMainWindow):
         if (self.cData.data1 is None) or (self.cData.data2 is None):
             print("Skip plot as there is no data")
             return
-        if self.cDataSize > 0:
-            x = self.data1[:, 0]
+        if len(self.cData)> 0:
+            x = self.cData.data1[:, 0]
             self.recorderGraph.clear()
             print("Plot on %s" % type(self.recorderGraph))
 
@@ -1017,9 +1021,9 @@ class SensorDisplay(QMainWindow):
 
             if self.showGen2CB.isChecked():
                 self.gen2Label.setText("generic2")
-                g2 = self.data2[:, 1]
+                g2 = self.cData.data2[:, 1]
                 g2Pure = g2[np.logical_not(np.isnan(g2))]
-                g2Raw = self.data2[:, 2]
+                g2Raw = self.cData.data2[:, 2]
                 g2RawPure = g2Raw[np.logical_not(np.isnan(g2Raw))]
                 if len(g2RawPure) == 0:
                     g2min = 0
@@ -1050,10 +1054,10 @@ class SensorDisplay(QMainWindow):
         #
         # Emulator graph
         #
-        if len(self.emData) > 0  and self.emulatorGraph is not None:
-            x = self.emData[:, 0]
-            y1 = self.emData[:, 1]
-            y2 = self.emData[:, 2]
+        if len(self.eData) > 0  and self.emulatorGraph is not None:
+            x = self.eData[:, 0]
+            y1 = self.eData[:, 1]
+            y2 = self.eData[:, 2]
             self.emulatorGraph.clear()
             print("eM Plot on %s" % type(self.emulatorGraph))
 

@@ -14,7 +14,7 @@ from YoctopuceTask import *
 class DataSet:
     def __init__(self, p2r, r2p):
         self.rData = [] # data as it is (raw) / unconconverted
-        self.pData = {} # Physical data
+        self.data = {} # Physical data
         self.r2p = r2p
         self.p2r = p2r
         self._doRecord = False
@@ -23,24 +23,33 @@ class DataSet:
         self.nanCvsFile = None
         self.file = None
         self.csvFile = None
-        self.data = {"generic1": None, "generic2": None, "unit_raw": None, "unit_phy": None}
+        self.data = {"generic1": [], "generic2": [], "unit_raw": None, "unit_phy": None}
         self._data1 = None
         self._data2 = None
+        self.clear()
+
+    def __len__(self):
+        return len(self.rData)
 
     def append(self, data):
         if self.onGoing:
+            print(data)
             self.rData.append(data)
-            pData = [data[0], data[1]]
+            pData = [data[0], data[1], data[2]]
             pData.extend(self.r2p[data[2]](data[3], data[4]))
-            if len(data) > 5:
-                pData.extend(self.r2p[data[5]](data[6], data[7]))
-            if self.nanFile is not None:
-                self.nanFile.close()
-                self.nanFile = None
-            self.pData.append(pData)
+            pData.append(data[2])
+            pData.extend( self.r2p[data[5]](data[6],data[7] ))
+            print(pData)
+            gen1 = [ data[1], pData[6], data[6]]
+            gen2 = [ data[1], pData[3], data[3]]
+            self.data["generic1"].append(gen1)
+            self.data["generic2"].append(gen2)
             if self.csvFile is not None:
                 self.csvFile.writerow(pData)
 
+    @property
+    def dataSize(self):
+        return len(self.data["generic1"])
     @property
     def dataSize(self):
         if self.rData is not None:
@@ -72,12 +81,17 @@ class DataSet:
     def data2(self):
         return self._data2
 
-    def sync(self, setPData= False):
-        if setPData:
-            self.data = {"generic1": None, "generic2": None, "unit_raw": None, "unit_phy": None}
-        else:
-            if self.dataSize>0:
-                print("Set new data of size cData %d" %(self.dataSize))
+    def sync(self):
+        # Synchronize data to data1, data2
+        self._data1 = np.zeros([self.dataSize, 3])
+        self._data2 = np.zeros([self.dataSize, 3])
+        for i in range(self.dataSize):
+            self._data1[i][0]= self.data["generic1"][i][0]
+            self._data1[i][1]= self.data["generic1"][i][1]
+            self._data1[i][2]= self.data["generic1"][i][2]
+            self._data2[i][0]= self.data["generic2"][i][0]
+            self._data2[i][1]= self.data["generic2"][i][1]
+            self._data2[i][2]= self.data["generic2"][i][2]
 
     def load(self, fname):
         if fname is not None:

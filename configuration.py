@@ -12,18 +12,17 @@ import numpy as np
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
 
-
 addPath = os.path.join("..", "yoctolib_python", "Sources")
 sys.path.append(addPath)
 # print(sys.path)
 from yocto_api import *
 from yocto_genericsensor import *
 
+
 # from YoctopuceTask import YoctopuceTask
 
 
 class configuration:
-
     configuration_file = "configuration.xml"
 
     def __init__(self, yocto):
@@ -229,12 +228,12 @@ class configuration:
                         res = [
                             (val - self._yfunction["generic1"]["rawMin"])
                             / (
-                                self._yfunction["generic1"]["rawMax"]
-                                - self._yfunction["generic1"]["rawMin"]
+                                    self._yfunction["generic1"]["rawMax"]
+                                    - self._yfunction["generic1"]["rawMin"]
                             )
                             * (
-                                self._yfunction["generic1"]["max"]
-                                - self._yfunction["generic1"]["min"]
+                                    self._yfunction["generic1"]["max"]
+                                    - self._yfunction["generic1"]["min"]
                             ),
                             self._yfunction["generic1"]["unit"],
                         ]
@@ -253,12 +252,12 @@ class configuration:
                         res = [
                             (val - self._yfunction["generic2"]["rawMin"])
                             / (
-                                self._yfunction["generic2"]["rawMax"]
-                                - self._yfunction["generic2"]["rawMin"]
+                                    self._yfunction["generic2"]["rawMax"]
+                                    - self._yfunction["generic2"]["rawMin"]
                             )
                             * (
-                                self._yfunction["generic2"]["max"]
-                                - self._yfunction["generic2"]["min"]
+                                    self._yfunction["generic2"]["max"]
+                                    - self._yfunction["generic2"]["min"]
                             ),
                             self._yfunction["generic2"]["unit"],
                         ]
@@ -267,19 +266,62 @@ class configuration:
                 return res
 
         fnDict = {"generic1": convert1, "generic2": convert2}
+        print("getR2PFunction", fnDict)
         return fnDict
 
+    @property
     def getP2RFunction(self):
-        def convert(val, unit):
-            if val != None:
-                res = [[float(val) / 100.0 * 16.0 + 4.0, "°C"], [val, unit]]
-                return res
-            elif math.isclose(val, -1):
-                res = [-1, "mA"]
+        def convert1(val, unit):
+            if np.isnan(val):
+                res = [np.nan, "mA"]
             else:
-                return [None, None]
+                if val > 0:
+                    if unit == "°C":
+                        res = [
+                            (val - self._yfunction["generic1"]["min"])
+                            / (
+                                    self._yfunction["generic1"]["max"]
+                                    - self._yfunction["generic1"]["min"]
+                            )
+                            * (
+                                self._yfunction["generic1"]["rawMax"]
+                            ),
+                            self._yfunction["generic1"]["unit"],
+                        ]
+                    else:
+                        print("Received unit %s to convert ")
+                        res = [val, unit]
+                else:
+                    res = [val, unit]
+            return res
+        def convert2(val, unit):
+            if np.isnan(val):
+                res = [np.nan, "mA"]
+            else:
+                if val > 0:
+                    if unit == "°C":
+                        res = [
+                            (val - self._yfunction["generic2"]["min"])
+                            / (
+                                    self._yfunction["generic2"]["max"]
+                                    - self._yfunction["generic1"]["min"]
+                            )
+                            * (
+                                self._yfunction["generic2"]["rawMax"]
+                            ),
+                            self._yfunction["generic2"]["unit"],
+                        ]
+                    else:
+                        print("Received unit %s to convert ")
+                        res = [val, unit]
+                else:
+                    print("Negativ value  %d %s  " % (val, unit))
+                    res = [val, unit]
+            return res
 
-        return convert
+        fnDict = {"generic1": convert1, "generic2": convert2}
+        print("getP2RFunction", fnDict)
+        return fnDict
 
 
 if __name__ == "__main__":
