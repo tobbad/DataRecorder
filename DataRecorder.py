@@ -726,7 +726,7 @@ class SensorDisplay(QMainWindow):
             print("Detected onGoing in removal")
             now = datetime.now()
 
-            self.nanData.setNanFileName(0)
+            self.nanData.setNanFileName(None)
         self.sensor = None
         print("Device disconnected:", device)
         self.updateConnected()

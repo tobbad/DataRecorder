@@ -21,6 +21,7 @@ class DataSet:
         self._onGoing = False
         self.nanFile = None
         self.nanCvsFile = None
+        self._filename = None
         self.file = None
         self.csvFile = None
         self.data = {"generic1": [], "generic2": [], "unit_raw": None, "unit_phy": None}
@@ -135,22 +136,6 @@ class DataSet:
             self._filename = now.strftime("%Y%m%d_%H%M%S.csv")
         else:
             self._filename = filename
-        print("Set csv Filename to %s" % filename)
-        self.file = open(filename, "w")
-        self.csvFile = csv.writer(self.file, lineterminator="\n")
-        self.writeCsvHeader(self.csvFile)
-
-    def setNanFileName(self, filename):
-        if filename is None:
-            if self.nanFile is not None:
-                self.nanFile.close()
-            self.nanFile = None
-            self.nanCvsFile = None
-            now = datetime.datetime.now()
-            filename = now.strftime("%Y%m%d_%H%M%S_NaN.csv")
-        self.nanFile = open(filename)
-        self.nanCvsFile = self.csvFile = csv.writer(self.nanFile, lineterminator="\n")
-        self.writeCsvHeader(self.cvsNanFile)
 
     def writeCsvHeader(self, csvFile):
         data = self.data["generic2"][0]
