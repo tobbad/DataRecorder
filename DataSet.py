@@ -34,18 +34,22 @@ class DataSet:
 
     def append(self, data):
         if self.onGoing:
-            print(data)
+            if self._name == "cData":
+                print("Received cData"  %data)
             self.rData.append(data)
             pData = [data[0], data[1], data[2]]
             pData.extend(self.r2p[data[2]](data[3], data[4]))
             pData.append(data[2])
             pData.extend( self.r2p[data[5]](data[6],data[7] ))
-            print(pData)
             gen1 = [ data[1], pData[6], data[6]]
             gen2 = [ data[1], pData[3], data[3]]
             self.data["generic1"].append(gen1)
             self.data["generic2"].append(gen2)
-            if self.csvFile is not None:
+            if self.csvFile is None:
+                self.file = open(self._filename, "w")
+                self.csvFile = csv.writer(self.file, lineterminator="\n")
+                self.writeCsvHeader(self.csvFile)
+            else:
                 self.csvFile.writerow(pData)
 
 
@@ -122,29 +126,31 @@ class DataSet:
         self.setFileName(None)
 
     def setFileName(self, filename):
+        # Set filename to current time if None is given
+        # otherwise store it in a file with the given namename
         if filename is None:
             if self.file is not None:
                 self.file.close()
-                self.file = None
-                self.csvFile = None
-        elif filename == 0:
             now = datetime.datetime.now()
-            filename = now.strftime("%Y%m%d_%H%M%S.csv")
-        print("Set csv Filename to %s" %filename)
+            self._filename = now.strftime("%Y%m%d_%H%M%S.csv")
+        else:
+            self._filename = filename
+        print("Set csv Filename to %s" % filename)
         self.file = open(filename, "w")
         self.csvFile = csv.writer(self.file, lineterminator="\n")
         self.writeCsvHeader(self.csvFile)
 
     def setNanFileName(self, filename):
         if filename is None:
-            self.nanFile.close()
+            if self.nanFile is not None:
+                self.nanFile.close()
             self.nanFile = None
             self.nanCvsFile = None
-        elif filename == 0:
-            nowSNaN = now.strftime("%Y%m%d_%H%M%S_NaN.csv")
-            self.nanFile = open(nowSNaN)
-            self.nanCvsFile = self.csvFile = csv.writer(self.nanFile, lineterminator="\n")
-            self.writeCsvHeader(self.cvsNanFile)
+            now = datetime.datetime.now()
+            filename = now.strftime("%Y%m%d_%H%M%S_NaN.csv")
+        self.nanFile = open(filename)
+        self.nanCvsFile = self.csvFile = csv.writer(self.nanFile, lineterminator="\n")
+        self.writeCsvHeader(self.cvsNanFile)
 
     def writeCsvHeader(self, csvFile):
         data = self.data["generic2"][0]

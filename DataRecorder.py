@@ -619,8 +619,9 @@ class SensorDisplay(QMainWindow):
         return res
 
     def append_data(self, data):
+        print(data)
         self.cData.onGoing = self.cData.onGoing  and (not (isnan(data[3])) or (not isnan(data[6])))
-        if not self.onGoing:
+        if not self.cData.onGoing:
             self.sensor = None
         self.cData.append(data)
         self.nanData.append(data)
