@@ -12,7 +12,7 @@ import configuration
 from datetime import *
 from YoctopuceTask import *
 class DataSet:
-    def __init__(self, p2r, r2p):
+    def __init__(self, name,  p2r, r2p):
         self.rData = [] # data as it is (raw) / unconconverted
         self.data = {} # Physical data
         self.r2p = r2p
@@ -26,6 +26,7 @@ class DataSet:
         self.data = {"generic1": [], "generic2": [], "unit_raw": None, "unit_phy": None}
         self._data1 = None
         self._data2 = None
+        self._name = name
         self.clear()
 
     def __len__(self):
@@ -47,15 +48,14 @@ class DataSet:
             if self.csvFile is not None:
                 self.csvFile.writerow(pData)
 
-    @property
-    def dataSize(self):
-        return len(self.data["generic1"])
+
     @property
     def dataSize(self):
         if self.rData is not None:
-            print("rawdata size is %d" % len(self.rData))
+            #print("\t DS: rawdata size is %d in %s" % (len(self.rData), self._name))
             return len(self.rData)
         else:
+            #print("\t DS: rawdata size is None in %s" %(0, self._name))
             return 0
 
     @property
@@ -110,36 +110,39 @@ class DataSet:
                     self.rData.append( [rval1, rval2 ])
                     print(self.rdata[-1])
             file.close()
-        self.sync(True)
+        self.sync()
 
     def save(self, fname):
         self.setFileName(None)
-        for i in range(dataSize):
-            print(self.pdata[i])
-
+        self.setFileName(fname)
+        print("Save")
+        for i in range(self.dataSize):
+            self.csvFile.writerow(self.pData[i])
+            print(self.pData[i])
+        self.setFileName(None)
 
     def setFileName(self, filename):
-        if self.file is not None:
-            self.file.close()
-            self.file = None
-            self.csvFile = None
-        else:
+        if filename is None:
+            if self.file is not None:
+                self.file.close()
+                self.file = None
+                self.csvFile = None
+        elif filename == 0:
             now = datetime.datetime.now()
             filename = now.strftime("%Y%m%d_%H%M%S.csv")
-            print("Set csv Filename to %s" %filename)
+        print("Set csv Filename to %s" %filename)
         self.file = open(filename, "w")
         self.csvFile = csv.writer(self.file, lineterminator="\n")
         self.writeCsvHeader(self.csvFile)
 
     def setNanFileName(self, filename):
-        if self.nanFile is None:
-            return
         if filename is None:
             self.nanFile.close()
             self.nanFile = None
             self.nanCvsFile = None
-        else:
-            self.nanFile = open(filename)
+        elif filename == 0:
+            nowSNaN = now.strftime("%Y%m%d_%H%M%S_NaN.csv")
+            self.nanFile = open(nowSNaN)
             self.nanCvsFile = self.csvFile = csv.writer(self.nanFile, lineterminator="\n")
             self.writeCsvHeader(self.cvsNanFile)
 

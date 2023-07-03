@@ -619,6 +619,9 @@ class SensorDisplay(QMainWindow):
         return res
 
     def append_data(self, data):
+        self.cData.onGoing = self.cData.onGoing  and (not (isnan(data[3])) or (not isnan(data[6])))
+        if not self.onGoing:
+            self.sensor = None
         self.cData.append(data)
         self.nanData.append(data)
         self.syncData()
@@ -629,10 +632,10 @@ class SensorDisplay(QMainWindow):
         fmt = ["CSV Files (*.csv)", "Excel Files (*.xslc)"]
         files = QFileDialog.getOpenFileName(self, "Load data", local_dir, fmt[0])
         if files:
-            self.emFileName = files[0]
+            self.eFileName = files[0]
             r2p = self.conf.getR2PFunction()
-            self.eData = DataSet(None, r2p)
-            self.eData.setFileName(self.emFileName)
+            self.eData = DataSet("eData", None, r2p)
+            self.eData.setFileName(self.eFileName)
             self.eData.load()
 
     def capture(self):
@@ -679,9 +682,9 @@ class SensorDisplay(QMainWindow):
             print(p2r)
             r2p = self.conf.getR2PFunction
             print(r2p)
-            self.cData = DataSet(p2r, r2p)
-            self.nanData = DataSet(p2r, r2p)
-            self.eData = DataSet(p2r, r2p)
+            self.cData = DataSet("cData", p2r, r2p)
+            self.nanData = DataSet("nanData", p2r, r2p)
+            self.eData = DataSet("eData", p2r, r2p)
             print("Device connected in Datarecorder onGoing %s" % (self.cData.onGoing))
 
 
@@ -721,9 +724,9 @@ class SensorDisplay(QMainWindow):
             # keep button state
             print("Detected onGoing in removal")
             now = datetime.now()
-            nowSNaN = now.strftime("%Y%m%d_%H%M%S_NaN.csv")
-        self.sensor = None
 
+            self.nanData.setNanFileName(0)
+        self.sensor = None
         print("Device disconnected:", device)
         self.updateConnected()
 
@@ -789,6 +792,7 @@ class SensorDisplay(QMainWindow):
             self.cData.doRecord = True
             self.nanData.doRecord = True
             self.cData.onGoing = True
+            self.nanData.onGoing = True
             self.intervalFrame.hide()
             self.cData.setFileName(None)
             print("Start record on %s" % self.yoctoTask)
@@ -971,8 +975,6 @@ class SensorDisplay(QMainWindow):
         if len(self.cData)> 0:
             x = self.cData.data1[:, 0]
             self.recorderGraph.clear()
-            print("Plot on %s" % type(self.recorderGraph))
-
             if self.showGen1CB.isChecked():
                 self.gen1Label.setText("generic1")
                 g1 = self.cData.data1[:, 1]
@@ -1048,7 +1050,7 @@ class SensorDisplay(QMainWindow):
             self.rawUnit.setText(self.rawunit)
             self.recorderGraph.setTitle(self.QPlotname.text())
             self.recorderGraph.addLegend()
-        progress = 100.0 * len(self.rawdata) / float(self.capture_size)
+        progress = 100.0 * len(self.cData) / float(self.capture_size)
         print("Progress %.1f of %d " % (progress, self.capture_size))
         self.progressBar.setValue(int(progress))
         #
@@ -1063,7 +1065,7 @@ class SensorDisplay(QMainWindow):
 
             self.emulatorGraph.addLegend()
             if self.showGen1CB.checkState():
-                print("em Plot \n%s" % self.emData)
+                print("em Plot \n%s" % self.eData)
                 p1 = self.emulatorGraph.plot(
                     x, y1, name="generic1", pen=pg.mkPen("red")
                 )
@@ -1071,11 +1073,8 @@ class SensorDisplay(QMainWindow):
                 p2 = self.emulatorGraph.plot(
                     x, y2, name="generic2", pen=pg.mkPen("green")
                 )
-            self.emulatorGraph.setTitle(self.emFileName)
+            self.emulatorGraph.setTitle(self.eFileName)
 
-
-        else:
-            print("Skip as emData size of %d" % (len(self.emData)))
 
 
 if __name__ == "__main__":
