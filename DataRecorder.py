@@ -637,11 +637,11 @@ class SensorDisplay(QMainWindow):
         files = QFileDialog.getOpenFileName(self, "Load data", local_dir, fmt[0])
         if files:
             self.eFileName = files[0]
-            r2p = self.conf.getR2PFunction()
+            r2p = self.conf.getR2PFunction
             self.eData = DataSet("eData", None, r2p)
 
-            self.eData.setFileName(self.eFileName)
-            self.eData.load()
+            self.eData.load(self.eFileName)
+            self.updatePlots()
 
     def capture(self):
         # Start Yoctopuce I/O task in a separate thread
@@ -971,114 +971,121 @@ class SensorDisplay(QMainWindow):
             self.eData.sync()
 
     def updatePlots(self):
-        if self.cData is None:
-            print("Skip update as no Sensors conected")
-            return
-        if (self.cData.data1 is None) or (self.cData.data2 is None):
-            print("Skip plot as there is no data")
-            return
-        if len(self.cData)> 0:
-            x = self.cData.data1[:, 0]
-            self.recorderGraph.clear()
-            if self.showGen1CB.isChecked():
-                self.gen1Label.setText("generic1")
-                g1 = self.cData.data1[:, 1]
-                g1Pure = g1[np.logical_not(np.isnan(g1))]
-                g1Raw = self.cData.data1[:, 2]
-                g1RawPure = g1Raw[np.logical_not(np.isnan(g1Raw))]
-                g1RawLast = 0
+        if self.cData is not None or :
+            if (self.cData.data1 is None) or (self.cData.data2 is None):
+                print("Skip plot as there is no data")
+                return
+            if len(self.cData)> 0:
+                x = self.cData.data1[:, 0]
+                self.recorderGraph.clear()
+                if self.showGen1CB.isChecked():
+                    self.gen1Label.setText("generic1")
+                    g1 = self.cData.data1[:, 1]
+                    g1Pure = g1[np.logical_not(np.isnan(g1))]
+                    g1Raw = self.cData.data1[:, 2]
+                    g1RawPure = g1Raw[np.logical_not(np.isnan(g1Raw))]
+                    g1RawLast = 0
 
-                if len(g1RawPure) == 0:
-                    g1min = 0
-                    g1max = 0
-                    g1Rawmin = 0
-                    g1Rawmax = 0
-                else:
-                    g1min = g1Pure.min()
-                    g1max = g1Pure.max()
-                    g1Rawmin = g1RawPure.min()
-                    g1Rawmax = g1RawPure.max()
-                self._actVal1.setText("%.2f" % g1[-1])
-                self._actmin1.setText("%.2f" % g1min)
-                self._actmax1.setText("%.2f" % g1max)
-                self._actRawVal1.setText("%.2f" % g1RawLast)
-                self._actRawMin1.setText("%.2f" % g1Rawmin)
-                self._actRawMax1.setText("%.2f" % g1Rawmax)
-                pl = self.recorderGraph.plot(
-                    x, g1, name="generic1", pen=pg.mkPen("green")
-                )
-                vp = self.recorderGraph.getViewBox()
-                if self.xaxisScale.currentIndex() == 1:
-                    tmin = int(self.minTime.text())
-                    tmax = int(self.maxTime.text())
-                    self.recorderGraph.setXRange(tmin, tmax, padding=0)
-                    vp.disableAutoRange(axis="x")
-                else:
-                    vp.enableAutoRange(axis="x")
+                    if len(g1RawPure) == 0:
+                        g1min = 0
+                        g1max = 0
+                        g1Rawmin = 0
+                        g1Rawmax = 0
+                    else:
+                        g1min = g1Pure.min()
+                        g1max = g1Pure.max()
+                        g1Rawmin = g1RawPure.min()
+                        g1Rawmax = g1RawPure.max()
+                    self._actVal1.setText("%.2f" % g1[-1])
+                    self._actmin1.setText("%.2f" % g1min)
+                    self._actmax1.setText("%.2f" % g1max)
+                    self._actRawVal1.setText("%.2f" % g1RawLast)
+                    self._actRawMin1.setText("%.2f" % g1Rawmin)
+                    self._actRawMax1.setText("%.2f" % g1Rawmax)
+                    pl = self.recorderGraph.plot(
+                        x, g1, name="generic1", pen=pg.mkPen("green")
+                    )
+                    vp = self.recorderGraph.getViewBox()
+                    if self.xaxisScale.currentIndex() == 1:
+                        tmin = int(self.minTime.text())
+                        tmax = int(self.maxTime.text())
+                        self.recorderGraph.setXRange(tmin, tmax, padding=0)
+                        vp.disableAutoRange(axis="x")
+                    else:
+                        vp.enableAutoRange(axis="x")
 
-                if self.yaxisScale.currentIndex() == 1:
-                    minY = int(self.miny.text())
-                    maxY = int(self.maxy.text())
-                    self.recorderGraph.setYRange(minY, maxY, padding=0)
-                    vp.disableAutoRange(axis="y")
+                    if self.yaxisScale.currentIndex() == 1:
+                        minY = int(self.miny.text())
+                        maxY = int(self.maxy.text())
+                        self.recorderGraph.setYRange(minY, maxY, padding=0)
+                        vp.disableAutoRange(axis="y")
+                    else:
+                        vp.enableAutoRange(axis="y")
                 else:
-                    vp.enableAutoRange(axis="y")
-            else:
-                self.frame1.hide()
+                    self.frame1.hide()
 
-            if self.showGen2CB.isChecked():
-                self.gen2Label.setText("generic2")
-                g2 = self.cData.data2[:, 1]
-                g2Pure = g2[np.logical_not(np.isnan(g2))]
-                g2Raw = self.cData.data2[:, 2]
-                g2RawPure = g2Raw[np.logical_not(np.isnan(g2Raw))]
-                if len(g2RawPure) == 0:
-                    g2min = 0
-                    g2max = 0
-                    g2Rawmin = 0
-                    g2Rawmax = 0
+                if self.showGen2CB.isChecked():
+                    self.gen2Label.setText("generic2")
+                    g2 = self.cData.data2[:, 1]
+                    g2Pure = g2[np.logical_not(np.isnan(g2))]
+                    g2Raw = self.cData.data2[:, 2]
+                    g2RawPure = g2Raw[np.logical_not(np.isnan(g2Raw))]
+                    if len(g2RawPure) == 0:
+                        g2min = 0
+                        g2max = 0
+                        g2Rawmin = 0
+                        g2Rawmax = 0
+                    else:
+                        g2min = g2Pure.min()
+                        g2max = g2Pure.max()
+                        g2Rawmin = g2RawPure.min()
+                        g2Rawmax = g2RawPure.max()
+                    self._actVal2.setText("%.2f" % g2[-1])
+                    self._actmin2.setText("%.2f" % g2min)
+                    self._actmax2.setText("%.2f" % g2max)
+                    self._actRawVal2.setText("%.2f" % g2Raw[-1])
+                    self._actRawMin2.setText("%.2f" % g2Rawmin)
+                    self._actRawMax2.setText("%.2f" % g2Rawmax)
+                    self.recorderGraph.plot(x, g2, name="generic2", pen=pg.mkPen("red"))
                 else:
-                    g2min = g2Pure.min()
-                    g2max = g2Pure.max()
-                    g2Rawmin = g2RawPure.min()
-                    g2Rawmax = g2RawPure.max()
-                self._actVal2.setText("%.2f" % g2[-1])
-                self._actmin2.setText("%.2f" % g2min)
-                self._actmax2.setText("%.2f" % g2max)
-                self._actRawVal2.setText("%.2f" % g2Raw[-1])
-                self._actRawMin2.setText("%.2f" % g2Rawmin)
-                self._actRawMax2.setText("%.2f" % g2Rawmax)
-                self.recorderGraph.plot(x, g2, name="generic2", pen=pg.mkPen("red"))
-            else:
-                self.frame2.hide()
-            self.pUnit.setText(self.punit)
-            self.rawUnit.setText(self.rawunit)
-            self.recorderGraph.setTitle(self.QPlotname.text())
-            self.recorderGraph.addLegend()
-        progress = 100.0 * len(self.cData) / float(self.capture_size)
-        print("Progress %.1f of %d " % (progress, self.capture_size))
-        self.progressBar.setValue(int(progress))
-        #
+                    self.frame2.hide()
+                self.pUnit.setText(self.punit)
+                self.rawUnit.setText(self.rawunit)
+                self.recorderGraph.setTitle(self.QPlotname.text())
+                self.recorderGraph.addLegend()
+            progress = 100.0 * len(self.cData) / float(self.capture_size)
+            print("Progress %.1f of %d " % (progress, self.capture_size))
+            self.progressBar.setValue(int(progress))
+            #
         # Emulator graph
         #
-        if len(self.eData) > 0  and self.emulatorGraph is not None:
-            x = self.eData[:, 0]
-            y1 = self.eData[:, 1]
-            y2 = self.eData[:, 2]
-            self.emulatorGraph.clear()
-            print("eM Plot on %s" % type(self.emulatorGraph))
+        if self.eData is not None:
+            if len(self.eData) > 0  and self.emulatorGraph is not None:
+                print("Show emulator graph")
+                g1 = self.eData.data1[:, 1]
+                g1Pure = g1[np.logical_not(np.isnan(g1))]
+                g1Raw = self.eData.data1[:, 2]
+                g1RawPure = g1Raw[np.logical_not(np.isnan(g1Raw))]
 
-            self.emulatorGraph.addLegend()
-            if self.showGen1CB.checkState():
-                print("em Plot \n%s" % self.eData)
-                p1 = self.emulatorGraph.plot(
-                    x, y1, name="generic1", pen=pg.mkPen("red")
-                )
-            if self.showGen2CB.checkState():
-                p2 = self.emulatorGraph.plot(
-                    x, y2, name="generic2", pen=pg.mkPen("green")
-                )
-            self.emulatorGraph.setTitle(self.eFileName)
+                x = self.eData.data1[:, 0]
+                y1 = self.eData.data1[:, 1]
+                y2 = self.eData.data1[:, 2]
+                print("Show emulator graph" % (x,y1, y2))
+
+                self.emulatorGraph.clear()
+                print("eM Plot on %s" % type(self.emulatorGraph))
+
+                self.emulatorGraph.addLegend()
+                if self.showGen1CB.checkState():
+                    print("em Plot \n%s" % self.eData)
+                    p1 = self.emulatorGraph.plot(
+                        x, y1, name="generic1", pen=pg.mkPen("red")
+                    )
+                if self.showGen2CB.checkState():
+                    p2 = self.emulatorGraph.plot(
+                        x, y2, name="generic2", pen=pg.mkPen("green")
+                    )
+                self.emulatorGraph.setTitle(self.eFileName)
 
 
 

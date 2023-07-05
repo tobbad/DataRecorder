@@ -220,6 +220,7 @@ class configuration:
     @property
     def getR2PFunction(self):
         def convert1(val, unit):
+            val = float(val)
             if np.isnan(val):
                 res = [np.nan, "mA"]
             else:
@@ -244,26 +245,26 @@ class configuration:
             return res
 
         def convert2(val, unit):
-            if val != None:
-                if np.isnan(val):
-                    res = [np.nan, "mA"]
+            val = float(val)
+            if np.isnan(val):
+                res = [np.nan, "mA"]
+            else:
+                if unit == "mA":
+                    res = [
+                        (val - self._yfunction["generic2"]["rawMin"])
+                        / (
+                                self._yfunction["generic2"]["rawMax"]
+                                - self._yfunction["generic2"]["rawMin"]
+                        )
+                        * (
+                                self._yfunction["generic2"]["max"]
+                                - self._yfunction["generic2"]["min"]
+                        ),
+                        self._yfunction["generic2"]["unit"],
+                    ]
                 else:
-                    if unit == "mA":
-                        res = [
-                            (val - self._yfunction["generic2"]["rawMin"])
-                            / (
-                                    self._yfunction["generic2"]["rawMax"]
-                                    - self._yfunction["generic2"]["rawMin"]
-                            )
-                            * (
-                                    self._yfunction["generic2"]["max"]
-                                    - self._yfunction["generic2"]["min"]
-                            ),
-                            self._yfunction["generic2"]["unit"],
-                        ]
-                    else:
-                        raise ValueError("Unknown conversion to %s" % unit)
-                return res
+                    raise ValueError("Unknown conversion to %s" % unit)
+            return res
 
         fnDict = {"generic1": convert1, "generic2": convert2}
         print("getR2PFunction", fnDict)
@@ -295,6 +296,7 @@ class configuration:
                     res = [val, unit]
             return res
         def convert2(val, unit):
+            print(val, unit)
             if np.isnan(val):
                 res = [np.nan, "mA"]
             else:

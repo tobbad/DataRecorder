@@ -119,14 +119,18 @@ class DataSet:
                 if line[0].startswith("#"):
                     print("Skip line %s  " % line)
                 else:
+                    data = []
                     # print("Load line %d %s " % (idx,  line))
                     time = line[0]
                     relTime = float(line[1])
-                    rval1 = self.r2p(line[2], line[3])
-                    rval2 =  self.r2p(line[4], line[5])
-                    self.rData.append([time, relTime])
-                    self.rData.append( [rval1, rval2 ])
-                    print(self.rdata[-1])
+                    rval2 = self.r2p["generic2"](line[2], line[3])
+                    rval1 =  self.r2p["generic1"](line[4], line[5])
+                    data.append([time, relTime, "generic2"])
+                    data.extend( [rval2, "generic1" ])
+                    data.append(rval1)
+                    self.append(data)
+
+            self._filename = fname
             file.close()
         self.sync()
 
