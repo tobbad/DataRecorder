@@ -619,7 +619,10 @@ class SensorDisplay(QMainWindow):
         return res
 
     def append_data(self, data):
-        print(data)
+        print("Received raw data %s" % data)
+        if data[0] is None:
+            self.stopCapture()
+            return
         self.cData.onGoing = self.cData.onGoing  and (not (isnan(data[3])) or (not isnan(data[6])))
         if not self.cData.onGoing:
             self.sensor = None
@@ -636,6 +639,7 @@ class SensorDisplay(QMainWindow):
             self.eFileName = files[0]
             r2p = self.conf.getR2PFunction()
             self.eData = DataSet("eData", None, r2p)
+
             self.eData.setFileName(self.eFileName)
             self.eData.load()
 
@@ -685,6 +689,7 @@ class SensorDisplay(QMainWindow):
             print(r2p)
             self.cData = DataSet("cData", p2r, r2p)
             self.nanData = DataSet("nanData", p2r, r2p)
+            self.nanData.ext = "nan"
             self.eData = DataSet("eData", p2r, r2p)
             print("Device connected in Datarecorder onGoing %s" % (self.cData.onGoing))
 
@@ -711,7 +716,7 @@ class SensorDisplay(QMainWindow):
             if self.cData.onGoing:
                 print("Show old buttons")
             else:
-                self.cData.setNanFileName(None)
+                self.nanData.setFileName(None)
             print("DR Registered Sensors %s" % self.sensor)
         else:
             print("%d Sensors are already connected" % len(self.sensor))
@@ -725,8 +730,7 @@ class SensorDisplay(QMainWindow):
             # keep button state
             print("Detected onGoing in removal")
             now = datetime.now()
-
-            self.nanData.setNanFileName(None)
+            self.nanData.setFileName(None)
         self.sensor = None
         print("Device disconnected:", device)
         self.updateConnected()

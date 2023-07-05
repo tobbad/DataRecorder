@@ -28,6 +28,7 @@ class DataSet:
         self._data1 = None
         self._data2 = None
         self._name = name
+        self._ext =""
         self.clear()
 
     def __len__(self):
@@ -35,18 +36,24 @@ class DataSet:
 
     def append(self, data):
         if self.onGoing:
-            if self._name == "cData":
-                print("Received cData"  %data)
             self.rData.append(data)
             pData = [data[0], data[1], data[2]]
             pData.extend(self.r2p[data[2]](data[3], data[4]))
-            pData.append(data[2])
+            pData.append(data[5])
             pData.extend( self.r2p[data[5]](data[6],data[7] ))
-            gen1 = [ data[1], pData[6], data[6]]
-            gen2 = [ data[1], pData[3], data[3]]
+            gen1 = [ data[1], pData[6], pData[7], data[6], data[7]]
+            gen2 = [ data[1], pData[3], pData[4], data[3], data[4]]
             self.data["generic1"].append(gen1)
             self.data["generic2"].append(gen2)
+            #print("gen1 %s" % gen1)
+            #print("gen2 %s" % gen2)
+            if len(self._ext)==0:
+                print("Append pData %s in %s" % (pData, self._name))
+            self.data["generic2"].append(gen2)
             if self.csvFile is None:
+                if  self._filename is None:
+                    print("Can not append to None data name")
+                    return
                 self.file = open(self._filename, "w")
                 self.csvFile = csv.writer(self.file, lineterminator="\n")
                 self.writeCsvHeader(self.csvFile)
@@ -63,6 +70,12 @@ class DataSet:
             #print("\t DS: rawdata size is None in %s" %(0, self._name))
             return 0
 
+    @property
+    def ext(self):
+        return self._ext
+    @ext.setter
+    def ext(self, val):
+        self._ext = val
     @property
     def doRecord(self):
         return self._doRecord
@@ -93,10 +106,10 @@ class DataSet:
         for i in range(self.dataSize):
             self._data1[i][0]= self.data["generic1"][i][0]
             self._data1[i][1]= self.data["generic1"][i][1]
-            self._data1[i][2]= self.data["generic1"][i][2]
+            self._data1[i][2]= self.data["generic1"][i][3]
             self._data2[i][0]= self.data["generic2"][i][0]
             self._data2[i][1]= self.data["generic2"][i][1]
-            self._data2[i][2]= self.data["generic2"][i][2]
+            self._data2[i][2]= self.data["generic2"][i][3]
 
     def load(self, fname):
         if fname is not None:
@@ -129,6 +142,7 @@ class DataSet:
     def setFileName(self, filename):
         # Set filename to current time if None is given
         # otherwise store it in a file with the given namename
+        self.csvFile = None
         if filename is None:
             if self.file is not None:
                 self.file.close()
@@ -138,17 +152,12 @@ class DataSet:
             self._filename = filename
 
     def writeCsvHeader(self, csvFile):
-        data = self.data["generic2"][0]
-        print("Set csv Header")
 
-        res = self.r2p["generic2"](data[2], data[3])
-        header = "# generic2 %s" % (res[1])
+        header = "# generic2 %s" % (self.data["generic2"][0][2])
         csvFile.writerow([header])
         print("\tSet header 2 to %s" % header)
 
-        data = self.data["generic1"][0]
-        res = self.r2p["generic1"](data[2], data[3])
-        header = "# generic1 %s" % (res[1])
+        header = "# generic1 %s" % (self.data["generic1"][0][2])
         csvFile.writerow([header])
         print("\tSet header 1 to %s " % header)
 
