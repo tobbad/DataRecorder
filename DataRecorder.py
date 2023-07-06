@@ -151,7 +151,7 @@ class SensorDisplay(QMainWindow):
     def __init__(self):
         print("Create app")
         super().__init__()
-        self.eData =None
+        self.eData = None
         self.cData = None
         self.nanData = None
         self.filename = "./"
@@ -194,8 +194,6 @@ class SensorDisplay(QMainWindow):
         self.emulator = self.Emulator()
         tabWidget.addTab(self.emulator, "Emulator")
         # tabWidget.addTab(self.Icons(), "Icons")
-        self.Emulator()
-        #tabWidget.addTab(self.Emulator(), "Emulator")
         tabWidget.currentChanged.connect(self.tabChanged)
 
         widget = QWidget()
@@ -217,7 +215,7 @@ class SensorDisplay(QMainWindow):
         self.addActions(self.fileMenu, fileMenueAction)
 
     def createAction(
-        self, text, slot=None, shortcut=None, icon=None, tip=None, checkable=False
+            self, text, slot=None, shortcut=None, icon=None, tip=None, checkable=False
     ):
         action = QAction(text, self)
         if icon is not None:
@@ -584,10 +582,11 @@ class SensorDisplay(QMainWindow):
         gLayout.addWidget(label, 0, 0)
         self._acteVal = QLabel("%.2f" % 0)
         gLayout.addWidget(self._acteVal, 0, 1)
+        print(self._acteVal)
         label = QLabel("Min:")
         gLayout.addWidget(label, 0, 2)
-        self._acetmin = QLabel("%.2f" % 0)
-        gLayout.addWidget(self._acetmin, 0, 3)
+        self._actemin = QLabel("%.2f" % 0)
+        gLayout.addWidget(self._actemin, 0, 3)
         label = QLabel("Max:")
         gLayout.addWidget(label, 0, 4)
         self._actemax = QLabel("%.2f" % 120)
@@ -619,11 +618,10 @@ class SensorDisplay(QMainWindow):
         return res
 
     def append_data(self, data):
-        print("Received raw data %s" % data)
         if data[0] is None:
             self.stopCapture()
             return
-        self.cData.onGoing = self.cData.onGoing  and (not (isnan(data[3])) or (not isnan(data[6])))
+        self.cData.onGoing = self.cData.onGoing and (not (isnan(data[3])) or (not isnan(data[6])))
         if not self.cData.onGoing:
             self.sensor = None
         self.cData.append(data)
@@ -638,8 +636,8 @@ class SensorDisplay(QMainWindow):
         if files:
             self.eFileName = files[0]
             r2p = self.conf.getR2PFunction
-            self.eData = DataSet("eData", None, r2p)
-
+            p2r = self.conf.getR2PFunction
+            self.eData = DataSet("eData", False, p2r, r2p)
             self.eData.load(self.eFileName)
             self.updatePlots()
 
@@ -650,24 +648,22 @@ class SensorDisplay(QMainWindow):
             self.yoctoTask = YoctopuceTask(self.subSigThread)
             self.subSigThread.statusMsg.connect(self.showMsg)
             self.subSigThread.arrival.connect(self.arrival)
-            self.subSigThread.newValue.connect(self.newValue)
             self.subSigThread.removal.connect(self.removal)
             self.subSigThread.stopTask.connect(self.stopCapture)
             self.subSigThread.moveToThread(self.subSigThread)
             self.subSigThread.updateSignal.connect(self.append_data)
             self.subSigThread.startTask.emit()
             self.subSigThread.start()
+
     def synChecked(self):
         if self.sync.isChecked():
             print("Sync is active")
         else:
             print("Sync is passive")
 
-
     @property
     def connected(self):
         return self.sensor != None
-
 
     @pyqtSlot(dict)
     def arrival(self, device):
@@ -684,15 +680,12 @@ class SensorDisplay(QMainWindow):
             # log arrival
             self.conf = configuration(self.yoctoTask)
             p2r = self.conf.getP2RFunction
-            print(p2r)
             r2p = self.conf.getR2PFunction
-            print(r2p)
-            self.cData = DataSet("cData", p2r, r2p)
-            self.nanData = DataSet("nanData", p2r, r2p)
+            self.cData = DataSet("cData", True, p2r, r2p)
+            self.nanData = DataSet("nanData", False,  p2r, r2p)
             self.nanData.ext = "nan"
-            self.eData = DataSet("eData", p2r, r2p)
+            self.eData = DataSet("eData", True, p2r, r2p)
             print("Device connected in Datarecorder onGoing %s" % (self.cData.onGoing))
-
 
             print(
                 "GUI Set Capturetime to %d %s"
@@ -715,8 +708,6 @@ class SensorDisplay(QMainWindow):
             self.sensor = device
             if self.cData.onGoing:
                 print("Show old buttons")
-            else:
-                self.nanData.setFileName(None)
             print("DR Registered Sensors %s" % self.sensor)
         else:
             print("%d Sensors are already connected" % len(self.sensor))
@@ -734,17 +725,6 @@ class SensorDisplay(QMainWindow):
         self.sensor = None
         print("Device disconnected:", device)
         self.updateConnected()
-
-    @pyqtSlot(str, str)
-    def newValue(self, value1, value2, value3):
-        print("newValue function called")
-        # if hardwareId not in self.functionValues:
-        #     # create a new label when first value arrives
-        #     newLabel = QLabel(self)
-        #     self.layout.addWidget(newLabel)
-        #     self.functionValues[hardwareId] = newLabel
-        # # then update it for each reported value
-        # self.functionValues[hardwareId].setText(hardwareId + ": " + value)
 
     def updateConnected(self):
         if self.connected:
@@ -822,7 +802,6 @@ class SensorDisplay(QMainWindow):
         self.progressBar.setValue(int(100))
         self.intervalFrame.show()
 
-
     def doStop(self):
         # Ask for really Stop
         dlg = StopRecordingDlg(self)
@@ -846,28 +825,18 @@ class SensorDisplay(QMainWindow):
         self.cData.clear()
         self.sensor = None
 
-
     def doSave(self):
-        fname =         fname, ftype = QFileDialog.getSaveFileName(
+        fmt = ["CSV Files (*.csv)", "Excel Files (*.xslc)"]
+        fname, ftype = QFileDialog.getSaveFileName(
             self, "Store captured data", self.QFilename.text(), fmt[0]
         )
         if fname is None:
             fname = self.QFilename.text()
 
         if len(fname) > 0:
-            self.cData
-            self.cData.save(fName)
-
-        if self.cData is None:
-            print("No data yet captured")
-            return
-        fmt = ["CSV Files (*.csv)", "Excel Files (*.xslc)"]
-        data = []
-        fname, ftype = QFileDialog.getSaveFileName(
-            self, "Store captured data", self.QFilename.text(), fmt[0]
-        )
-        if fname is None:
-            fname = self.QFilename.text()
+            self.cData.setFileName(fname)
+            self.cData.save()
+            print("Save data to %s" % fname)
         if len(fname) > 0:
             self.cData.setFileName(fname)
             self.cData.save()
@@ -875,7 +844,7 @@ class SensorDisplay(QMainWindow):
     def help_about(self):
         dlg = QMessageBox()
         dlg.setWindowTitle("Datarecorder")
-        dlg.setText("This is a datalogger application")
+        dlg.setText("This is a datalogger/emulator application")
         button = dlg.exec_()
         if button == QMessageBox.Ok:
             print("OK")
@@ -963,7 +932,6 @@ class SensorDisplay(QMainWindow):
             self.frame2.hide()
         self.updatePlots()
 
-
     def syncData(self):
         self.cData.sync()
         self.nanData.sync()
@@ -971,122 +939,142 @@ class SensorDisplay(QMainWindow):
             self.eData.sync()
 
     def updatePlots(self):
-        if self.cData is not None or :
+        if self.cData is not None:
             if (self.cData.data1 is None) or (self.cData.data2 is None):
-                print("Skip plot as there is no data")
-                return
-            if len(self.cData)> 0:
-                x = self.cData.data1[:, 0]
-                self.recorderGraph.clear()
-                if self.showGen1CB.isChecked():
-                    self.gen1Label.setText("generic1")
-                    g1 = self.cData.data1[:, 1]
-                    g1Pure = g1[np.logical_not(np.isnan(g1))]
-                    g1Raw = self.cData.data1[:, 2]
-                    g1RawPure = g1Raw[np.logical_not(np.isnan(g1Raw))]
-                    g1RawLast = 0
+                print("Skip  recorded plot as there is no data")
+            else:
+                if len(self.cData) > 0:
+                    x = self.cData.data1[:, 0]
+                    self.recorderGraph.clear()
+                    if self.showGen1CB.isChecked():
+                        self.gen1Label.setText("generic1")
+                        g1 = self.cData.data1[:, 1]
+                        g1Pure = g1[np.logical_not(np.isnan(g1))]
+                        g1Raw = self.cData.data1[:, 2]
+                        g1RawPure = g1Raw[np.logical_not(np.isnan(g1Raw))]
+                        g1RawLast = 0
 
-                    if len(g1RawPure) == 0:
-                        g1min = 0
-                        g1max = 0
-                        g1Rawmin = 0
-                        g1Rawmax = 0
-                    else:
-                        g1min = g1Pure.min()
-                        g1max = g1Pure.max()
-                        g1Rawmin = g1RawPure.min()
-                        g1Rawmax = g1RawPure.max()
-                    self._actVal1.setText("%.2f" % g1[-1])
-                    self._actmin1.setText("%.2f" % g1min)
-                    self._actmax1.setText("%.2f" % g1max)
-                    self._actRawVal1.setText("%.2f" % g1RawLast)
-                    self._actRawMin1.setText("%.2f" % g1Rawmin)
-                    self._actRawMax1.setText("%.2f" % g1Rawmax)
-                    pl = self.recorderGraph.plot(
-                        x, g1, name="generic1", pen=pg.mkPen("green")
-                    )
-                    vp = self.recorderGraph.getViewBox()
-                    if self.xaxisScale.currentIndex() == 1:
-                        tmin = int(self.minTime.text())
-                        tmax = int(self.maxTime.text())
-                        self.recorderGraph.setXRange(tmin, tmax, padding=0)
-                        vp.disableAutoRange(axis="x")
-                    else:
-                        vp.enableAutoRange(axis="x")
+                        if len(g1RawPure) == 0:
+                            g1min = 0
+                            g1max = 0
+                            g1Rawmin = 0
+                            g1Rawmax = 0
+                        else:
+                            g1min = g1Pure.min()
+                            g1max = g1Pure.max()
+                            g1Rawmin = g1RawPure.min()
+                            g1Rawmax = g1RawPure.max()
+                        self._actVal1.setText("%.2f" % g1[-1])
+                        self._actmin1.setText("%.2f" % g1min)
+                        self._actmax1.setText("%.2f" % g1max)
 
-                    if self.yaxisScale.currentIndex() == 1:
-                        minY = int(self.miny.text())
-                        maxY = int(self.maxy.text())
-                        self.recorderGraph.setYRange(minY, maxY, padding=0)
-                        vp.disableAutoRange(axis="y")
-                    else:
-                        vp.enableAutoRange(axis="y")
-                else:
-                    self.frame1.hide()
+                        self._actRawVal1.setText("%.2f" % g1RawLast)
+                        self._actRawMin1.setText("%.2f" % g1Rawmin)
+                        self._actRawMax1.setText("%.2f" % g1Rawmax)
+                        pl = self.recorderGraph.plot(
+                            x, g1, name="generic1", pen=pg.mkPen("green")
+                        )
+                        vp = self.recorderGraph.getViewBox()
+                        if self.xaxisScale.currentIndex() == 1:
+                            tmin = int(self.minTime.text())
+                            tmax = int(self.maxTime.text())
+                            self.recorderGraph.setXRange(tmin, tmax, padding=0)
+                            vp.disableAutoRange(axis="x")
+                        else:
+                            vp.enableAutoRange(axis="x")
 
-                if self.showGen2CB.isChecked():
-                    self.gen2Label.setText("generic2")
-                    g2 = self.cData.data2[:, 1]
-                    g2Pure = g2[np.logical_not(np.isnan(g2))]
-                    g2Raw = self.cData.data2[:, 2]
-                    g2RawPure = g2Raw[np.logical_not(np.isnan(g2Raw))]
-                    if len(g2RawPure) == 0:
-                        g2min = 0
-                        g2max = 0
-                        g2Rawmin = 0
-                        g2Rawmax = 0
+                        if self.yaxisScale.currentIndex() == 1:
+                            minY = int(self.miny.text())
+                            maxY = int(self.maxy.text())
+                            self.recorderGraph.setYRange(minY, maxY, padding=0)
+                            vp.disableAutoRange(axis="y")
+                        else:
+                            vp.enableAutoRange(axis="y")
                     else:
-                        g2min = g2Pure.min()
-                        g2max = g2Pure.max()
-                        g2Rawmin = g2RawPure.min()
-                        g2Rawmax = g2RawPure.max()
-                    self._actVal2.setText("%.2f" % g2[-1])
-                    self._actmin2.setText("%.2f" % g2min)
-                    self._actmax2.setText("%.2f" % g2max)
-                    self._actRawVal2.setText("%.2f" % g2Raw[-1])
-                    self._actRawMin2.setText("%.2f" % g2Rawmin)
-                    self._actRawMax2.setText("%.2f" % g2Rawmax)
-                    self.recorderGraph.plot(x, g2, name="generic2", pen=pg.mkPen("red"))
-                else:
-                    self.frame2.hide()
-                self.pUnit.setText(self.punit)
-                self.rawUnit.setText(self.rawunit)
-                self.recorderGraph.setTitle(self.QPlotname.text())
-                self.recorderGraph.addLegend()
-            progress = 100.0 * len(self.cData) / float(self.capture_size)
-            print("Progress %.1f of %d " % (progress, self.capture_size))
-            self.progressBar.setValue(int(progress))
+                        self.frame1.hide()
+
+                    if self.showGen2CB.isChecked():
+                        self.gen2Label.setText("generic2")
+                        g2 = self.cData.data2[:, 1]
+                        g2Pure = g2[np.logical_not(np.isnan(g2))]
+                        g2Raw = self.cData.data2[:, 2]
+                        g2RawPure = g2Raw[np.logical_not(np.isnan(g2Raw))]
+                        if len(g2RawPure) == 0:
+                            g2min = 0
+                            g2max = 0
+                            g2Rawmin = 0
+                            g2Rawmax = 0
+                        else:
+                            g2min = g2Pure.min()
+                            g2max = g2Pure.max()
+                            g2Rawmin = g2RawPure.min()
+                            g2Rawmax = g2RawPure.max()
+                        self._actVal2.setText("%.2f" % g2[-1])
+                        self._actmin2.setText("%.2f" % g2min)
+                        self._actmax2.setText("%.2f" % g2max)
+                        self._actRawVal2.setText("%.2f" % g2Raw[-1])
+                        self._actRawMin2.setText("%.2f" % g2Rawmin)
+                        self._actRawMax2.setText("%.2f" % g2Rawmax)
+                        self.recorderGraph.plot(x, g2, name="generic2", pen=pg.mkPen("red"))
+                    else:
+                        self.frame2.hide()
+                    self.pUnit.setText(self.punit)
+                    self.rawUnit.setText(self.rawunit)
+                    self.recorderGraph.setTitle(self.QPlotname.text())
+                    self.recorderGraph.addLegend()
+                progress = 100.0 * len(self.cData) / float(self.capture_size)
+                print("Progress %.1f of %d " % (progress, self.capture_size))
+                self.progressBar.setValue(int(progress))
             #
         # Emulator graph
         #
         if self.eData is not None:
-            if len(self.eData) > 0  and self.emulatorGraph is not None:
-                print("Show emulator graph")
-                g1 = self.eData.data1[:, 1]
-                g1Pure = g1[np.logical_not(np.isnan(g1))]
+            if len(self.eData) > 0 and self.emulatorGraph is not None:
+
+                x = self.eData.data1[:, 1]
+                y1 = self.eData.data1[:, 1]
+                g1Pure = y1[np.logical_not(np.isnan(y1))]
                 g1Raw = self.eData.data1[:, 2]
                 g1RawPure = g1Raw[np.logical_not(np.isnan(g1Raw))]
 
-                x = self.eData.data1[:, 0]
-                y1 = self.eData.data1[:, 1]
-                y2 = self.eData.data1[:, 2]
-                print("Show emulator graph" % (x,y1, y2))
+                y2 = self.eData.data2[:, 1]
+                g2Raw = self.eData.data1[:, 2]
+                g2RawPure = g2Raw[np.logical_not(np.isnan(g2Raw))]
+                print("Show emulator graph")
+                print(self._acteVal)
+
+                if len(g1RawPure) == 0:
+                    g1min = 0
+                    g1max = 0
+                    g1Rawmin = 0
+                    g1Rawmax = 0
+                else:
+                    g1min = g1Pure.min()
+                    g1max = g1Pure.max()
+                    g1Rawmin = g1RawPure.min()
+                    g1Rawmax = g1RawPure.max()
+
+                self._acteVal.setText("%.2f" % y1[-1])
+                self._actemin.setText("%.2f" % g1min)
+                self._actemax.setText("%.2f" % g1max)
+                self._acteRawVal.setText("%.2f" % g1Raw[-1])
+                self._acteRawMin.setText("%.2f" % g1Rawmin)
+                self._acteRawMax.setText("%.2f" % g1Rawmax)
 
                 self.emulatorGraph.clear()
                 print("eM Plot on %s" % type(self.emulatorGraph))
 
                 self.emulatorGraph.addLegend()
-                if self.showGen1CB.checkState():
+                if self.showeGen1.checkState():
                     print("em Plot \n%s" % self.eData)
                     p1 = self.emulatorGraph.plot(
                         x, y1, name="generic1", pen=pg.mkPen("red")
                     )
-                if self.showGen2CB.checkState():
+                if self.showeGen2.checkState():
                     p2 = self.emulatorGraph.plot(
                         x, y2, name="generic2", pen=pg.mkPen("green")
                     )
                 self.emulatorGraph.setTitle(self.eFileName)
-
 
 
 if __name__ == "__main__":

@@ -12,15 +12,13 @@ import configuration
 from datetime import *
 from YoctopuceTask import *
 class DataSet:
-    def __init__(self, name,  p2r, r2p):
+    def __init__(self, name, recordOnGoingTrue,  p2r, r2p):
         self.rData = [] # data as it is (raw) / unconconverted
         self.data = {} # Physical data
         self.r2p = r2p
         self.p2r = p2r
         self._doRecord = False
         self._onGoing = False
-        self.nanFile = None
-        self.nanCvsFile = None
         self._filename = None
         self.file = None
         self.csvFile = None
@@ -28,7 +26,9 @@ class DataSet:
         self._data1 = None
         self._data2 = None
         self._name = name
+        self.pData = []
         self._ext =""
+        self.recordOnGoing = recordOnGoingTrue
         self.clear()
 
     def __len__(self):
@@ -50,15 +50,16 @@ class DataSet:
             if len(self._ext)==0:
                 print("Append pData %s in %s" % (pData, self._name))
             self.data["generic2"].append(gen2)
+            self.pData.append(pData)
             if self.csvFile is None:
                 if  self._filename is None:
-                    print("Can not append to None data name")
                     return
                 self.file = open(self._filename, "w")
                 self.csvFile = csv.writer(self.file, lineterminator="\n")
                 self.writeCsvHeader(self.csvFile)
             else:
                 self.csvFile.writerow(pData)
+            self.sync()
 
 
     @property
@@ -76,12 +77,6 @@ class DataSet:
     @ext.setter
     def ext(self, val):
         self._ext = val
-    @property
-    def doRecord(self):
-        return self._doRecord
-    @doRecord.setter
-    def doRecord(self, val):
-        self._doRecord = val
 
     @property
     def onGoing(self):
@@ -110,12 +105,15 @@ class DataSet:
             self._data2[i][0]= self.data["generic2"][i][0]
             self._data2[i][1]= self.data["generic2"][i][1]
             self._data2[i][2]= self.data["generic2"][i][3]
-
     def load(self, fname):
+        og  = self.onGoing
+        self.onGoing = True
+        self.rData = []
         if fname is not None:
             file = open(fname)
-            self.csvFile = csv.reader(file, lineterminator="\n")
-            for idx, line in enumerate(self.csvFile):
+            self._filename = None
+            csvFile = csv.reader(file, lineterminator="\n")
+            for idx, line in enumerate(csvFile):
                 if line[0].startswith("#"):
                     print("Skip line %s  " % line)
                 else:
@@ -125,28 +123,30 @@ class DataSet:
                     relTime = float(line[1])
                     rval2 = self.r2p["generic2"](line[2], line[3])
                     rval1 =  self.r2p["generic1"](line[4], line[5])
-                    data.append([time, relTime, "generic2"])
-                    data.extend( [rval2, "generic1" ])
-                    data.append(rval1)
+                    data.extend([time, relTime, "generic2"])
+                    data.extend( rval2)
+                    data.append( "generic1" )
+                    data.extend(rval1)
                     self.append(data)
-
-            self._filename = fname
+            self.onGoing= og
             file.close()
         self.sync()
-
-    def save(self, fname):
-        self.setFileName(None)
-        self.setFileName(fname)
-        print("Save")
+        self.setFileName("tmp.csv")
+        self.save()
+    def save(self):
+        file = open(self._filename, "w")
+        csvFile =  csv.writer(file, lineterminator="\n")
+        self.writeCsvHeader(csvFile)
         for i in range(self.dataSize):
-            self.csvFile.writerow(self.pData[i])
-            print(self.pData[i])
+            csvFile.writerow(self.pData[i])
+            print("Saved %s "%self.pData[i])
+        file.close()
+        print("Saved %s in %s" %( self._filename, os.getcwd()))
         self.setFileName(None)
 
     def setFileName(self, filename):
         # Set filename to current time if None is given
         # otherwise store it in a file with the given namename
-        self.csvFile = None
         if filename is None:
             if self.file is not None:
                 self.file.close()
@@ -156,7 +156,6 @@ class DataSet:
             self._filename = filename
 
     def writeCsvHeader(self, csvFile):
-
         header = "# generic2 %s" % (self.data["generic2"][0][2])
         csvFile.writerow([header])
         print("\tSet header 2 to %s" % header)
@@ -167,5 +166,6 @@ class DataSet:
 
     def clear(self):
         self.data = {"generic1":[], "generic2":[] }
+        self.pData = []
 
 
