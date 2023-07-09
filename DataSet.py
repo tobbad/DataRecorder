@@ -12,7 +12,7 @@ import configuration
 from datetime import *
 from YoctopuceTask import *
 class DataSet:
-    def __init__(self, name, recordOnGoingTrue,  p2r, r2p):
+    def __init__(self, name, doStore ,  p2r, r2p):
         self.rData = [] # data as it is (raw) / unconconverted
         self.data = {} # Physical data
         self.r2p = r2p
@@ -26,16 +26,16 @@ class DataSet:
         self._data1 = None
         self._data2 = None
         self._name = name
+        self._doStore = doStore # Injected Function true when data is stored to file
         self.pData = []
         self._ext =""
-        self.recordOnGoing = recordOnGoingTrue
         self.clear()
 
     def __len__(self):
         return len(self.rData)
 
     def append(self, data):
-        if self.onGoing:
+        self._doStore():
             self.rData.append(data)
             pData = [data[0], data[1], data[2]]
             pData.extend(self.r2p[data[2]](data[3], data[4]))
@@ -167,5 +167,3 @@ class DataSet:
     def clear(self):
         self.data = {"generic1":[], "generic2":[] }
         self.pData = []
-
-

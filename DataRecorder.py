@@ -681,10 +681,14 @@ class SensorDisplay(QMainWindow):
             self.conf = configuration(self.yoctoTask)
             p2r = self.conf.getP2RFunction
             r2p = self.conf.getR2PFunction
-            self.cData = DataSet("cData", True, p2r, r2p)
-            self.nanData = DataSet("nanData", False,  p2r, r2p)
+            alwaysTrue = lambda : True
+            onlyNan = lambda : not self.connected
+
+
+            self.cData = DataSet("cData", alwaysTrue, p2r, r2p)
+            self.nanData = DataSet("nanData", onlyNan,  p2r, r2p)
             self.nanData.ext = "nan"
-            self.eData = DataSet("eData", True, p2r, r2p)
+            self.eData = DataSet("eData", alwaysTrue, p2r, r2p)
             print("Device connected in Datarecorder onGoing %s" % (self.cData.onGoing))
 
             print(
