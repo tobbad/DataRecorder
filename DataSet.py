@@ -28,14 +28,14 @@ class DataSet:
         self._name = name
         self._doStore = doStore # Injected Function true when data is stored to file
         self.pData = []
-        self._ext =""
         self.clear()
+
 
     def __len__(self):
         return len(self.rData)
 
     def append(self, data):
-        self._doStore():
+        if self._doStore():
             self.rData.append(data)
             pData = [data[0], data[1], data[2]]
             pData.extend(self.r2p[data[2]](data[3], data[4]))
@@ -47,7 +47,7 @@ class DataSet:
             self.data["generic2"].append(gen2)
             #print("gen1 %s" % gen1)
             #print("gen2 %s" % gen2)
-            if len(self._ext)==0:
+            if len(self._name)==0:
                 print("Append pData %s in %s" % (pData, self._name))
             self.data["generic2"].append(gen2)
             self.pData.append(pData)
@@ -65,18 +65,14 @@ class DataSet:
     @property
     def dataSize(self):
         if self.rData is not None:
-            #print("\t DS: rawdata size is %d in %s" % (len(self.rData), self._name))
+            #if len(self._name)==0:
+            #    print("\t DS: rawdata size is %d in %s" % (len(self.rData), self._name))
             return len(self.rData)
         else:
-            #print("\t DS: rawdata size is None in %s" %(0, self._name))
+            #if len(self._name)==0:
+            #    print("\t DS: rawdata size is None in %s" %(0, self._name))
             return 0
 
-    @property
-    def ext(self):
-        return self._ext
-    @ext.setter
-    def ext(self, val):
-        self._ext = val
 
     @property
     def onGoing(self):
@@ -151,9 +147,11 @@ class DataSet:
             if self.file is not None:
                 self.file.close()
             now = datetime.datetime.now()
-            self._filename = now.strftime("%Y%m%d_%H%M%S.csv")
+            self._filename = now.strftime("%Y%m%d_%H%M%S")
+            self._filename = self._filename+self._name+".csv"
         else:
             self._filename = filename
+        print("Set filename in \"%s\" to %s" % (self._name, self._filename))
 
     def writeCsvHeader(self, csvFile):
         header = "# generic2 %s" % (self.data["generic2"][0][2])

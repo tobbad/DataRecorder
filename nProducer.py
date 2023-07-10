@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sun Jan 22 18:51:51 2023
+Created on Mon July 10 11:36 2023
 
 @author: badi
 """
@@ -13,40 +13,11 @@ from datetime import *
 from time import *
 import copy
 import numpy as np
-
-sys.path.append(
-    os.sep.join(
-        [
-            "C:",
-            "Users",
-            "tobias.badertscher",
-            "AppData",
-            "Local",
-            "miniconda3",
-            "Lib",
-            "site-packages",
-        ]
-    )
-)
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, QObject, QThread, QTimer
 
-# add ../../Sources to the PYTHONPATH
 sys.path.append(os.path.join("..", "yoctolib_python", "Sources"))
 from yocto_api import *
 from yocto_genericsensor import *
-from yocto_currentloopoutput import *
-
-
-def except_hook(cls, exception, traceback):
-    sys.__excepthook__(cls, exception, traceback)
-
-
-sys.excepthook = except_hook
-
-
-def currThread() -> object:
-    return "[thread-" + str(int(QThread.currentThreadId())) + "]"
-
 
 class SignalHubThread(QThread):
     startTask = pyqtSignal()  # in: start the task
@@ -66,30 +37,17 @@ class SignalHubThread(QThread):
         print("SignalHubThread start in %s" % currThread())
         super().start()
 
+def currThread() -> object:
+    return "[thread-" + str(int(QThread.currentThreadId())) + "]"
 
-class YoctopuceTask(QObject):
-    def __init__(self, subSigThread):
-        super(YoctopuceTask, self).__init__()
-        # connect incoming signals
-        self.subSigThread = subSigThread
-        self.subSigThread.startTask.connect(self.initAPI)
+
+class  Producer:
+    def __init__(self, SubSigThread):
+        self.subSigThread = SubSigThread
         self.subSigThread.stopTask.connect(self.capture_stop)
-        self.sensor = None
-        self.oSensor = None
-        self.capture_size = 0
-        self.checkDevices = 0
-        self._sampleCnt = 0
-        self.file = None
-        self.reportFrequncy = "1s"
-        self.sampel_interval_ms = 1000
-        self.superVisorTimer = None
-        self.timeout_add = 10
-        self.takeOver = False
-        self.lastTime = 0
-        self.connected = False
-        self.doRecord = False
-        self.startTime = None
-        self.printUpdate = False
+        self.capture_size = 1440
+        self.sampel_interval_ms = 200
+        self.checkDevices = 10
 
     @pyqtSlot()
     def initAPI(self):
@@ -107,7 +65,6 @@ class YoctopuceTask(QObject):
             return
         YAPI.RegisterDeviceArrivalCallback(self.deviceArrival)
         YAPI.RegisterDeviceRemovalCallback(self.deviceRemoval)
-        self.subSigThread.statusMsg.emit("Yoctopuce task ready")
         # prepare to scan Yoctopuce events periodically
 
     @pyqtSlot()
@@ -115,50 +72,7 @@ class YoctopuceTask(QObject):
         print("freeAPI")
         self.capture_stop()
         print("Yoctopuce task stopped")
-        YAPI.FreeAPI()
-        self.statusMsg.emit("Yoctopuce task stopped")
         print("Sensors are stopped")
-
-    @pyqtSlot()
-    def handleEvents(self):
-        if self.checkDevices <= 0:
-            YAPI.UpdateDeviceList()
-            self.checkDevices = 10
-        else:
-            self.checkDevices -= 1
-        YAPI.HandleEvents()
-
-    def setFilename(self, fname):
-        print("Set filename to %s" % fname)
-        if self.file is None:
-            self.file = open(fname, "w")
-            self.cvsfile = csv.writer(self.file, lineterminator="\n")
-    def ReceiveAndEmulate(self):
-        newSensorList = []
-        if len(self.sensor) > 3:
-            return
-        pSensor = YGenericSensor.FirstGenericSensor()
-        while pSensor != None:
-            newSensor = sensor(pSensor)
-            newSensorList.append(newSensor)
-            print("Added sensor %s " % (newSensor))
-            pSensor = YGenericSensor.nextGenericSensor(pSensor)
-        sen = {}
-        for s in newSensorList:
-            print("Added function %s" % s.function)
-            sen[s.function] = s
-        self.sensor = sen
-        self.connected = True
-        print("Registered %d Sensors %s" % (len(self.sensor), self.sensor))
-        if self.connected:
-            print("Y: device Arrival, setUpCapture")
-            self.SetUpCapture()
-        self.connected = True
-        self.subSigThread.arrival.emit(self.sensor)
-        if len(self.sensor) == 0:
-            print("No sensors detected")
-            sys.exit()
-
 
     def deviceArrival(self, m: YModule):
         print("Received Module %s" % m)
@@ -187,32 +101,6 @@ class YoctopuceTask(QObject):
                 if len(self.sensor) == 0:
                     print("No sensors detected")
                     sys.exit()
-        if self.oSensor is None:
-            if serialNumber == "TX420MA1-151ECE":
-                pSensor = YCurrentLoopOutput.FirstCurrentLoopOutput()
-                print("Output Sensor %s" % pSensor)
-                if len(self.oSensor) > 3:
-                    return
-                while pSensor != None:
-                    newSensor = sensor(pSensor)
-                    newSensorList.append(newSensor)
-                    print("Added sensor %s " % (newSensor))
-                    pSensor = YCurrentLoopOutput.nextCurrentLoopOutput(pSensor)
-                sen = {}
-                for s in newSensorList:
-                    print("Added function %s" % s.function)
-                    sen[s.function] = s
-                self.oSensor = sen
-                self.connected = True
-                print("Registered %d Sensors %s" % (len(self.oSensor), self.oSensor))
-                if self.connected:
-                    print("Y: device Arrival, setUpPlayback")
-                    self.SetUpPlayback()
-                self.connected = True
-                self.subSigThread.arrival.emit(self.oSensor)
-                if len(self.oSensor) == 0:
-                    print("No sensors detected")
-                    sys.exit()
 
     def deviceRemoval(self, m: YModule):
         print("Removed %s" % m)
@@ -223,11 +111,6 @@ class YoctopuceTask(QObject):
         self.subSigThread.arrival.emit({})
 
     def SetUpCapture(self):
-        if self.printUpdate:
-            print(
-                "Update capture in Yoctopuc Task (%s) (cnt = %d  with %d ms)"
-                % (currThread(), self.capture_size, self.sampel_interval_ms)
-            )
         if self.capture_size > 0 and self.sampel_interval_ms > 0:
             for k, v in self.sensor.items():
                 if self.printUpdate:
@@ -237,17 +120,25 @@ class YoctopuceTask(QObject):
                     )
                 v.registerTimedReportCallback(self.new_data)
                 v.set_reportFrequency(self.reportFrequncy)
-        self.printUpdate = False
 
-    def SetUpPlayback(self):
+    def capture_start(self):
         print(
-            "Set up play back in Yoctopuc Task started (cnt = %d  with %d ms)"
-            % self.capture_size, self.sampel_interval_ms)
+            "Start capture  %d samples with report freq %s in %s"
+            % (self.capture_size, self.reportFrequncy, currThread())
+        )
+        self.doRecord = True
+        for k, v in self.sensor.items():
+                v.capture_start()
+        return self.doRecord
 
-        if self.capture_size > 0 and self.sampel_interval_ms > 0:
-            for k, v in self.outsensor:
-                v.registerTimedReportCallback(self.new_data)
-                v.set_reportFrequency(self.reportFrequncy)
+    @pyqtSlot()
+    def handleEvents(self):
+        if self.checkDevices <= 0:
+            YAPI.UpdateDeviceList()
+            self.checkDevices = 10
+        else:
+            self.checkDevices -= 1
+        YAPI.HandleEvents()
 
     def new_data(self, fct, measure=None):
         if self.superVisorTimer == None:
@@ -307,7 +198,6 @@ class YoctopuceTask(QObject):
                 self.subSigThread.updateSignal.emit([None, None])
                 self.capture_stop()
                 print("Finished capture in yoctopuc")
-
     def fakeCB(self):
         if self.connected == False and self.doRecord:
             measureTime = datetime.datetime.now()
@@ -339,15 +229,11 @@ class YoctopuceTask(QObject):
         print("Sample count %d" % self._sampleCnt)
         return self._sampleCnt
 
-    def capture_start(self):
-        print(
-            "Start capture  %d samples with report freq %s in %s"
-            % (self.capture_size, self.reportFrequncy, currThread())
-        )
-        self.doRecord = True
-        for k, v in self.sensor.items():
-                v.capture_start()
-        return self.doRecord
+    def capture_stop(self):
+        self.secondsInStr = "OFF"
+        self.registerTimedReportCallback(None)
+        self.sen.muteValueCallbacks()
+        self.sen.set_reportFrequency(self.secondsInStr)
 
     def capture_stop(self):
         if self.superVisorTimer != None:
@@ -361,43 +247,6 @@ class YoctopuceTask(QObject):
                 print("Removed file reference")
                 self.file = None
             print("Stop supervise")
-
-
-    def setSampleInterval_ms(self, sampel_interval_ms):
-        self.sampel_interval_ms = sampel_interval_ms
-        self.fb_sampel_interval_ms = copy.copy(sampel_interval_ms)
-        if self.sampel_interval_ms > 0:
-            if self.sampel_interval_ms > 1000:
-                self.reportFrequncy = "%ds" % (self.sampel_interval_ms / 1000)
-            else:
-                self.reportFrequncy = "%d/s" % (1000 / self.sampel_interval_ms)
-        else:
-            self.reportFrequncy = "OFF"
-        for k, v in self.sensor.items():
-            v.set_reportFrequency(self.reportFrequncy)
-        print("Y: Set Sample intervall to %d ms" % sampel_interval_ms)
-        self.SetUpCapture()
-
-    def set_capture_size(self, capture_size):
-        self.capture_size = capture_size
-        self.logfun("Capture size is set to %d" % (capture_size))
-        print("Y: Set Capture size ito %d" % (capture_size))
-        self.capture_size = capture_size
-        self.printUpdate = True
-        self.SetUpCapture()
-
-    def functionValueChangeCallback(self, fct: YFunction, value: str):
-        hardwareId = fct.get_hardwareId()
-        self.newValue.emit(hardwareId, value)
-
-    def logfun(self, line: str):
-        msg = line.rstrip()
-        # print("API Log: " + msg, currThread())
-        # show low-level API logs as status
-        self.subSigThread.statusMsg.emit(msg)
-
-    def getSensors(self):
-        return self.sensor
 
 
 class sensor:
@@ -439,63 +288,55 @@ class sensor:
     def __str__(self):
         return self.sen.get_friendlyName()
 
-    @property
-    def moduleId(self):
-        return self.type
-
-    @property
-    def function(self):
-        return self._name
-
-    def fullfunName(self):
-        return str(self.sen).split("=")[1].split(".")[1]
-
-    def get_values(self):
-        if self.sen.isOnline():
-            val = self.sen.get_currentValue()
-            res = [self.function, val, self.sen.get_unit()]
+    def setSampleInterval_ms(self, sampel_interval_ms):
+        self.sampel_interval_ms = sampel_interval_ms
+        self.fb_sampel_interval_ms = copy.copy(sampel_interval_ms)
+        if self.sampel_interval_ms > 0:
+            if self.sampel_interval_ms > 1000:
+                self.reportFrequncy = "%ds" % (self.sampel_interval_ms / 1000)
+            else:
+                self.reportFrequncy = "%d/s" % (1000 / self.sampel_interval_ms)
         else:
-            res = [self.function, -29999.0, "mA"]
-        return res
+            self.reportFrequncy = "OFF"
+        for k, v in self.sensor.items():
+            v.set_reportFrequency(self.reportFrequncy)
+        print("Y: Set Sample intervall to %d ms" % sampel_interval_ms)
+        self.SetUpCapture()
+
+    def set_capture_size(self, capture_size):
+        self.capture_size = capture_size
+        self.logfun("Capture size is set to %d" % (capture_size))
+        print("Y: Set Capture size ito %d" % (capture_size))
+        self.capture_size = capture_size
+        self.printUpdate = True
+        self.SetUpCapture()
 
     def capture_stop(self):
-        self.secondsInStr = "OFF"
-        self.registerTimedReportCallback(None)
-        self.sen.muteValueCallbacks()
-        self.sen.set_reportFrequency(self.secondsInStr)
+        for k, s in self.sen.item():
+            s.capture_stop()
 
-    def capture_start(self):
-        self.sen.unmuteValueCallbacks()
-        print("S: Set report %s. Unmute Yoctopuc" % self.secondsInStr)
-        self.sen.set_reportFrequency(self.secondsInStr)
-        return True
-
-    def set_reportFrequency(self, secondsInStr):
-        print("S: Set report Frequency to %s" % secondsInStr )
-        self.secondsInStr = secondsInStr
-
-    def registerTimedReportCallback(self, cb):
-        if cb is None:
-            print("S: Unregistered CB on %s" % self.sen)
-        else:
-            print("S: Registered CB on %s" % self.sen)
-        self.sen.registerTimedReportCallback(cb)
 
 
 if __name__ == "__main__":
     cnt = 1440
 
-    s = YoctopuceTask()
+    sigHubThread = SignalHubThread()
+    p = Producer(sigHubThread)
+    sigHubThread.startTask.emit()
+    p.initAPI()
 
-    s.setFilename("sdata.csv")
-    s.setSampleInterval_ms(200)
-    s.set_capture_size(cnt)
+
+    p.setFilename("sdata.csv")
+    p.setSampleInterval_ms(200)
+    p.set_capture_size(cnt)
 
     s.capture_start()
     print("wait for acquisition finished")
     while s.sampleCnt < cnt:
         print("Still receive %d" % cnt)
-        sleep(1)
+    sleep(1)
     print("Aqistion stop")
     s.capture_stop()
     sys.exit()
+
+

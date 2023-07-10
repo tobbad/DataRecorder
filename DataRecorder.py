@@ -669,6 +669,9 @@ class SensorDisplay(QMainWindow):
     def arrival(self, device):
         if len(device) == 0:
             self.sensor = None
+            print("Detected onGoing in removal")
+            self.nanData.setFileName(None)
+            return
         if self.sensor is None:
             self.sensor = device
             if not self.doRecord:
@@ -684,21 +687,11 @@ class SensorDisplay(QMainWindow):
             alwaysTrue = lambda : True
             onlyNan = lambda : not self.connected
 
-
-            self.cData = DataSet("cData", alwaysTrue, p2r, r2p)
-            self.nanData = DataSet("nanData", onlyNan,  p2r, r2p)
-            self.nanData.ext = "nan"
+            self.cData = DataSet("", alwaysTrue, p2r, r2p)
+            self.nanData = DataSet("nan", onlyNan,  p2r, r2p)
             self.eData = DataSet("eData", alwaysTrue, p2r, r2p)
             print("Device connected in Datarecorder onGoing %s" % (self.cData.onGoing))
 
-            print(
-                "GUI Set Capturetime to %d %s"
-                % (self.conf.CaptureTime["time"], self.conf.CaptureTime["unit"])
-            )
-            print(
-                "GUI Set Sampleinterval to %d %s"
-                % (self.conf.SampleInterval["time"], self.conf.SampleInterval["unit"])
-            )
             self.sIntVal_edit.setText("%d" % self.conf.SampleInterval["time"])
             sunit = {"ms": 0, "s": 1}
             idx = sunit[self.conf.SampleInterval["unit"]]
@@ -721,10 +714,9 @@ class SensorDisplay(QMainWindow):
     @pyqtSlot(dict)
     def removal(self, device):
         # log removal
-        if self.cData.onGoing:
+        if len(device)==0:
             # keep button state
             print("Detected onGoing in removal")
-            now = datetime.now()
             self.nanData.setFileName(None)
         self.sensor = None
         print("Device disconnected:", device)
