@@ -473,6 +473,7 @@ class sensor:
     def set_reportFrequency(self, secondsInStr):
         print("S: Set report Frequency to %s" % secondsInStr )
         self.secondsInStr = secondsInStr
+        self.sen.set_reportFrequency(self.secondsInStr)
 
     def registerTimedReportCallback(self, cb):
         if cb is None:

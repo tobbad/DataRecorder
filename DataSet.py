@@ -48,7 +48,7 @@ class DataSet:
             #print("gen1 %s" % gen1)
             #print("gen2 %s" % gen2)
             if len(self._name)==0:
-                print("Append pData %s in %s" % (pData, self._name))
+                print("Append pData %s in\"%s\"" % (pData, self._name))
             self.data["generic2"].append(gen2)
             self.pData.append(pData)
             if self.csvFile is None:
@@ -57,9 +57,17 @@ class DataSet:
                 self.file = open(self._filename, "w")
                 self.csvFile = csv.writer(self.file, lineterminator="\n")
                 self.writeCsvHeader(self.csvFile)
+                print("Created file in %s" % self._name)
             else:
                 self.csvFile.writerow(pData)
             self.sync()
+        else:
+            if self.csvFile is not None:
+                print("Close file")
+                self._filename = None
+                self.file.close()
+                self.csvFile = None
+
 
 
     @property
@@ -146,11 +154,13 @@ class DataSet:
         if filename is None:
             if self.file is not None:
                 self.file.close()
+                self.csvFile = None
             now = datetime.datetime.now()
             self._filename = now.strftime("%Y%m%d_%H%M%S")
             self._filename = self._filename+self._name+".csv"
         else:
             self._filename = filename
+            self.csvFile = None
         print("Set filename in \"%s\" to %s" % (self._name, self._filename))
 
     def writeCsvHeader(self, csvFile):

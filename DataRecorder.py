@@ -23,10 +23,25 @@ sys.path.append(
             "Local",
             "miniconda3",
             "Lib",
-            "site-packages",
+            "site-packages"
         ]
     )
 )
+sys.path.append(
+    os.sep.join(
+        [
+            "C:",
+            "Users",
+            "tobias.badertscher",
+            "AppData",
+            "roaming",
+            "python",
+            "python39",
+            "site-package"
+        ]
+    )
+)
+
 from PyQt5.QtWidgets import (
     QFileDialog,
     QWidget,
@@ -151,6 +166,7 @@ class SensorDisplay(QMainWindow):
     def __init__(self):
         print("Create app")
         super().__init__()
+        self.conf = None
         self.eData = None
         self.cData = None
         self.nanData = None
@@ -175,6 +191,8 @@ class SensorDisplay(QMainWindow):
         self.closeOk = False
         self.sensor = None
         self.capture()  # Set up here to detect connection
+        self.updateCnt = 20
+        self.updateCounter = self.updateCnt
 
     def setUpGUI(self):
         self.setWindowTitle("DataRecorder")
@@ -618,16 +636,22 @@ class SensorDisplay(QMainWindow):
         return res
 
     def append_data(self, data):
+
         if data[0] is None:
+            print("Stop capture")
             self.stopCapture()
             return
         self.cData.onGoing = self.cData.onGoing and (not (isnan(data[3])) or (not isnan(data[6])))
         if not self.cData.onGoing:
+            print("Removed sensors onGoing is %s" %  self.cData.onGoing)
             self.sensor = None
         self.cData.append(data)
         self.nanData.append(data)
-        self.syncData()
-        self.updatePlots()
+        self.updateCounter-=1
+        if self.updateCounter == 0:
+            self.updateCounter = self.updateCnt
+            self.syncData()
+            self.updatePlots()
 
     def file_open(self):
         local_dir = os.path.dirname(self.filename) if self.filename is not None else "."
@@ -681,17 +705,17 @@ class SensorDisplay(QMainWindow):
                 self.btnState["Clear"] = False
                 self.btnState["Save"] = False
             # log arrival
-            self.conf = configuration(self.yoctoTask)
-            p2r = self.conf.getP2RFunction
-            r2p = self.conf.getR2PFunction
-            alwaysTrue = lambda : True
-            onlyNan = lambda : not self.connected
+            if self.conf is None:
+                self.conf = configuration(self.yoctoTask)
+                p2r = self.conf.getP2RFunction
+                r2p = self.conf.getR2PFunction
+                alwaysTrue = lambda : True
+                onlyNan = lambda : not self.connected
 
-            self.cData = DataSet("", alwaysTrue, p2r, r2p)
-            self.nanData = DataSet("nan", onlyNan,  p2r, r2p)
-            self.eData = DataSet("eData", alwaysTrue, p2r, r2p)
+                self.cData = DataSet("", alwaysTrue, p2r, r2p)
+                self.nanData = DataSet("nan", onlyNan,  p2r, r2p)
+                self.eData = DataSet("eData", alwaysTrue, p2r, r2p)
             print("Device connected in Datarecorder onGoing %s" % (self.cData.onGoing))
-
             self.sIntVal_edit.setText("%d" % self.conf.SampleInterval["time"])
             sunit = {"ms": 0, "s": 1}
             idx = sunit[self.conf.SampleInterval["unit"]]
@@ -903,7 +927,8 @@ class SensorDisplay(QMainWindow):
                 )
             )
             if self.yoctoTask is not None:
-                self.yoctoTask.set_capture_size(self.capture_size)
+                if not self.cData.onGoing:
+                    self.yoctoTask.set_capture_size(self.capture_size)
             if self._doSave and self.conf != None:
                 print("Save config")
                 self.conf.save(self._doSave)
