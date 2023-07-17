@@ -108,6 +108,7 @@ class YoctopuceTask(QObject):
         YAPI.RegisterDeviceArrivalCallback(self.deviceArrival)
         YAPI.RegisterDeviceRemovalCallback(self.deviceRemoval)
         self.subSigThread.statusMsg.emit("Yoctopuce task ready")
+        self.logfun("initAPI done")
         # prepare to scan Yoctopuce events periodically
 
     @pyqtSlot()
@@ -161,12 +162,11 @@ class YoctopuceTask(QObject):
 
 
     def deviceArrival(self, m: YModule):
-        print("Received Module %s" % m)
         serialNumber = m.get_serialNumber()
         if self.sensor is None:
             newSensorList = []
             print("Y: Input Device arrival SerNr %s %s" % (serialNumber, m))
-            if serialNumber == "RX420MA1-16CAEA":
+            if serialNumber == "RX420MA1-16CAEA" or serialNumber == "RX420MA1-235E47":
                 pSensor = YGenericSensor.FirstGenericSensor()
                 while pSensor != None:
                     newSensor = sensor(pSensor)

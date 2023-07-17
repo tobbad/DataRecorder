@@ -9,38 +9,41 @@ import time as ti
 from math import ceil, isnan
 from datetime import *
 import numpy as np
+import platform
 from configuration import configuration
 from YoctopuceTask import YoctopuceTask, SignalHubThread
 from DataSet import DataSet
-
-sys.path.append(
-    os.sep.join(
-        [
-            "C:",
-            "Users",
-            "tobias.badertscher",
-            "AppData",
-            "Local",
-            "miniconda3",
-            "Lib",
-            "site-packages"
-        ]
+my_os = platform.system()
+print(my_os)
+if my_os == "Windows":
+    sys.path.append(
+        os.sep.join(
+            [
+                "C:",
+                "Users",
+                "tobias.badertscher",
+                "AppData",
+                "Local",
+                "miniconda3",
+                "Lib",
+                "site-packages"
+            ]
+        )
     )
-)
-sys.path.append(
-    os.sep.join(
-        [
-            "C:",
-            "Users",
-            "tobias.badertscher",
-            "AppData",
-            "roaming",
-            "python",
-            "python39",
-            "site-package"
-        ]
+    sys.path.append(
+        os.sep.join(
+            [
+                "C:",
+                "Users",
+                "tobias.badertscher",
+                "AppData",
+                "roaming",
+                "python",
+                "python39",
+                "site-package"
+            ]
+        )
     )
-)
 
 from PyQt5.QtWidgets import (
     QFileDialog,
@@ -81,10 +84,8 @@ import pyqtgraph as pg
 # import mkl
 import qrc_resources
 
-wd = os.sep.join(
-    ["C:", "Users", "tobias.badertscher", "source", "repos", "python", "DataRecorder"]
-)
-
+cwd =os.getcwd()
+print(cwd)
 
 def except_hook(cls, exception, traceback):
     sys.__excepthook__(cls, exception, traceback)
@@ -180,7 +181,7 @@ class SensorDisplay(QMainWindow):
         self.rawunit = None
         self.punit = None
         self.functionValues = {}
-        self.doRecord = False
+        self._doRecord = False
         self.btnState = {"Start": False, "Clear": False, "Stop": False, "Save": False}
         self.conf = None
         self._doSave = False
@@ -691,6 +692,7 @@ class SensorDisplay(QMainWindow):
 
     @pyqtSlot(dict)
     def arrival(self, device):
+
         if len(device) == 0:
             self.sensor = None
             print("Detected onGoing in removal")
@@ -698,7 +700,11 @@ class SensorDisplay(QMainWindow):
             return
         if self.sensor is None:
             self.sensor = device
-            if not self.doRecord:
+            print("Received sensors %d in doRecord %s"  % (len(self.sensor), self.doRecord))
+            if self.doRecord:
+                print("Skip")
+                pass
+            else:
                 print("Show buttons in sensor arrival")
                 self.btnState["Start"] = True
                 self.btnState["Stop"] = False
@@ -794,8 +800,8 @@ class SensorDisplay(QMainWindow):
         if self.yoctoTask is None:
             print("No sensor connected")
         if self.yoctoTask.capture_start():
-            self.cData.doRecord = True
-            self.nanData.doRecord = True
+            self.doRecord = True
+            print("Set doRecord in doStart")
             self.cData.onGoing = True
             self.nanData.onGoing = True
             self.intervalFrame.hide()
@@ -812,8 +818,9 @@ class SensorDisplay(QMainWindow):
     def stopCapture(self):
         print("DataRecorder stopCapture received in %s" % currThread())
         print("Show buttons in stopCapture")
-        self.cData.doRecord = False
-        self.nanData.doRecord = False
+        print("Reset doRecord in stopCapture")
+
+        self.doRecord = False
         self.btnState["Start"] = False
         self.btnState["Stop"] = False
         self.btnState["Clear"] = True
@@ -844,6 +851,15 @@ class SensorDisplay(QMainWindow):
         self.progressBar.setValue(0)
         self.cData.clear()
         self.sensor = None
+
+    @property
+    def doRecord(self):
+        return self._doRecord
+    @doRecord.setter
+    def doRecord(self, val):
+        self.cData.doRecord= val
+        self.nanData.doRecord = val
+        self._doRecord = val
 
     def doSave(self):
         fmt = ["CSV Files (*.csv)", "Excel Files (*.xslc)"]

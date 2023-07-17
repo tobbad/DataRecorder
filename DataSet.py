@@ -91,6 +91,14 @@ class DataSet:
         self._onGoing = onGoing
 
     @property
+    def doRecord(self):
+        return self._doRecord
+
+    @doRecord.setter
+    def doRecord(self, val):
+        self._doRecord = Val
+
+    @property
     def data1(self):
         return self._data1
 
