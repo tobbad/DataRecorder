@@ -660,8 +660,9 @@ class SensorDisplay(QMainWindow):
         files = QFileDialog.getOpenFileName(self, "Load data", local_dir, fmt[0])
         if files:
             self.eFileName = files[0]
+            print("Emulator data")
             r2p = self.conf.getR2PFunction
-            p2r = self.conf.getR2PFunction
+            p2r = self.conf.getP2RFunction
             self.eData = DataSet("eData", False, p2r, r2p)
             self.eData.load(self.eFileName)
             self.updatePlots()
@@ -696,7 +697,7 @@ class SensorDisplay(QMainWindow):
         if len(device) == 0:
             self.sensor = None
             print("Detected onGoing in removal")
-            self.nanData.setFileName(None)
+            self.nanData.FileName = None
             return
         if self.sensor is None:
             self.sensor = device
@@ -747,7 +748,7 @@ class SensorDisplay(QMainWindow):
         if len(device)==0:
             # keep button state
             print("Detected onGoing in removal")
-            self.nanData.setFileName(None)
+            self.nanData.FileName = None
         self.sensor = None
         print("Device disconnected:", device)
         self.updateConnected()
@@ -804,8 +805,8 @@ class SensorDisplay(QMainWindow):
             print("Set doRecord in doStart")
             self.cData.onGoing = True
             self.nanData.onGoing = True
+            self.cData.FileName = None
             self.intervalFrame.hide()
-            self.cData.setFileName(None)
             print("Start record on %s" % self.yoctoTask)
             self.syncData()
             self.updatePlots()
@@ -870,11 +871,11 @@ class SensorDisplay(QMainWindow):
             fname = self.QFilename.text()
 
         if len(fname) > 0:
-            self.cData.setFileName(fname)
+            self.cData.FileName = fname
             self.cData.save()
             print("Save data to %s" % fname)
         if len(fname) > 0:
-            self.cData.setFileName(fname)
+            self.cData.FileName = fname
             self.cData.save()
 
     def help_about(self):
@@ -1077,8 +1078,7 @@ class SensorDisplay(QMainWindow):
                 y2 = self.eData.data2[:, 1]
                 g2Raw = self.eData.data1[:, 2]
                 g2RawPure = g2Raw[np.logical_not(np.isnan(g2Raw))]
-                print("Show emulator graph")
-                print(self._acteVal)
+                print("Show emulator graph of len = %d/%d data" % (len(self.eData.data2),len(self.eData.data1)))
 
                 if len(g1RawPure) == 0:
                     g1min = 0
@@ -1099,11 +1099,9 @@ class SensorDisplay(QMainWindow):
                 self._acteRawMax.setText("%.2f" % g1Rawmax)
 
                 self.emulatorGraph.clear()
-                print("eM Plot on %s" % type(self.emulatorGraph))
 
                 self.emulatorGraph.addLegend()
                 if self.showeGen1.checkState():
-                    print("em Plot \n%s" % self.eData)
                     p1 = self.emulatorGraph.plot(
                         x, y1, name="generic1", pen=pg.mkPen("red")
                     )

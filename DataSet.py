@@ -16,7 +16,12 @@ class DataSet:
         self.rData = [] # data as it is (raw) / unconconverted
         self.data = {} # Physical data
         self.r2p = r2p
-        self.p2r = p2r
+        self.p2r = r2p
+        r2p_val = self.r2p["generic1"](1, "mA")
+        p2r_val = self.p2r["generic1"](1, "°C")
+        print("Convert 1 mA to %f %s " %(r2p_val[0],r2p_val[1]))
+        print("Convert 1 °C to %f %s " %(p2r_val[0],p2r_val[1]))
+
         self._doRecord = False
         self._onGoing = False
         self._filename = None
@@ -33,9 +38,17 @@ class DataSet:
 
     def __len__(self):
         return len(self.rData)
+    def __str__(self):
+        res= "%s\n" % self._filename
+        for k,v in self.data.items():
+            res +="Data of %s is (len = %d)\n" % (k, len(self.data[k]))
+            for idx in range(len(self.data[k])):
+                res+= "data[%d] = %s\n" %(idx, self.data[k][idx])
+        return res
 
     def append(self, data):
-        if self._doStore():
+        if self._doRecord:
+            print(self.r2p, data)
             self.rData.append(data)
             pData = [data[0], data[1], data[2]]
             pData.extend(self.r2p[data[2]](data[3], data[4]))
@@ -96,7 +109,7 @@ class DataSet:
 
     @doRecord.setter
     def doRecord(self, val):
-        self._doRecord = Val
+        self._doRecord = val
 
     @property
     def data1(self):
@@ -118,9 +131,10 @@ class DataSet:
             self._data2[i][1]= self.data["generic2"][i][1]
             self._data2[i][2]= self.data["generic2"][i][3]
     def load(self, fname):
+        self.clear()
         og  = self.onGoing
         self.onGoing = True
-        self.rData = []
+        self._doRecord = True
         if fname is not None:
             file = open(fname)
             self._filename = None
@@ -132,31 +146,38 @@ class DataSet:
                     data = []
                     # print("Load line %d %s " % (idx,  line))
                     time = line[0]
+
                     relTime = float(line[1])
-                    rval2 = self.r2p["generic2"](line[2], line[3])
-                    rval1 =  self.r2p["generic1"](line[4], line[5])
+                    rval2 = self.r2p["generic2"](line[3], line[4])
+                    rval1 =  self.r2p["generic1"](line[6], line[7])
                     data.extend([time, relTime, "generic2"])
                     data.extend( rval2)
                     data.append( "generic1" )
                     data.extend(rval1)
                     self.append(data)
+                    print("To Raw" ,data)
             self.onGoing= og
             file.close()
         self.sync()
-        self.setFileName("tmp.csv")
+        self._filename = "tmp.csv"
         self.save()
+        self._filename = fname
     def save(self):
         file = open(self._filename, "w")
         csvFile =  csv.writer(file, lineterminator="\n")
         self.writeCsvHeader(csvFile)
         for i in range(self.dataSize):
             csvFile.writerow(self.pData[i])
-            print("Saved %s "%self.pData[i])
+            #print("Saved %s"%(self.pData[i]))
         file.close()
         print("Saved %s in %s" %( self._filename, os.getcwd()))
-        self.setFileName(None)
 
-    def setFileName(self, filename):
+    @property
+    def FileName(self):
+        return self._filename
+
+    @FileName.setter
+    def FileName(self, filename):
         # Set filename to current time if None is given
         # otherwise store it in a file with the given namename
         if filename is None:
@@ -181,5 +202,6 @@ class DataSet:
         print("\tSet header 1 to %s " % header)
 
     def clear(self):
+        self.rData = []
         self.data = {"generic1":[], "generic2":[] }
         self.pData = []

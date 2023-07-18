@@ -223,6 +223,8 @@ class configuration:
             val = float(val)
             if np.isnan(val):
                 res = [np.nan, "mA"]
+                print("Is Nan")
+
             else:
                 if val > 0:
                     if unit == "mA":
@@ -239,15 +241,18 @@ class configuration:
                             self._yfunction["generic1"]["unit"],
                         ]
                     else:
-                        res = [val, unit]
+                        raise ValueError("Unknown conversion to %s" % unit)
                 else:
+                    print("Value <0" )
                     res = [val, unit]
+
             return res
 
         def convert2(val, unit):
             val = float(val)
             if np.isnan(val):
                 res = [np.nan, "mA"]
+                print("Is Nan")
             else:
                 if unit == "mA":
                     res = [
@@ -262,10 +267,12 @@ class configuration:
                         ),
                         self._yfunction["generic2"]["unit"],
                     ]
+                    tunit = self._yfunction["generic2"]["unit"]
                 else:
                     raise ValueError("Unknown conversion to %s" % unit)
-            return res
 
+            return res
+        print("Converted Raw(mA) to Physical (%s) "% ( self._yfunction["generic2"]["unit"]))
         fnDict = {"generic1": convert1, "generic2": convert2}
         print("getR2PFunction", fnDict)
         return fnDict
@@ -273,6 +280,7 @@ class configuration:
     @property
     def getP2RFunction(self):
         def convert1(val, unit):
+            val = float(val)
             if np.isnan(val):
                 res = [np.nan, "mA"]
             else:
@@ -290,13 +298,13 @@ class configuration:
                             self._yfunction["generic1"]["unit"],
                         ]
                     else:
-                        print("Received unit %s to convert ")
+                        print("Received unit %s to convert " % unit)
                         res = [val, unit]
                 else:
                     res = [val, unit]
             return res
         def convert2(val, unit):
-            print(val, unit)
+            val = float(val)
             if np.isnan(val):
                 res = [np.nan, "mA"]
             else:
@@ -319,7 +327,9 @@ class configuration:
                 else:
                     print("Negativ value  %d %s  " % (val, unit))
                     res = [val, unit]
+
             return res
+        print("Converted Physical(%s) to -> mA "% ( self._yfunction["generic2"]["unit"]))
 
         fnDict = {"generic1": convert1, "generic2": convert2}
         print("getP2RFunction", fnDict)
