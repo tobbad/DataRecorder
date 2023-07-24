@@ -219,3 +219,5 @@ class DataSet:
         self.rData = []
         self.data = {"generic1":[], "generic2":[] }
         self.pData = []
+        self._data1 = None
+        self._data2 = None
