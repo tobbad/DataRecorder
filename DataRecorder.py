@@ -637,7 +637,6 @@ class SensorDisplay(QMainWindow):
         return res
 
     def append_data(self, data):
-
         if data[0] is None:
             print("Stop capture")
             self.stopCapture()
@@ -978,9 +977,7 @@ class SensorDisplay(QMainWindow):
 
     def updatePlots(self):
         if self.cData is not None:
-            if (self.cData.data1 is None) or (self.cData.data2 is None):
-                print("Skip  recorded plot as there is no data")
-            else:
+            if (self.cData.data1 is not None) or (self.cData.data2 is not None):
                 if len(self.cData) > 0:
                     x = self.cData.data1[:, 0]
                     self.recorderGraph.clear()
@@ -1063,13 +1060,15 @@ class SensorDisplay(QMainWindow):
                 progress = 100.0 * len(self.cData) / float(self.capture_size)
                 print("Progress %.1f of %d " % (progress, self.capture_size))
                 self.progressBar.setValue(int(progress))
-            #
+            else:
+                print("Skip recorder graph as cdata1 is %s and cdata2 is %s"% (self.cData.data1 is None,self.cData.data2 is None))
+        #
         # Emulator graph
         #
         if self.eData is not None:
             if len(self.eData) > 0 and self.emulatorGraph is not None:
 
-                x = self.eData.data1[:, 1]
+                x = self.eData.data1[:, 0]
                 y1 = self.eData.data1[:, 1]
                 g1Pure = y1[np.logical_not(np.isnan(y1))]
                 g1Raw = self.eData.data1[:, 2]
@@ -1110,6 +1109,8 @@ class SensorDisplay(QMainWindow):
                         x, y2, name="generic2", pen=pg.mkPen("green")
                     )
                 self.emulatorGraph.setTitle(self.eFileName)
+        else:
+            print("Skip emulator graph as eData is %s" % self.eData)
 
 
 if __name__ == "__main__":

@@ -17,10 +17,6 @@ class DataSet:
         self.data = {} # Physical data
         self.r2p = r2p
         self.p2r = p2r
-        r2p_val = self.r2p["generic1"](1, "mA")
-        p2r_val = self.p2r["generic1"](1, "°C")
-        print("Convert 1 mA to %f %s " %(r2p_val[0],r2p_val[1]))
-        print("Convert 1 °C to %f %s " %(p2r_val[0],p2r_val[1]))
 
         self._doRecord = False
         self._onGoing = False
@@ -57,7 +53,10 @@ class DataSet:
             pData.append(data[5])
             pData.extend( self.r2p[data[5]](data[6],data[7] ))
             gen1 = [ data[1], pData[6], pData[7], data[6], data[7]]
+            #print("A Gen1 ", gen1)
             gen2 = [ data[1], pData[3], pData[4], data[3], data[4]]
+            #print("A Gen2 ", gen2)
+
             self.data["generic1"].append(gen1)
             self.data["generic2"].append(gen2)
             #print("gen1 %s" % gen1)
@@ -65,6 +64,8 @@ class DataSet:
             if len(self._name)==0:
                 print("Append pData %s in\"%s\"" % (pData, self._name))
             self.data["generic2"].append(gen2)
+            #print("pData", pData)
+
             self.pData.append(pData)
             if self.csvFile is None:
                 if  self._filename is None:
@@ -123,15 +124,20 @@ class DataSet:
 
     def sync(self):
         # Synchronize data to data1, data2
-        self._data1 = np.zeros([self.dataSize, 3])
-        self._data2 = np.zeros([self.dataSize, 3])
-        for i in range(self.dataSize):
-            self._data1[i][0]= self.data["generic1"][i][0]
-            self._data1[i][1]= self.data["generic1"][i][1]
-            self._data1[i][2]= self.data["generic1"][i][3]
-            self._data2[i][0]= self.data["generic2"][i][0]
-            self._data2[i][1]= self.data["generic2"][i][1]
-            self._data2[i][2]= self.data["generic2"][i][3]
+        if self.dataSize>0:
+            self._data1 = np.zeros([self.dataSize, 3])
+            self._data2 = np.zeros([self.dataSize, 3])
+            for i in range(self.dataSize):
+                self._data1[i][0]= self.data["generic1"][i][0]
+                self._data1[i][1]= self.data["generic1"][i][1]
+                self._data1[i][2]= self.data["generic1"][i][3]
+                self._data2[i][0]= self.data["generic2"][i][0]
+                self._data2[i][1]= self.data["generic2"][i][1]
+                self._data2[i][2]= self.data["generic2"][i][3]
+        else:
+            self._data1 = None
+            self._data2 = None
+
     def load(self, fname):
         self.clear()
         og  = self.onGoing
@@ -154,10 +160,8 @@ class DataSet:
                     time = line[0]
                     relTime = float(line[1])
                     rval2 = self.p2r["generic2"](line[3], line[4])
-                    #print("convert 2 %s %s to raw-> %s" %(line[3], line[4], rval2))
 
                     rval1 =  self.p2r["generic1"](line[6], line[7])
-                    #print("convert 1 %s %s to raw-> %s" %(line[6], line[7], rval1))
 
                     data.extend([time, relTime, "generic2"])
                     data.extend( rval2)
