@@ -27,6 +27,7 @@ class DataSet:
         self._filename = None
         self.file = None
         self.csvFile = None
+        self.rawCsvFile =None
         self.data = {"generic1": [], "generic2": [], "unit_raw": None, "unit_phy": None}
         self._data1 = None
         self._data2 = None
@@ -48,6 +49,8 @@ class DataSet:
 
     def append(self, data):
         if self._doRecord:
+            if self.rawCsvFile is not None:
+                self.rawCsvFile.writerow(data)
             self.rData.append(data)
             pData = [data[0], data[1], data[2]]
             pData.extend(self.r2p[data[2]](data[3], data[4]))
@@ -134,6 +137,10 @@ class DataSet:
         og  = self.onGoing
         self.onGoing = True
         self._doRecord = True
+        rawFile = open("rawData.csv", "w")
+        self.rawCsvFile =csv.writer(rawFile, lineterminator="\n")
+        #self.writeCsvHeader(self.rawCsvFile)
+
         if fname is not None:
             file = open(fname)
             self._filename = None
@@ -163,6 +170,7 @@ class DataSet:
         self.sync()
         self._filename = "tmp.csv"
         self.save()
+        rawFile.close()
         self._filename = fname
     def save(self):
         file = open(self._filename, "w")

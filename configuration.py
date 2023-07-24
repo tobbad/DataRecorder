@@ -262,8 +262,8 @@ class configuration:
                                 - self._yfunction["generic2"]["rawMin"]
                         )
                         * (
-                                self._yfunction["generic2"]["max"]
-                                - self._yfunction["generic2"]["min"]
+                            (   self._yfunction["generic2"]["max"]
+                                - self._yfunction["generic2"]["min"])
                         ),
                         self._yfunction["generic2"]["unit"],
                     ]
@@ -294,8 +294,8 @@ class configuration:
                                     - self._yfunction["generic1"]["min"]
                             )
                             * (
-                                self._yfunction["generic1"]["rawMax"]
-                            ),
+                                (self._yfunction["generic1"]["rawMax"]- self._yfunction["generic1"]["rawMin"])
+                            )+self._yfunction["generic1"]["rawMin"],
                             "mA",
                         ]
                     else:
@@ -320,8 +320,8 @@ class configuration:
                                     - self._yfunction["generic1"]["min"]
                             )
                             * (
-                                self._yfunction["generic2"]["rawMax"]
-                            ),
+                                (self._yfunction["generic1"]["rawMax"]- self._yfunction["generic1"]["rawMin"])+self._yfunction["generic1"]["rawMin"]
+                            )+self._yfunction["generic1"]["rawMin"],
                             "mA",
                         ]
                     else:
