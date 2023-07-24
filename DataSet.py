@@ -16,7 +16,7 @@ class DataSet:
         self.rData = [] # data as it is (raw) / unconconverted
         self.data = {} # Physical data
         self.r2p = r2p
-        self.p2r = r2p
+        self.p2r = p2r
         r2p_val = self.r2p["generic1"](1, "mA")
         p2r_val = self.p2r["generic1"](1, "°C")
         print("Convert 1 mA to %f %s " %(r2p_val[0],r2p_val[1]))
@@ -48,7 +48,6 @@ class DataSet:
 
     def append(self, data):
         if self._doRecord:
-            print(self.r2p, data)
             self.rData.append(data)
             pData = [data[0], data[1], data[2]]
             pData.extend(self.r2p[data[2]](data[3], data[4]))
@@ -146,16 +145,19 @@ class DataSet:
                     data = []
                     # print("Load line %d %s " % (idx,  line))
                     time = line[0]
-
                     relTime = float(line[1])
-                    rval2 = self.r2p["generic2"](line[3], line[4])
-                    rval1 =  self.r2p["generic1"](line[6], line[7])
+                    rval2 = self.p2r["generic2"](line[3], line[4])
+                    #print("convert 2 %s %s to raw-> %s" %(line[3], line[4], rval2))
+
+                    rval1 =  self.p2r["generic1"](line[6], line[7])
+                    #print("convert 1 %s %s to raw-> %s" %(line[6], line[7], rval1))
+
                     data.extend([time, relTime, "generic2"])
                     data.extend( rval2)
                     data.append( "generic1" )
                     data.extend(rval1)
+                    #print("To Raw" ,data, rval1, rval2)
                     self.append(data)
-                    print("To Raw" ,data)
             self.onGoing= og
             file.close()
         self.sync()

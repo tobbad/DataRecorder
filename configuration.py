@@ -249,10 +249,10 @@ class configuration:
             return res
 
         def convert2(val, unit):
+
             val = float(val)
             if np.isnan(val):
                 res = [np.nan, "mA"]
-                print("Is Nan")
             else:
                 if unit == "mA":
                     res = [
@@ -280,6 +280,7 @@ class configuration:
     @property
     def getP2RFunction(self):
         def convert1(val, unit):
+
             val = float(val)
             if np.isnan(val):
                 res = [np.nan, "mA"]
@@ -295,15 +296,17 @@ class configuration:
                             * (
                                 self._yfunction["generic1"]["rawMax"]
                             ),
-                            self._yfunction["generic1"]["unit"],
+                            "mA",
                         ]
                     else:
                         print("Received unit %s to convert " % unit)
-                        res = [val, unit]
+                        res = [val, "mA"]
                 else:
+                    print("Negativ value  %d %s  " % (val, unit))
                     res = [val, unit]
             return res
         def convert2(val, unit):
+
             val = float(val)
             if np.isnan(val):
                 res = [np.nan, "mA"]
@@ -319,7 +322,7 @@ class configuration:
                             * (
                                 self._yfunction["generic2"]["rawMax"]
                             ),
-                            self._yfunction["generic2"]["unit"],
+                            "mA",
                         ]
                     else:
                         print("Received unit %s to convert ")
