@@ -6,5 +6,6 @@
     <file alias="stop.svg">resources/stop.svg</file>
     <file alias="redLed.svg">resources/redLed.svg</file>
     <file alias="greenLed.svg">resources/greenLed.svg</file>
+    <file alias="replay.svg">resources/replay.svg</file>
 </qresource>
 </RCC>

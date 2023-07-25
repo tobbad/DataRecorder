@@ -575,6 +575,8 @@ class SensorDisplay(QMainWindow):
         self.emulatorGraph.addLegend()
         layout.addWidget(self.emulatorGraph)
         self.emulatorGraph.setTitle("Initial")
+
+
         hbox = QHBoxLayout()
         self.showeGen1 = QCheckBox("Show generic1", self)
         self.showeGen1.stateChanged.connect(self.updatePlots)
@@ -593,7 +595,41 @@ class SensorDisplay(QMainWindow):
         self.sync.setChecked(True)
         self.sync.stateChanged.connect(self.synChecked)
         hbox.addWidget(self.sync)
-        print("Added sync %s" % (self.sync))
+
+        btns =  [["Start", self.doReplay, True]]
+        for name, fn, show in btns:
+            self.btn[name] = QPushButton(name)
+            icon = QIcon(":/%s.svg" % name.lower())
+            self.btn[name].setIcon(icon)
+            self.btn[name].clicked.connect(fn)
+            self.btnState[name] = show
+            if show:
+                self.btn[name].show()
+            else:
+                self.btn[name].hide()
+            hbox.addWidget(self.btn[name])
+
+        self.eintervalFrame = QFrame()
+        hbox1 = QHBoxLayout()
+        self.setSampleEInterval_ms = 200
+        self.captureETime_s = 1
+        onlyInt0_1000 = QIntValidator(1, 1000, self)
+        siELabel = QLabel("Sample interval")
+        self.siE_edit = QLineEdit()
+        self.siE_edit.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.siE_edit.setText("1")
+        self.siE_edit.setValidator(onlyInt0_1000)
+        siELabel.setBuddy(self.siE_edit)
+        hbox1.addWidget(siELabel)
+        hbox.addWidget(self.siE_edit)
+        self.sampleEUnit = QComboBox()
+        self.sampleEUnit.addItems(["ms", "s"])
+        self.sampleEUnit.setCurrentIndex(0)
+        hbox1.addWidget(self.sampleEUnit)
+        self.eintervalFrame.setLayout(hbox1)
+        hbox.addWidget(self.eintervalFrame)
+
+
         layout.addLayout(hbox)
 
         gLayout = QGridLayout()
@@ -682,8 +718,11 @@ class SensorDisplay(QMainWindow):
 
     def synChecked(self):
         if self.sync.isChecked():
+            self.eintervalFrame.hide()
             print("Sync is active")
         else:
+            self.eintervalFrame.show()
+
             print("Sync is passive")
 
     @property
@@ -815,6 +854,12 @@ class SensorDisplay(QMainWindow):
         print("Stop Remote in %s" % currThread())
         self.subSigThread.stopTask.emit()
 
+    def doReplay(self):
+        if self.sync.isChecked():
+            print("Use intervall from recorder")
+        else:
+            print("Use intervall from datafile ")
+        pass
     def stopCapture(self):
         print("DataRecorder stopCapture received in %s" % currThread())
         print("Show buttons in stopCapture")
@@ -970,8 +1015,10 @@ class SensorDisplay(QMainWindow):
         self.updatePlots()
 
     def syncData(self):
-        self.cData.sync()
-        self.nanData.sync()
+        if self.cData is not None:
+            self.cData.sync()
+        if self.nanData is not None:
+            self.nanData.sync()
         if self.eData is not None:
             self.eData.sync()
 
