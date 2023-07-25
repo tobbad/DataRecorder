@@ -621,7 +621,7 @@ class SensorDisplay(QMainWindow):
         self.siE_edit.setValidator(onlyInt0_1000)
         siELabel.setBuddy(self.siE_edit)
         hbox1.addWidget(siELabel)
-        hbox.addWidget(self.siE_edit)
+        hbox1.addWidget(self.siE_edit)
         self.sampleEUnit = QComboBox()
         self.sampleEUnit.addItems(["ms", "s"])
         self.sampleEUnit.setCurrentIndex(0)

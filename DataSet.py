@@ -190,6 +190,12 @@ class DataSet:
     def FileName(self):
         return self._filename
 
+    def getSampleIntervall_ms(self):
+        if self.datasize == 0:
+            return 0
+        else:
+
+
     @FileName.setter
     def FileName(self, filename):
         # Set filename to current time if None is given
