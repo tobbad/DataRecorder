@@ -184,7 +184,7 @@ class SensorDisplay(QMainWindow):
         self._doRecord = False
         self.btnState = {"Start": False, "Clear": False, "Stop": False, "Save": False}
         self.conf = None
-        self._doSave = False
+        self._doSaveConfig = False
         self.yoctoTask = None
         self.subSigThread = SignalHubThread()
         self.setUpGUI()
@@ -194,6 +194,8 @@ class SensorDisplay(QMainWindow):
         self.capture()  # Set up here to detect connection
         self.updateCnt = 20
         self.updateCounter = self.updateCnt
+        self._conected = False
+        self._onGoing = False
 
     def setUpGUI(self):
         self.setWindowTitle("DataRecorder")
@@ -677,9 +679,9 @@ class SensorDisplay(QMainWindow):
             print("Stop capture")
             self.stopCapture()
             return
-        self.cData.onGoing = self.cData.onGoing and (not (isnan(data[3])) or (not isnan(data[6])))
-        if not self.cData.onGoing:
-            print("Removed sensors onGoing is %s" %  self.cData.onGoing)
+        self.onGoing = self.onGoing and (not (isnan(data[3])) or (not isnan(data[6])))
+        if not self.onGoing:
+            print("Removed sensors onGoing is %s" %  self.onGoing)
             self.sensor = None
         self.cData.append(data)
         self.nanData.append(data)
@@ -694,12 +696,11 @@ class SensorDisplay(QMainWindow):
         fmt = ["CSV Files (*.csv)", "Excel Files (*.xslc)"]
         files = QFileDialog.getOpenFileName(self, "Load data", local_dir, fmt[0])
         if files:
-            self.eFileName = files[0]
             print("Emulator data")
             r2p = self.conf.getR2PFunction
             p2r = self.conf.getP2RFunction
             self.eData = DataSet("eData", False, p2r, r2p)
-            self.eData.load(self.eFileName)
+            self.eData.load(files[0])
             self.updatePlots()
 
     def capture(self):
@@ -725,21 +726,18 @@ class SensorDisplay(QMainWindow):
 
             print("Sync is passive")
 
-    @property
-    def connected(self):
-        return self.sensor != None
-
     @pyqtSlot(dict)
     def arrival(self, device):
 
         if len(device) == 0:
             self.sensor = None
-            print("Detected onGoing in removal")
+            print("Detected onGoing in arrival")
             self.nanData.FileName = None
             return
-        if self.sensor is None:
-            self.sensor = device
-            print("Received sensors %d in doRecord %s"  % (len(self.sensor), self.doRecord))
+        self.sensor = device
+
+        if self.connected:
+            print("Received  %d sensors in arrival %s"  % (len(self.sensor), self.doRecord))
             if self.doRecord:
                 print("Skip")
                 pass
@@ -749,6 +747,7 @@ class SensorDisplay(QMainWindow):
                 self.btnState["Stop"] = False
                 self.btnState["Clear"] = False
                 self.btnState["Save"] = False
+                self.updateConnected()
             # log arrival
             if self.conf is None:
                 self.conf = configuration(self.yoctoTask)
@@ -760,7 +759,7 @@ class SensorDisplay(QMainWindow):
                 self.cData = DataSet("", alwaysTrue, p2r, r2p)
                 self.nanData = DataSet("nan", onlyNan,  p2r, r2p)
                 self.eData = DataSet("eData", alwaysTrue, p2r, r2p)
-            print("Device connected in Datarecorder onGoing %s" % (self.cData.onGoing))
+            print("Device connected in Datarecorder onGoing %s" % (self.onGoing))
             self.sIntVal_edit.setText("%d" % self.conf.SampleInterval["time"])
             sunit = {"ms": 0, "s": 1}
             idx = sunit[self.conf.SampleInterval["unit"]]
@@ -768,16 +767,14 @@ class SensorDisplay(QMainWindow):
             cunit = {"s": 0, "m": 1, "h": 2}
             self.captime_edit.setText("%d" % self.conf.CaptureTime["time"])
             idx = cunit[self.conf.CaptureTime["unit"]]
-            self._doSave = False
+            self._doSaveConfig = False
             self.sampcapDur.setCurrentIndex(idx)
-            self._doSave = True
-            self.sensor = device
-            if self.cData.onGoing:
+            self._doSaveConfig = True
+            if self.onGoing:
                 print("Show old buttons")
             print("DR Registered Sensors %s" % self.sensor)
         else:
             print("%d Sensors are already connected" % len(self.sensor))
-        self.updateConnected()
         self.onTimingChanged()
 
     @pyqtSlot(dict)
@@ -789,7 +786,12 @@ class SensorDisplay(QMainWindow):
             self.nanData.FileName = None
         self.sensor = None
         print("Device disconnected:", device)
-        self.updateConnected()
+    @property
+    def connected(self):
+        if self.sensor == None:
+            return False
+        return len(self.sensor)>0
+
 
     def updateConnected(self):
         if self.connected:
@@ -806,7 +808,7 @@ class SensorDisplay(QMainWindow):
             self.showGen2CB.setStyleSheet("background-color:white")
             self.frame1.setStyleSheet("background-color:white")
             self.frame2.setStyleSheet("background-color:white")
-
+        print("DDDDDDDDDDDD" ,self.btnState)
         if self.btnState["Start"]:
             self.btn["Start"].show()
         else:
@@ -841,8 +843,6 @@ class SensorDisplay(QMainWindow):
         if self.yoctoTask.capture_start():
             self.doRecord = True
             print("Set doRecord in doStart")
-            self.cData.onGoing = True
-            self.nanData.onGoing = True
             self.cData.FileName = None
             self.intervalFrame.hide()
             print("Start record on %s" % self.yoctoTask)
@@ -866,6 +866,7 @@ class SensorDisplay(QMainWindow):
         print("Reset doRecord in stopCapture")
 
         self.doRecord = False
+        self.onGoing = False
         self.btnState["Start"] = False
         self.btnState["Stop"] = False
         self.btnState["Clear"] = True
@@ -902,9 +903,19 @@ class SensorDisplay(QMainWindow):
         return self._doRecord
     @doRecord.setter
     def doRecord(self, val):
+        self._doRecord = val
         self.cData.doRecord= val
         self.nanData.doRecord = val
-        self._doRecord = val
+    @property
+    def onGoing(self):
+        return self._onGoing
+
+    @onGoing.setter
+    def onGoing(self, val):
+        self._onGoing = val
+        self.cData.onGoing= val
+        self.nanData.onGoing = val
+
 
     def doSave(self):
         fmt = ["CSV Files (*.csv)", "Excel Files (*.xslc)"]
@@ -936,7 +947,7 @@ class SensorDisplay(QMainWindow):
 
     def onTimingChanged(self):
         if not self.doRecord:
-            # print("Call onTimingChanged in recording %s do Save %s" % ( self.sampleUnit.currentIndex(), self._doSave))
+            # print("Call onTimingChanged in recording %s do Save %s" % ( self.sampleUnit.currentIndex(), self._doSaveConfig))
             self.sampInt = {"time": 0, "unit": "ms"}
             if self.sampleUnit.currentIndex() == 0:
                 self.sampInt["unit"] = "ms"
@@ -948,7 +959,7 @@ class SensorDisplay(QMainWindow):
                 1 if self.sIntVal_edit.text() == None else int(self.sIntVal_edit.text())
             )
             self.sampInt["time"] = sInt
-            if self.conf != None and self._doSave == True:
+            if self.conf != None and self._doSaveConfig == True:
                 self.conf.SampleInterval = self.sampInt
             self.setSampleInterval_ms *= sInt
             if self.yoctoTask is not None:
@@ -971,7 +982,7 @@ class SensorDisplay(QMainWindow):
             self.capTime["time"] = cTi
             self.captureTime_s *= cTi
 
-            if self.conf != None and self._doSave:
+            if self.conf != None and self._doSaveConfig:
                 self.conf.CaptureTime = self.capTime
 
             self.capture_size = ceil(
@@ -988,11 +999,11 @@ class SensorDisplay(QMainWindow):
                 )
             )
             if self.yoctoTask is not None:
-                if not self.cData.onGoing:
+                if not self.doRecord:
                     self.yoctoTask.set_capture_size(self.capture_size)
-            if self._doSave and self.conf != None:
+            if self._doSaveConfig and self.conf != None:
                 print("Save config")
-                self.conf.save(self._doSave)
+                self.conf.save(self._doSaveConfig)
             else:
                 print("Do not save")
         else:
@@ -1155,7 +1166,7 @@ class SensorDisplay(QMainWindow):
                     p2 = self.emulatorGraph.plot(
                         x, y2, name="generic2", pen=pg.mkPen("green")
                     )
-                self.emulatorGraph.setTitle(self.eFileName)
+                self.emulatorGraph.setTitle(self.eData.FileName)
         else:
             print("Skip emulator graph as eData is %s" % self.eData)
 
