@@ -312,10 +312,10 @@ class YoctopuceTask(QObject):
         if self.connected == False and self.doRecord:
             measureTime = datetime.datetime.now()
             delta = (measureTime - self.startTime).total_seconds()
-            print(
-                "\tConnected False: Send fake data  delta %s, connected %s"
-                % (delta, self.connected)
-            )
+            #print(
+            #    "\tConnected False: Send fake data  delta %s, connected %s"
+            #    % (delta, self.connected)
+            #)
             if not self.connected:
                 self.new_data(None, ["generic2", "generic1"])
 

@@ -223,8 +223,6 @@ class configuration:
             val = float(val)
             if np.isnan(val):
                 res = [np.nan, "mA"]
-                print("Is Nan")
-
             else:
                 if val > 0:
                     if unit == "mA":

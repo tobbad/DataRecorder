@@ -17,9 +17,8 @@ class DataSet:
         self.data = {} # Physical data
         self.r2p = r2p
         self.p2r = p2r
-
+        self._connected = False
         self._doRecord = False
-        self._onGoing = False
         self._filename = None
         self.file = None
         self.csvFile = None
@@ -44,7 +43,7 @@ class DataSet:
         return res
 
     def append(self, data):
-        if self._doRecord:
+        if self._doStore:
             if self.rawCsvFile is not None:
                 self.rawCsvFile.writerow(data)
             self.rData.append(data)
@@ -107,12 +106,23 @@ class DataSet:
         self._onGoing = onGoing
 
     @property
+    def connected(self):
+        return self._connected
+
+    @connected.setter
+    def connected(self, val):
+        print("Set connected in %s to %s, doStore= %s" % (self._name, val, self._doStore))
+        self._connected = val
+
+    @property
     def doRecord(self):
         return self._doRecord
 
     @doRecord.setter
     def doRecord(self, val):
+        print("Set doEecord in %s" % self._name)
         self._doRecord = val
+
 
     @property
     def data1(self):
@@ -138,18 +148,16 @@ class DataSet:
             self._data1 = None
             self._data2 = None
 
-    def load(self, fname):
+    def load(self, fname = None):
         self.clear()
-        og  = self.onGoing
         self.onGoing = True
-        self._doRecord = True
         rawFile = open("rawData.csv", "w")
         self.rawCsvFile =csv.writer(rawFile, lineterminator="\n")
         #self.writeCsvHeader(self.rawCsvFile)
-
+        self.csvFile = None
+        self._filename = None
         if fname is not None:
             file = open(fname)
-            self._filename = None
             csvFile = csv.reader(file, lineterminator="\n")
             for idx, line in enumerate(csvFile):
                 if line[0].startswith("#"):
@@ -169,7 +177,6 @@ class DataSet:
                     data.extend(rval1)
                     #print("To Raw" ,data, rval1, rval2)
                     self.append(data)
-            self.onGoing= og
             file.close()
         self.sync()
         self._filename = "tmp.csv"
@@ -186,15 +193,17 @@ class DataSet:
         file.close()
         print("Saved %s in %s" %( self._filename, os.getcwd()))
 
-    @property
-    def FileName(self):
-        return self._filename
 
     def getSampleIntervall_ms(self):
         if self.datasize == 0:
             return 0
         else:
+            return 0
 
+
+    @property
+    def FileName(self):
+        return self._filename
 
     @FileName.setter
     def FileName(self, filename):
@@ -219,7 +228,7 @@ class DataSet:
 
         header = "# generic1 %s" % (self.data["generic1"][0][2])
         csvFile.writerow([header])
-        print("\tSet header 1 to %s " % header)
+        print("\tSet header 1 to %s of %s " %( header,self._filename ))
 
     def clear(self):
         self.rData = []

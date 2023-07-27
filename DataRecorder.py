@@ -187,14 +187,18 @@ class SensorDisplay(QMainWindow):
         self._doSaveConfig = False
         self.yoctoTask = None
         self.subSigThread = SignalHubThread()
+        self.sensor = None
+        print("Connected state is %s "% self.connected)
+
         self.setUpGUI()
+        self.updateConnected()
+
         self.plotname = ""
         self.closeOk = False
-        self.sensor = None
+
         self.capture()  # Set up here to detect connection
         self.updateCnt = 20
         self.updateCounter = self.updateCnt
-        self._conected = False
         self._onGoing = False
 
     def setUpGUI(self):
@@ -377,12 +381,9 @@ class SensorDisplay(QMainWindow):
             self.btn[name].setIcon(icon)
             self.btn[name].clicked.connect(fn)
             self.btnState[name] = show
-            if show:
-                self.btn[name].show()
-            else:
-                self.btn[name].hide()
             hbox.addWidget(self.btn[name])
         layout.addLayout(hbox)
+
 
         hbox = QHBoxLayout()
         self.intervalFrame = QFrame()
@@ -680,8 +681,10 @@ class SensorDisplay(QMainWindow):
             self.stopCapture()
             return
         self.onGoing = self.onGoing and (not (isnan(data[3])) or (not isnan(data[6])))
+        self.cData.onGoing = self.onGoing
+        self.nanData.onGoing = self.onGoing
         if not self.onGoing:
-            print("Removed sensors onGoing is %s" %  self.onGoing)
+            #print("Removed sensors onGoing is %s" %  self.onGoing)
             self.sensor = None
         self.cData.append(data)
         self.nanData.append(data)
@@ -725,19 +728,39 @@ class SensorDisplay(QMainWindow):
             self.eintervalFrame.show()
 
             print("Sync is passive")
+    @property
+    def connected(self):
+        if self.sensor is None:
+            print("No more connected")
+            return False
+        else:
+            print("Count of sensors is %d, sensors are %s" % (len(self.sensor), self.sensor))
+            return len(self.sensor)>0
+
+
+    @property
+    def notconnected(self):
+        if self.sensor is None:
+            print("not connected is True %s" % self.sensor)
+            return True
+        else:
+            print("not connected is False %s"% self.sensor)
+            return False
+
 
     @pyqtSlot(dict)
     def arrival(self, device):
 
         if len(device) == 0:
             self.sensor = None
-            print("Detected onGoing in arrival")
+            print("Detected disconnect in arrival")
             self.nanData.FileName = None
-            return
-        self.sensor = device
+            self.nanData.connected = False
+        else:
+            self.sensor = device
 
         if self.connected:
-            print("Received  %d sensors in arrival %s"  % (len(self.sensor), self.doRecord))
+            print("Received  %d sensors (%s) in arrival with doRecord= %s"  % (len(self.sensor), self.sensor, self.doRecord))
             if self.doRecord:
                 print("Skip")
                 pass
@@ -755,9 +778,9 @@ class SensorDisplay(QMainWindow):
                 r2p = self.conf.getR2PFunction
                 alwaysTrue = lambda : True
                 onlyNan = lambda : not self.connected
-
+                print("Current not connected is %s" %self.notconnected)
                 self.cData = DataSet("", alwaysTrue, p2r, r2p)
-                self.nanData = DataSet("nan", onlyNan,  p2r, r2p)
+                self.nanData = DataSet("nan", self.notconnected,  p2r, r2p)
                 self.eData = DataSet("eData", alwaysTrue, p2r, r2p)
             print("Device connected in Datarecorder onGoing %s" % (self.onGoing))
             self.sIntVal_edit.setText("%d" % self.conf.SampleInterval["time"])
@@ -773,8 +796,6 @@ class SensorDisplay(QMainWindow):
             if self.onGoing:
                 print("Show old buttons")
             print("DR Registered Sensors %s" % self.sensor)
-        else:
-            print("%d Sensors are already connected" % len(self.sensor))
         self.onTimingChanged()
 
     @pyqtSlot(dict)
@@ -785,15 +806,14 @@ class SensorDisplay(QMainWindow):
             print("Detected onGoing in removal")
             self.nanData.FileName = None
         self.sensor = None
+        self.nanData.connected = self.connected
         print("Device disconnected:", device)
-    @property
-    def connected(self):
-        if self.sensor == None:
-            return False
-        return len(self.sensor)>0
-
 
     def updateConnected(self):
+        if self.cData is not None:
+            self.cData.connected = self.connected
+        if self.nanData is not None:
+            self.nanData.connected = self.connected
         if self.connected:
             label = self.showGen1CB.text()
             self.showGen1CB.setText(label)
@@ -803,12 +823,12 @@ class SensorDisplay(QMainWindow):
             self.showGen2CB.setStyleSheet("background-color:red")
             self.frame1.setStyleSheet("background-color:green")
             self.frame2.setStyleSheet("background-color:red")
+
         else:
             self.showGen1CB.setStyleSheet("background-color:white")
             self.showGen2CB.setStyleSheet("background-color:white")
             self.frame1.setStyleSheet("background-color:white")
             self.frame2.setStyleSheet("background-color:white")
-        print("DDDDDDDDDDDD" ,self.btnState)
         if self.btnState["Start"]:
             self.btn["Start"].show()
         else:
@@ -832,7 +852,6 @@ class SensorDisplay(QMainWindow):
     def doStart(self):
         self.capture()
         print("Show buttons in doStart Thread %s" % (self.yoctoTask))
-
         self.onTimingChanged()
         self.btnState["Start"] = False
         self.btnState["Stop"] = True
@@ -841,6 +860,7 @@ class SensorDisplay(QMainWindow):
         if self.yoctoTask is None:
             print("No sensor connected")
         if self.yoctoTask.capture_start():
+            self.onGoing = True
             self.doRecord = True
             print("Set doRecord in doStart")
             self.cData.FileName = None
@@ -906,6 +926,7 @@ class SensorDisplay(QMainWindow):
         self._doRecord = val
         self.cData.doRecord= val
         self.nanData.doRecord = val
+        self.yoctoTask.doRecord = val
     @property
     def onGoing(self):
         return self._onGoing
@@ -1007,7 +1028,7 @@ class SensorDisplay(QMainWindow):
             else:
                 print("Do not save")
         else:
-            print("Skip as do not record")
+            print("Skip in onTimingChanged as do record")
 
     def tabChanged(self, index):
         self.syncData()
@@ -1119,7 +1140,7 @@ class SensorDisplay(QMainWindow):
                 print("Progress %.1f of %d " % (progress, self.capture_size))
                 self.progressBar.setValue(int(progress))
             else:
-                print("Skip recorder graph as cdata1 is %s and cdata2 is %s"% (self.cData.data1 is None,self.cData.data2 is None))
+                print("Skip recorder as there is no Data in data1/2")
         #
         # Emulator graph
         #
