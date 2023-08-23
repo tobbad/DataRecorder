@@ -52,9 +52,7 @@ class DataSet:
             pData.append(data[5])
             pData.extend( self.r2p[data[5]](data[6],data[7] ))
             gen1 = [ data[1], pData[6], pData[7], data[6], data[7]]
-            #print("A Gen1 ", gen1)
             gen2 = [ data[1], pData[3], pData[4], data[3], data[4]]
-            #print("A Gen2 ", gen2)
 
             self.data["generic1"].append(gen1)
             self.data["generic2"].append(gen2)
@@ -62,7 +60,6 @@ class DataSet:
             #print("gen2 %s" % gen2)
             if len(self._name)==0:
                 print("Append pData %s in\"%s\"" % (pData, self._name))
-            self.data["generic2"].append(gen2)
             #print("pData", pData)
 
             self.pData.append(pData)
@@ -120,7 +117,7 @@ class DataSet:
 
     @doRecord.setter
     def doRecord(self, val):
-        print("Set doEecord in %s" % self._name)
+        print("Set doRecord in \"%s\"" % self._name)
         self._doRecord = val
 
 
@@ -151,20 +148,22 @@ class DataSet:
     def load(self, fname = None):
         self.clear()
         self.onGoing = True
-        rawFile = open("rawData.csv", "w")
+        rawFile = open("rawData.csv", "w", encoding= "ISO-8859-1")
         self.rawCsvFile =csv.writer(rawFile, lineterminator="\n")
         #self.writeCsvHeader(self.rawCsvFile)
+        doStore = self._doStore
+        self._doStore = True
         self.csvFile = None
         self._filename = None
         if fname is not None:
-            file = open(fname)
+            file = open(fname, encoding= "ISO-8859-1")
             csvFile = csv.reader(file, lineterminator="\n")
             for idx, line in enumerate(csvFile):
                 if line[0].startswith("#"):
                     print("Skip line %s  " % line)
                 else:
                     data = []
-                    # print("Load line %d %s " % (idx,  line))
+                    #print("Load line %d: %s " % (idx,  line))
                     time = line[0]
                     relTime = float(line[1])
                     rval2 = self.p2r["generic2"](line[3], line[4])
@@ -178,6 +177,8 @@ class DataSet:
                     #print("To Raw" ,data, rval1, rval2)
                     self.append(data)
             file.close()
+        self._doStore = doStore
+
         self.sync()
         self._filename = "tmp.csv"
         self.save()

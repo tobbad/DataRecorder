@@ -281,10 +281,19 @@ class SensorDisplay(QMainWindow):
 
         layout = QVBoxLayout()
         self.recorderGraph = pg.PlotWidget()
-        self.recorderGraph.setLabel(
-            "left", '<span style="color:white;font-size:10px">Temperature (°C)</span>'
-        )
-        # self.recorderGraph.setLabel('right', "<span style=\"color:white;font-size:10px\">Current (mA)</span>")
+
+        self.egp = self.recorderGraph.plotItem
+        print(self.egp)
+        # self.egp.setLabels("left" = '<span style="color:white;font-size:10px">Temperature (°C)</span>')
+        self.egr = pg.ViewBox()
+        print(self.egr)
+        self.egp.showAxis('right')
+
+        self.egp.scene().addItem(self.egr)
+        self.egp.getAxis('right').linkToView(self.egr)
+        self.egr.setXLink(self.egp)
+        self.egp.getAxis('right').setLabel('<span style="color:white;font-size:10px">Current (mA)</span>')
+     # self.recorderGraph.setLabel('right', "<span style=\"color:white;font-size:10px\">Current (mA)</span>")
         self.recorderGraph.setLabel(
             "bottom", '<span style="color:white;font-size:10px">Time (s)</span>'
         )
@@ -569,12 +578,6 @@ class SensorDisplay(QMainWindow):
         res = QWidget()
         layout = QVBoxLayout()
         self.emulatorGraph = pg.PlotWidget()
-        self.emulatorGraph.setLabel(
-            "left", '<span style="color:white;font-size:10px">Temperature (°C)</span>'
-        )
-        self.emulatorGraph.setLabel(
-            "bottom", '<span style="color:white;font-size:10px">Time (s)</span>'
-        )
         self.emulatorGraph.addLegend()
         layout.addWidget(self.emulatorGraph)
         self.emulatorGraph.setTitle("Initial")
@@ -599,7 +602,7 @@ class SensorDisplay(QMainWindow):
         self.sync.stateChanged.connect(self.synChecked)
         hbox.addWidget(self.sync)
 
-        btns =  [["Start", self.doReplay, True]]
+        btns =  [["Replay", self.doReplay, False]]
         for name, fn, show in btns:
             self.btn[name] = QPushButton(name)
             icon = QIcon(":/%s.svg" % name.lower())
@@ -713,6 +716,7 @@ class SensorDisplay(QMainWindow):
             self.yoctoTask = YoctopuceTask(self.subSigThread)
             self.subSigThread.statusMsg.connect(self.showMsg)
             self.subSigThread.arrival.connect(self.arrival)
+            self.subSigThread.oarrival.connect(self.oarrival)
             self.subSigThread.removal.connect(self.removal)
             self.subSigThread.stopTask.connect(self.stopCapture)
             self.subSigThread.moveToThread(self.subSigThread)
@@ -723,8 +727,10 @@ class SensorDisplay(QMainWindow):
     def synChecked(self):
         if self.sync.isChecked():
             self.eintervalFrame.hide()
+            self.btn["Replay"].hide()
             print("Sync is active")
         else:
+            self.btn["Replay"].show()
             self.eintervalFrame.show()
 
             print("Sync is passive")
@@ -734,7 +740,7 @@ class SensorDisplay(QMainWindow):
             print("No more connected")
             return False
         else:
-            print("Count of sensors is %d, sensors are %s" % (len(self.sensor), self.sensor))
+            #print("Count of sensors is %d, sensors are %s" % (len(self.sensor), self.sensor))
             return len(self.sensor)>0
 
 
@@ -760,7 +766,8 @@ class SensorDisplay(QMainWindow):
             self.sensor = device
 
         if self.connected:
-            print("Received  %d sensors (%s) in arrival with doRecord= %s"  % (len(self.sensor), self.sensor, self.doRecord))
+            print("Received  %d sensors (%s) in arrival with doRecord= %s" % (
+            len(self.sensor), self.sensor, self.doRecord))
             if self.doRecord:
                 print("Skip")
                 pass
@@ -775,13 +782,13 @@ class SensorDisplay(QMainWindow):
             if self.conf is None:
                 self.conf = configuration(self.yoctoTask)
                 p2r = self.conf.getP2RFunction
-                r2p = self.conf.getR2PFunction
-                alwaysTrue = lambda : True
-                onlyNan = lambda : not self.connected
-                print("Current not connected is %s" %self.notconnected)
-                self.cData = DataSet("", alwaysTrue, p2r, r2p)
-                self.nanData = DataSet("nan", self.notconnected,  p2r, r2p)
-                self.eData = DataSet("eData", alwaysTrue, p2r, r2p)
+                self.r2p = self.conf.getR2PFunction
+                alwaysTrue = lambda: True
+                onlyNan = lambda: not self.connected
+                print("Current not connected is %s" % self.notconnected)
+                self.cData = DataSet("", alwaysTrue, p2r, self.r2p)
+                self.nanData = DataSet("nan", self.notconnected, p2r, self.r2p)
+                self.eData = DataSet("eData", alwaysTrue, p2r, self.r2p)
             print("Device connected in Datarecorder onGoing %s" % (self.onGoing))
             self.sIntVal_edit.setText("%d" % self.conf.SampleInterval["time"])
             sunit = {"ms": 0, "s": 1}
@@ -797,6 +804,9 @@ class SensorDisplay(QMainWindow):
                 print("Show old buttons")
             print("DR Registered Sensors %s" % self.sensor)
         self.onTimingChanged()
+    def oarrival(self, device):
+        self.oSensor = device
+        print("Received output device in DataRecorder %s" % self.oSensor)
 
     @pyqtSlot(dict)
     def removal(self, device):
@@ -865,7 +875,6 @@ class SensorDisplay(QMainWindow):
             print("Set doRecord in doStart")
             self.cData.FileName = None
             self.intervalFrame.hide()
-            print("Start record on %s" % self.yoctoTask)
             self.syncData()
             self.updatePlots()
         self.updateConnected()
@@ -936,6 +945,7 @@ class SensorDisplay(QMainWindow):
         self._onGoing = val
         self.cData.onGoing= val
         self.nanData.onGoing = val
+
 
 
     def doSave(self):
@@ -1088,6 +1098,10 @@ class SensorDisplay(QMainWindow):
                         pl = self.recorderGraph.plot(
                             x, g1, name="generic1", pen=pg.mkPen("green")
                         )
+                        self.egr.addItem(pg.PlotCurveItem(g1Raw))
+                        self.egr.setGeometry(self.egp.vb.sceneBoundingRect())
+                        self.egr.linkedViewChanged(self.egp.vb, self.egr.XAxis)
+
                         vp = self.recorderGraph.getViewBox()
                         if self.xaxisScale.currentIndex() == 1:
                             tmin = int(self.minTime.text())
